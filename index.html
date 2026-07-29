@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <!-- Основные метаданные -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- SEO метаданные -->
+    <title>Random Challenge Hub | Интерактивная рулетка заданий для игр и стримов</title>
+    <meta name="description"
+        content="Random Challenge Hub — это элегантный инструмент для создания случайных игровых челленджей. Идеально подходит для стримеров, геймеров и компаний друзей, которые хотят разнообразить игровой процесс.">
+    <meta name="keywords"
+        content="рулетка заданий, игровые челленджи, рандомайзер, стрим инструменты, колесо фортуны, случайный выбор, game challenge, random picker">
+    <meta name="author" content="Random Challenge Hub">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#6366f1">
+
+    <!-- Open Graph для социальных сетей -->
+    <meta property="og:title" content="Random Challenge Hub | Рулетка игровых заданий">
+    <meta property="og:description"
+        content="Создавайте уникальные челленджи, добавляйте игроков и запускайте колесо случайного выбора. Сделайте каждый стрим непредсказуемым!">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://random-challenge-hub.com">
+    <meta property="og:image" content="https://random-challenge-hub.com/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:site_name" content="Random Challenge Hub">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Random Challenge Hub | Рулетка заданий">
+    <meta name="twitter:description"
+        content="Интерактивная платформа для создания случайных игровых челленджей и заданий">
+    <meta name="twitter:image" content="https://random-challenge-hub.com/twitter-image.jpg">
+
+    <!-- Дополнительные метаданные -->
+    <meta name="application-name" content="Random Challenge Hub">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Challenge Hub">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- Иконки -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+    <link rel="apple-touch-icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+
+    <!-- Канонический URL -->
+    <link rel="canonical" href="https://random-challenge-hub.com">
+
+    <!-- Preload критических ресурсов -->
+    <link rel="preload" href="style.css" as="style">
+    <link rel="preload" href="script.js" as="script">
+
+    <!-- Подключение стилей -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Структурированные данные Schema.org -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Random Challenge Hub",
+        "description": "Интерактивная платформа для создания и случайного выбора игровых заданий и челленджей",
+        "applicationCategory": "EntertainmentApplication",
+        "operatingSystem": "Any",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "author": {
+            "@type": "Organization",
+            "name": "Random Challenge Hub",
+            "description": "Разработчики инструментов для геймеров и стримеров"
+        },
+        "browserRequirements": "Requires JavaScript. Requires HTML5 support"
+    }
+    </script>
+</head>
+
+<body>
+    <!-- Декоративный фон с геометрическими фигурами -->
+    <div class="background-decoration" id="bgDecoration"></div>
+
+    <!-- Основной контейнер -->
+    <div class="container">
+        <!-- Заголовок с подзаголовком -->
+        <header class="app-header">
+            <div class="logo-container">
+                <span class="logo-icon">🎲</span>
+                <h1 data-text="RANDOM CHALLENGE HUB">
+                    RANDOM CHALLENGE
+                    <span>HUB</span>
+                </h1>
+            </div>
+            <p class="tagline">Создавай • Играй • Побеждай</p>
+        </header>
+
+        <!-- Информационная панель о проекте -->
+        <div class="about-project" id="aboutProject">
+            <div class="about-card">
+                <div class="about-icon">🎯</div>
+                <h2>О проекте</h2>
+                <p class="about-description">
+                    Random Challenge Hub — это интеллектуальная платформа для генерации случайных игровых заданий и
+                    челленджей.
+                    Создавайте собственные правила, добавляйте игроков и позвольте колесу судьбы решить, кто и что будет
+                    делать дальше!
+                </p>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <span class="feature-icon">🎮</span>
+                        <span class="feature-text">Создание заданий для любых игр</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">👥</span>
+                        <span class="feature-text">Управление списком игроков</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎰</span>
+                        <span class="feature-text">Честная рулетка случайного выбора</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📊</span>
+                        <span class="feature-text">Отслеживание статистики</span>
+                    </div>
+                </div>
+                <button onclick="scrollToTabs()" class="cyber-btn start-exploring">
+                    НАЧАТЬ ИСПОЛЬЗОВАТЬ ✨
+                </button>
+            </div>
+        </div>
+
+        <!-- Панель с вкладками -->
+        <div class="panel" id="mainPanel">
+            <div class="loading-screen">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">Подготовка инструментов...</p>
+            </div>
+        </div>
+
+        <!-- Скрытая секция для совместимости -->
+        <div id="roulette" class="hidden">
+            <div class="wheel">
+                <div id="wheelText">🎲</div>
+            </div>
+            <h2 id="result"></h2>
+            <button class="start" onclick="spin()">ЗАПУСТИТЬ</button>
+        </div>
+
+        <!-- Дополнительная информация -->
+        <div class="info-section" id="infoSection">
+            <div class="info-card">
+                <h3>💡 Как это работает?</h3>
+                <div class="steps-list">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <p>Добавьте игры и задания для них</p>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <p>Создайте список участников</p>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <p>Запустите рулетку и узнайте результат!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h3>🌟 Цели проекта</h3>
+                <ul class="goals-list">
+                    <li>Разнообразить игровой процесс на стримах</li>
+                    <li>Создать инструмент для честного случайного выбора</li>
+                    <li>Помочь организовать игровые челленджи в компании</li>
+                    <li>Сделать каждый игровой процесс непредсказуемым</li>
+                    <li>Предоставить удобный интерфейс для создания заданий</li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>🎯 Для кого этот проект?</h3>
+                <div class="audience-grid">
+                    <div class="audience-item">
+                        <span class="audience-icon">🎮</span>
+                        <strong>Стримеры</strong>
+                        <p>Разнообразьте свои трансляции неожиданными челленджами</p>
+                    </div>
+                    <div class="audience-item">
+                        <span class="audience-icon">👥</span>
+                        <strong>Компании друзей</strong>
+                        <p>Добавьте азарта в ваши игровые вечера</p>
+                    </div>
+                    <div class="audience-item">
+                        <span class="audience-icon">🎯</span>
+                        <strong>Киберспортсмены</strong>
+                        <p>Тренируйтесь в нестандартных условиях</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Контейнер для уведомлений -->
+    <div class="notifications-container" id="notifications"></div>
+
+    <!-- Модальное окно для подтверждений -->
+    <div class="modal hidden" id="confirmModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Подтверждение</h3>
+            <p id="modalMessage">Вы уверены?</p>
+            <div class="modal-actions">
+                <button class="cyber-btn cancel-btn" onclick="closeModal()">ОТМЕНА</button>
+                <button class="cyber-btn confirm-btn" id="modalConfirm">ПОДТВЕРДИТЬ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Футер с информацией -->
+<footer class="app-footer">
+    <div class="footer-content">
+        <div class="footer-section">
+            <span class="footer-brand">Random Challenge Hub</span>
+            <span class="footer-version">v2.0</span>
+        </div>
+        <div class="footer-section">
+            <a href="/legal/privacy_policy.html">Политика конфиденциальности</a>
+            <span class="footer-divider">|</span>
+            <a href="/legal/terms_of_service.html">Условия использования</a>
+            <span class="footer-divider">|</span>
+            <a href="/legal/disclaimer.html">Отказ от ответственности</a>
+        </div>
+        <div class="footer-section">
+            <span class="footer-text">Все данные сохраняются локально</span>
+        </div>
+    </div>
+</footer>
+
+    <!-- Подключение скриптов -->
+    <script src="script.js"></script>
+
+    <!-- Дополнительный скрипт для декоративного фона -->
+    <script>
+        // Создание геометрического декоративного фона
+        function createBackgroundDecoration() {
+            const container = document.getElementById('bgDecoration');
+            if (!container) return;
+
+            const shapes = ['circle', 'square', 'triangle'];
+            const colors = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#3b82f6'];
+
+            for (let i = 0; i < 30; i++) {
+                const shape = document.createElement('div');
+                shape.className = `bg-shape bg-shape-${shapes[Math.floor(Math.random() * shapes.length)]}`;
+
+                const size = Math.random() * 40 + 20;
+                const posX = Math.random() * 100;
+                const posY = Math.random() * 100;
+                const duration = Math.random() * 20 + 15;
+                const delay = Math.random() * 5;
+                const opacity = Math.random() * 0.1 + 0.02;
+
+                shape.style.cssText = `
+                    width: ${size}px;
+                    height: ${size}px;
+                    left: ${posX}%;
+                    top: ${posY}%;
+                    animation-duration: ${duration}s;
+                    animation-delay: ${delay}s;
+                    opacity: ${opacity};
+                    background: ${colors[Math.floor(Math.random() * colors.length)]};
+                `;
+
+                container.appendChild(shape);
+            }
+        }
+
+        // Плавный скролл к вкладкам
+        function scrollToTabs() {
+            const mainPanel = document.getElementById('mainPanel');
+            if (mainPanel) {
+                mainPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            createBackgroundDecoration();
+
+            // Автоматически скрываем информационную панель при переходе к инструментам
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const aboutProject = document.getElementById('aboutProject');
+                        if (aboutProject) {
+                            aboutProject.style.opacity = '0.5';
+                            aboutProject.style.transition = 'opacity 0.5s ease';
+                        }
+                    } else {
+                        const aboutProject = document.getElementById('aboutProject');
+                        if (aboutProject) {
+                            aboutProject.style.opacity = '1';
+                        }
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            const mainPanel = document.getElementById('mainPanel');
+            if (mainPanel) {
+                observer.observe(mainPanel);
+            }
+        });
+
+        // Удаление загрузочного экрана после инициализации
+        window.addEventListener('load', () => {
+            const loadingScreen = document.querySelector('.loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.opacity = '0';
+                loadingScreen.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => loadingScreen.remove(), 500);
+            }
+        });
+    </script>
+</body>
+
+</html>
