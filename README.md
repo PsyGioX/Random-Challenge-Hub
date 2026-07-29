@@ -44,10 +44,10 @@
 
 ```bash
 # Клонируйте репозиторий
-git clone https://github.com/yourusername/random-challenge-hub.git
+git clone https://github.com/PsyGioX/Random-Challenge-Hub.git
 
 # Перейдите в папку проекта
-cd random-challenge-hub
+cd Random-Challenge-Hub
 
 # Откройте в браузере
 open index.html
