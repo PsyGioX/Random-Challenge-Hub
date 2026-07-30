@@ -2378,11 +2378,13 @@ function spinWheel(tasks, targetIdx, callback) {
     if (!tasks.length) { if (callback) callback(); return }
     lastWinnerSegIdx = targetIdx;
     const segAngle = (Math.PI*2) / tasks.length;
-    const targetAngle = targetIdx * segAngle + segAngle/2;
+    const targetAngle = targetIdx * segAngle + segAngle/2; // середина целевого сегмента (от угла 0)
+    const POINTER = -Math.PI / 2; // указатель сверху (12 часов)
     const spins = rouletteSettings.minSpins + Math.floor(Math.random() * (rouletteSettings.maxSpins - rouletteSettings.minSpins + 1));
-    // Указатель находится сверху (12 часов = -π/2 в canvas), поэтому вычитаем π/2
-    // чтобы середина целевого сегмента оказалась именно под указателем
-    const totalRot = spins * Math.PI*2 + (Math.PI*2 - targetAngle) - Math.PI/2;
+    // Нужно: targetAngle + currentWheelAngle + totalRot ≡ POINTER (mod 2π)
+    // → totalRot = POINTER - currentWheelAngle - targetAngle + N*2π
+    const remainder = ((POINTER - currentWheelAngle - targetAngle) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
+    const totalRot = spins * Math.PI*2 + remainder;
     if (rouletteSettings.soundEnabled) playSpinSound();
     animateWheel(totalRot, callback);
 }
