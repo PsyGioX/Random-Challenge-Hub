@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /overlay.html
+
+# Sitemap
+Sitemap: https://random-challenge-hub.vercel.app/sitemap.xml

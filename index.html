@@ -20,32 +20,55 @@
                    base-uri 'self';">
 
     <title>Random Challenge Hub v3 | Рулетка заданий для стримеров и геймеров</title>
-    <meta name="description" content="Random Challenge Hub — интерактивная рулетка заданий для стримеров, геймеров и компаний. OBS overlay, голосование чатом, 5 тем, 10 цветовых схем.">
-    <meta name="keywords" content="рулетка заданий, стример инструменты, OBS overlay, колесо фортуны, игровые челленджи, случайный выбор, twitch рулетка">
+    <meta name="description" content="Random Challenge Hub — бесплатная интерактивная рулетка заданий для стримеров, геймеров и компаний. OBS overlay, голосование чатом Twitch, 4 режима рулетки, 5 тем оформления, 10 цветовых схем. Работает в браузере без установки.">
+    <meta name="keywords" content="рулетка заданий, стример инструменты, OBS overlay, колесо фортуны, игровые челленджи, случайный выбор, twitch рулетка, random challenge, геймерские задания, стрим инструменты, browser source OBS, колесо испытаний">
     <meta name="author" content="Random Challenge Hub">
-    <meta name="robots" content="index, follow">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <meta name="theme-color" content="#6366f1">
+    <meta name="color-scheme" content="dark light">
+    <meta name="language" content="Russian">
+    <meta name="revisit-after" content="7 days">
+    <meta name="rating" content="general">
+    <meta name="category" content="Gaming, Entertainment, Streaming Tools">
 
-    <meta property="og:title" content="Random Challenge Hub v3 | Рулетка для стримеров">
-    <meta property="og:description" content="OBS overlay, голосование чатом, 5 тем оформления, 10 цветовых схем, 4 режима рулетки.">
+    <!-- Open Graph -->
+    <meta property="og:title" content="Random Challenge Hub v3 | Рулетка заданий для стримеров">
+    <meta property="og:description" content="Бесплатная рулетка заданий с OBS overlay, голосованием чатом Twitch, 4 режимами, 5 темами. Всё в браузере — без установки и серверов.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://random-challenge-hub.com">
+    <meta property="og:url" content="https://random-challenge-hub.vercel.app">
     <meta property="og:locale" content="ru_RU">
     <meta property="og:site_name" content="Random Challenge Hub">
+    <meta property="og:image" content="https://random-challenge-hub.vercel.app/favicon/favicon.png">
+    <meta property="og:image:alt" content="Random Challenge Hub — рулетка заданий для стримеров">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
 
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Random Challenge Hub v3">
-    <meta name="twitter:description" content="Интерактивная рулетка заданий с OBS overlay для стримеров">
+    <meta name="twitter:title" content="Random Challenge Hub v3 | Рулетка для стримеров">
+    <meta name="twitter:description" content="Бесплатная интерактивная рулетка заданий с OBS overlay для стримеров и геймеров">
+    <meta name="twitter:image" content="https://random-challenge-hub.vercel.app/favicon/favicon.png">
+    <meta name="twitter:image:alt" content="Random Challenge Hub логотип">
 
+    <!-- PWA / Mobile -->
     <meta name="application-name" content="Random Challenge Hub">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Challenge Hub">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="msapplication-TileColor" content="#6366f1">
+    <meta name="msapplication-TileImage" content="favicon/favicon.png">
+    <meta name="msapplication-config" content="none">
 
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
-    <link rel="canonical" href="https://random-challenge-hub.com">
+    <!-- Favicon для всех устройств -->
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon.png">
+    <link rel="icon" type="image/png" href="favicon/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon/favicon.png">
+    <link rel="mask-icon" href="favicon/favicon.png" color="#6366f1">
+    <link rel="shortcut icon" href="favicon/favicon.png">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="canonical" href="https://random-challenge-hub.vercel.app">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,10 +81,35 @@
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "Random Challenge Hub",
-        "description": "Интерактивная рулетка заданий с OBS overlay для стримеров и геймеров",
+        "alternateName": "RCH",
+        "description": "Бесплатная интерактивная рулетка заданий с OBS overlay для стримеров и геймеров. Голосование чатом Twitch, 4 режима рулетки, 5 тем оформления.",
+        "url": "https://random-challenge-hub.vercel.app",
         "applicationCategory": "EntertainmentApplication",
+        "applicationSubCategory": "GameApplication",
         "operatingSystem": "Any",
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        "inLanguage": "ru",
+        "isAccessibleForFree": true,
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "featureList": [
+            "4 режима рулетки",
+            "OBS Browser Source overlay",
+            "Голосование чатом Twitch",
+            "5 тем оформления",
+            "10 цветовых схем",
+            "Таймер стримера",
+            "Экспорт и импорт данных"
+        ],
+        "screenshot": "https://random-challenge-hub.vercel.app/favicon/favicon.png",
+        "softwareVersion": "3.0",
+        "datePublished": "2026-07-29",
+        "author": {
+            "@type": "Organization",
+            "name": "Random Challenge Hub"
+        }
     }
     </script>
 </head>
