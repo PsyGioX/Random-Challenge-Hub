@@ -16,7 +16,12 @@ if (typeof t !== 'function') {
     };
 }
 // Re-run t() after language changes so dynamic renders pick up new lang
+// NOTE: The main rch:langchange handler is in index.html and calls createTabs()
+// to refresh tab labels. This fallback handles edge cases (e.g. file:// open).
 window.addEventListener('rch:langchange', function () {
+    // Only run if index.html's handler hasn't already rebuilt the tabs
+    // (index.html's handler sets window.__rchLangHandled = true for the current event)
+    if (window.__rchLangHandled) { window.__rchLangHandled = false; return; }
     if (typeof switchTab === 'function' && typeof currentTab !== 'undefined') {
         switchTab(currentTab);
     }
@@ -1126,21 +1131,22 @@ function resetAllData() {
 }
 
 // ── TABS ──────────────────────────────────────────────────
-function createTabs() {
+function createTabs(initialTab) {
     const mp = document.getElementById('mainPanel');
     if (!mp) return;
+    const tab = initialTab || 'games';
     mp.innerHTML = `
         <div class="cyber-tabs">
-            <button class="cyber-tab active" data-tab="games"    onclick="switchTab('games')">   <span class="tab-icon">🎮</span> ${t('tab.games')}</button>
-            <button class="cyber-tab"        data-tab="players"  onclick="switchTab('players')"> <span class="tab-icon">👥</span> ${t('tab.players')} <span class="tab-badge" id="playersBadge">${players.length}</span></button>
-            <button class="cyber-tab"        data-tab="roulette" onclick="switchTab('roulette')"><span class="tab-icon">🎰</span> ${t('tab.roulette')}</button>
-            <button class="cyber-tab"        data-tab="streamer" onclick="switchTab('streamer')"><span class="tab-icon">📡</span> ${t('tab.streamer')}</button>
-            <button class="cyber-tab"        data-tab="stats"    onclick="switchTab('stats')">   <span class="tab-icon">📊</span> ${t('tab.stats')}</button>
-            <button class="cyber-tab"        data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> ${t('tab.settings')}</button>
+            <button class="cyber-tab${tab==='games'?' active':''}"    data-tab="games"    onclick="switchTab('games')">   <span class="tab-icon">🎮</span> ${t('tab.games')}</button>
+            <button class="cyber-tab${tab==='players'?' active':''}"  data-tab="players"  onclick="switchTab('players')"> <span class="tab-icon">👥</span> ${t('tab.players')} <span class="tab-badge" id="playersBadge">${players.length}</span></button>
+            <button class="cyber-tab${tab==='roulette'?' active':''}" data-tab="roulette" onclick="switchTab('roulette')"><span class="tab-icon">🎰</span> ${t('tab.roulette')}</button>
+            <button class="cyber-tab${tab==='streamer'?' active':''}" data-tab="streamer" onclick="switchTab('streamer')"><span class="tab-icon">📡</span> ${t('tab.streamer')}</button>
+            <button class="cyber-tab${tab==='stats'?' active':''}"    data-tab="stats"    onclick="switchTab('stats')">   <span class="tab-icon">📊</span> ${t('tab.stats')}</button>
+            <button class="cyber-tab${tab==='settings'?' active':''}" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> ${t('tab.settings')}</button>
         </div>
         <div class="tab-content" id="tabContent"></div>
     `;
-    switchTab('games');
+    switchTab(tab);
 }
 
 function switchTab(name) {
