@@ -165,6 +165,29 @@
         .chat-messages::-webkit-scrollbar-track { background:rgba(255,255,255,0.05) }
         .chat-messages::-webkit-scrollbar-thumb { background:rgba(129,140,248,0.4); border-radius:2px }
 
+        /* ── TIMER WIDGET ── */
+        .ow-timer-value {
+            font-family: 'Orbitron', 'Inter', monospace;
+            font-size: 38px; font-weight: 900; text-align: center;
+            color: #f1f5f9; letter-spacing: 3px;
+            line-height: 1; margin: 8px 0 4px;
+            transition: color 0.3s;
+        }
+        .ow-timer-value.warning { color: #fbbf24 }
+        .ow-timer-value.danger  { color: #f85149; animation: timerPulse 0.6s infinite }
+        .ow-timer-bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-top: 6px }
+        .ow-timer-bar-fill {
+            height: 100%; border-radius: 2px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            transition: width 1s linear, background 0.3s;
+        }
+        .ow-timer-bar-fill.warning { background: linear-gradient(90deg, #f59e0b, #fbbf24) }
+        .ow-timer-bar-fill.danger  { background: linear-gradient(90deg, #ef4444, #f85149) }
+        .ow-timer-status {
+            font-size: 9px; text-align: center; margin-top: 5px;
+            color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px;
+        }
+
         /* ── CONTROLS BAR ── */
         .ow-controls {
             position: fixed; bottom: 0; left: 0; right: 0;
@@ -255,6 +278,22 @@
             </div>
         </div>
 
+        <!-- TIMER WIDGET -->
+        <div class="overlay-widget" id="timerWidget" style="top:18px;right:18px;left:auto;min-width:200px;max-width:240px;display:none">
+            <div class="widget-drag-handle">
+                <span class="widget-close-btn" onclick="hideWidget('timerWidget')">✕</span>
+                <span class="widget-drag-dots">⋮⋮⋮</span>
+            </div>
+            <div class="ow-header">
+                <span class="ow-logo">⏱️</span>
+                <span class="ow-title">Таймер</span>
+                <span class="ow-live-dot" id="timerLiveDot" style="display:none"></span>
+            </div>
+            <div class="ow-timer-value" id="owTimerValue">00:00</div>
+            <div class="ow-timer-bar"><div class="ow-timer-bar-fill" id="owTimerFill" style="width:100%"></div></div>
+            <div class="ow-timer-status" id="owTimerStatus">ожидание</div>
+        </div>
+
     </div>
 
     <!-- CONTROLS BAR -->
@@ -265,6 +304,7 @@
         <button class="ow-ctrl-btn" onclick="showDemo('winner')">🏆 Победитель</button>
         <button class="ow-ctrl-btn" onclick="showIdle()">⏸ Ожидание</button>
         <button class="ow-ctrl-btn" onclick="toggleWidget('chatWidget')">💬 Чат</button>
+        <button class="ow-ctrl-btn" onclick="toggleWidget('timerWidget')">⏱️ Таймер</button>
         <button class="ow-ctrl-btn" onclick="toggleTheme()">🎨 Тема</button>
         <button class="ow-ctrl-btn" onclick="toggleChroma()">🟢 Chroma</button>
         <button class="ow-ctrl-btn" onclick="resetWidgetPositions()">🔄 Сброс позиций</button>
@@ -482,6 +522,9 @@ function startPolling() {
             // overlayChatData — сообщения чата
             const cr = localStorage.getItem('overlayChatData');
             if (cr && cr !== _lastChat) { _lastChat=cr; updateChatWidget(JSON.parse(cr)) }
+            // overlayTimer — таймер стримера
+            const tr = localStorage.getItem('overlayTimer');
+            if (tr) { try { updateTimerWidget(JSON.parse(tr)) } catch(e){} }
         } catch(e){}
     }, 500);
 }
@@ -511,6 +554,33 @@ function esc(t) {
     const d=document.createElement('div'); d.textContent=t||''; return d.innerHTML;
 }
 
+// ── TIMER WIDGET ──────────────────────────────────
+function updateTimerWidget(data) {
+    const val    = document.getElementById('owTimerValue');
+    const fill   = document.getElementById('owTimerFill');
+    const status = document.getElementById('owTimerStatus');
+    const dot    = document.getElementById('timerLiveDot');
+    if (!val) return;
+
+    const t   = data.seconds || 0;
+    const ini = data.initial || 0;
+    const m   = Math.floor(t / 60);
+    const s   = t % 60;
+    const pct = ini > 0 ? Math.round((t / ini) * 100) : 0;
+
+    val.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+    // Цвет по остатку времени
+    const cls = t <= 10 && t > 0 ? 'danger' : t <= 30 && t > 0 ? 'warning' : '';
+    val.className   = 'ow-timer-value'   + (cls ? ' '+cls : '');
+    if (fill) {
+        fill.style.width  = pct + '%';
+        fill.className    = 'ow-timer-bar-fill' + (cls ? ' '+cls : '');
+    }
+    if (status) status.textContent = data.running ? '▶ идёт отсчёт' : t > 0 ? '⏸ на паузе' : '— завершён';
+    if (dot)    dot.style.display  = data.running ? '' : 'none';
+}
+
 // ── DEMO FUNCTIONS ────────────────────────────────
 function showDemo(type) {
     try {
@@ -528,9 +598,13 @@ function showDemo(type) {
             const demoTitle = sd.voteTitle || 'Тестовое голосование';
             showVote(opts, 20, demoTitle);
         } else if (type==='winner') {
-            const users = sd.chatUserPool ? [...sd.chatUserPool].slice(-10) : ['NightWolf99','GamerPro','TwitchViewer'];
-            const winner = users[Math.floor(Math.random()*users.length)];
-            showWinner(winner, `из ${sd.chatUserPool?.size||247} зрителей`);
+            // chatUserPool не сохраняется — берём subWheelList или участников чата
+            const pool = (sd.subWheelList && sd.subWheelList.length)
+                ? sd.subWheelList
+                : ['NightWolf99','GamerPro','TwitchViewer'];
+            const winner = pool[Math.floor(Math.random() * pool.length)];
+            const total  = sd.subWheelList?.length || pool.length;
+            showWinner(winner, `из ${total} участников`);
         }
     } catch(e) {
         if (type==='result')  showResult('Minecraft','Стример','Выполните задание',8000);
@@ -721,6 +795,8 @@ function resetWidgetPositions() {
     if (rw) { rw.style.cssText = 'top:18px;left:18px'; }
     const cw = document.getElementById('chatWidget');
     if (cw) { cw.style.cssText = 'bottom:80px;right:18px;top:auto;left:auto;display:none'; }
+    const tw = document.getElementById('timerWidget');
+    if (tw) { tw.style.cssText = 'top:18px;right:18px;left:auto;min-width:200px;max-width:240px;display:none'; }
 }
 </script>
 </body>

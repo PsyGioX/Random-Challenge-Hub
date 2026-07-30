@@ -2164,6 +2164,8 @@ function startFullRandomMode() {
         setTimeout(() => {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(selGame, selPlayer, selTask);
             showPopupResult(selGame, selPlayer, selTask);
+            // Транслируем результат в overlay
+            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: selGame, player: selPlayer?.name || '?', task: selTask, duration: 12000 })); } catch(e) {}
             markTaskSpent(selGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
@@ -2188,6 +2190,8 @@ function spinPlayerOnly() {
         setTimeout(() => {
             showPopupResult('👤 Выбор игрока', p, p.name);
             if (rouletteSettings.resultDisplay !== 'popup') showResult('Выбор игрока', p, `${p.name} выбран!`);
+            // Транслируем результат в overlay
+            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: '👤 Выбор игрока', player: p?.name || '?', task: `${p?.name || '?'} выбран!`, duration: 10000 })); } catch(e) {}
             playWinSound(); finishSpin();
         }, rouletteSettings.announceDelay || 0);
     });
@@ -2226,6 +2230,8 @@ function spinTaskOnly() {
         setTimeout(() => {
             showPopupResult(taskOnlyState.selectedGame, selectedPlayer, task);
             if (rouletteSettings.resultDisplay !== 'popup') showResult(taskOnlyState.selectedGame, selectedPlayer, task);
+            // Транслируем результат в overlay
+            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: taskOnlyState.selectedGame, player: selectedPlayer?.name || '?', task: task, duration: 12000 })); } catch(e) {}
             markTaskSpent(taskOnlyState.selectedGame, task);
             if (rouletteSettings.removeAfterSpin) {
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
@@ -2280,6 +2286,8 @@ function startGameFirstSpin() {
         setTimeout(() => {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(gameFirstState.selectedGame, curP, selTask);
             showPopupResult(gameFirstState.selectedGame, curP, selTask);
+            // Транслируем результат в overlay
+            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: gameFirstState.selectedGame, player: curP?.name || '?', task: selTask, duration: 12000 })); } catch(e) {}
             markTaskSpent(gameFirstState.selectedGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
@@ -2987,17 +2995,20 @@ function startTimer() {
         clearInterval(streamerState.timerInterval); streamerState.timerInterval = null;
         streamerState.timerRunning = false;
         const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = '▶️ Старт';
+        updateTimerDisplay(); // транслируем pause в overlay
         return;
     }
     if (streamerState.timerSeconds <= 0) return showNotification('Установите время', 'warning');
     streamerState.timerRunning = true;
     const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = '⏸️ Пауза';
+    updateTimerDisplay(); // транслируем start в overlay
     streamerState.timerInterval = setInterval(() => {
         if (streamerState.timerSeconds > 0) { streamerState.timerSeconds--; updateTimerDisplay() }
         else {
             clearInterval(streamerState.timerInterval); streamerState.timerInterval = null;
             streamerState.timerRunning = false;
             const b = document.getElementById('timerStartBtn'); if (b) b.textContent = '▶️ Старт';
+            updateTimerDisplay(); // транслируем end в overlay
             playWinSound(); showNotification('⏱️ Время вышло!', 'warning');
         }
     }, 1000);
@@ -3019,6 +3030,15 @@ function updateTimerDisplay() {
     const t = streamerState.timerSeconds;
     d.textContent = formatTime(t);
     d.className = `timer-display ${t<=30&&t>10?'warning':''} ${t<=10&&t>0?'danger':''}`;
+    // Транслируем состояние таймера в overlay
+    try {
+        localStorage.setItem('overlayTimer', JSON.stringify({
+            seconds:  streamerState.timerSeconds,
+            initial:  streamerState.timerInitial,
+            running:  streamerState.timerRunning,
+            ts:       Date.now()
+        }));
+    } catch(e) {}
 }
 function formatTime(s) {
     const m = Math.floor(s/60), sec = s%60;
