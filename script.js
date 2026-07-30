@@ -1741,22 +1741,24 @@ function updateWheelSegments() {
 
     const max = rouletteSettings.groupSegments ? Math.max(1, rouletteSettings.maxSegments) : 200;
     if (allTasks.length > max) {
-        const groupCount = Math.min(max, allTasks.length);
-        const grpSize = Math.ceil(allTasks.length / groupCount);
+        // Группируем по играм: один сегмент = одна игра
+        const gameMap = new Map();
+        allTasks.forEach(item => {
+            if (!gameMap.has(item.game)) gameMap.set(item.game, []);
+            gameMap.get(item.game).push(item);
+        });
+        const gameEntries = [...gameMap.entries()]; // [[gameName, items[]], ...]
+        const groupCount = Math.min(max, gameEntries.length);
         wheelSegments = [];
         for (let i = 0; i < groupCount; i++) {
-            const start = i * grpSize;
-            if (start >= allTasks.length) break;          // не выходить за пределы
-            const end = Math.min(start + grpSize, allTasks.length);
-            const grp = allTasks.slice(start, end);
-            if (!grp.length) break;
+            const [gameName, items] = gameEntries[i];
             wheelSegments.push({
-                label: grp[0].game,
-                task:  grp[0].task,
-                game:  grp[0].game,
+                label: gameName,
+                task:  items[0].task,
+                game:  gameName,
                 color: getSegmentColor(i, groupCount),
                 isGroup: true,
-                items: grp
+                items: items
             });
         }
     } else {
@@ -2165,13 +2167,27 @@ function executeSpin() {
 function startFullRandomMode() {
     const gamesWithTasks = Object.entries(games).filter(([,t]) => t.length > 0);
     if (!gamesWithTasks.length) { showNotification('Нет игр с заданиями', 'error'); finishSpin(); return }
-    const [selGame, selTasks] = gamesWithTasks[Math.floor(Math.random() * gamesWithTasks.length)];
-    const selPlayer = players[Math.floor(Math.random() * players.length)];
-    const selTask   = selTasks[Math.floor(Math.random() * selTasks.length)];
+
     updateWheelSegments();
-    const allTasks = Object.entries(games).flatMap(([g,ts]) => ts.map(t=>({game:g,task:t})));
-    const ti = allTasks.findIndex(i => i.game===selGame && i.task===selTask);
-    spinWheel(allTasks, ti >= 0 ? ti : 0, () => {
+
+    // Выбираем случайный сегмент из тех, что реально нарисованы на колесе
+    const ti = Math.floor(Math.random() * wheelSegments.length);
+    const winSeg = wheelSegments[ti];
+
+    // Если сегмент — группа (игра), выбираем случайное задание из неё
+    let selGame, selTask;
+    if (winSeg.isGroup && winSeg.items && winSeg.items.length) {
+        const picked = winSeg.items[Math.floor(Math.random() * winSeg.items.length)];
+        selGame = picked.game;
+        selTask = picked.task;
+    } else {
+        selGame = winSeg.game;
+        selTask = winSeg.task;
+    }
+
+    const selPlayer = players.length ? players[Math.floor(Math.random() * players.length)] : null;
+
+    spinWheel(wheelSegments, ti, () => {
         setTimeout(() => {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(selGame, selPlayer, selTask);
             showPopupResult(selGame, selPlayer, selTask);
@@ -2183,10 +2199,10 @@ function startFullRandomMode() {
                     updateWheelSegments();
                     renderWheel();
                     checkAllTasksSpent(selGame);
-                    updatePlayerStats(selPlayer.name); playWinSound(); finishSpin();
+                    updatePlayerStats(selPlayer?.name); playWinSound(); finishSpin();
                 });
             } else {
-                updatePlayerStats(selPlayer.name); playWinSound(); finishSpin();
+                updatePlayerStats(selPlayer?.name); playWinSound(); finishSpin();
             }
         }, rouletteSettings.announceDelay || 0);
     });
@@ -2263,9 +2279,10 @@ function startGameFirstInitial() {
     if (!gamesWithTasks.length) { showNotification('Нет игр с заданиями', 'error'); finishSpin(); return }
     const selGame = gamesWithTasks[Math.floor(Math.random() * gamesWithTasks.length)][0];
     updateWheelSegments();
-    const allTasks = Object.entries(games).flatMap(([g,ts]) => ts.map(t=>({game:g,task:t})));
-    const ti = allTasks.findIndex(i => i.game === selGame);
-    spinWheel(allTasks, ti >= 0 ? ti : 0, () => {
+    // Ищем сегмент с нужной игрой прямо в wheelSegments
+    let ti = wheelSegments.findIndex(s => s.game === selGame);
+    if (ti < 0) ti = 0;
+    spinWheel(wheelSegments, ti, () => {
         gameFirstState = { active:true, selectedGame:selGame, currentPlayerIndex:0, assignedTasks:{} };
         // Обновляем сегменты под выбранную игру и перерисовываем колесо
         updateWheelSegmentsForGame(selGame);
