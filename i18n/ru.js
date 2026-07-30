@@ -9,7 +9,7 @@ window.RCH_TRANSLATIONS['ru'] = {
     code:        'ru',
     name:        'Russian',
     nameNative:  'Русский',
-    flag:        '🇷🇺',
+    flag:        'RU',
     author:      'RCH Team',
     version:     '1.0.0',
     completion:  100,
