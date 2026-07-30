@@ -2744,9 +2744,7 @@ function renderVoteArea() {
 function startVote() {
     const gameOptions = Object.keys(games).slice(0, 4);
     if (!gameOptions.length) return showNotification('Добавьте игры для голосования', 'error');
-    
-    // Голосование недоступно без авторизации для отправки сообщений
-    return showNotification('Голосование недоступно без авторизации Twitch', 'warning');
+    if (!streamerState.connected) return showNotification('Сначала подключитесь к Twitch-каналу', 'warning');
     
     streamerState.voteOptions   = gameOptions;
     streamerState.voteVotes     = {};
@@ -2756,9 +2754,6 @@ function startVote() {
     gameOptions.forEach((_,i) => { streamerState.voteVotes[i+1] = { option: gameOptions[i], count: 0 } });
 
     showNotification(`🗳️ Голосование началось! Зрители пишут 1–${gameOptions.length} в чате`, 'success');
-    
-    // Отправляем голосование в чат
-    // Функция отправки в чат недоступна без авторизации
 
     streamerState.voteInterval = setInterval(() => {
         streamerState.voteTimer--;
