@@ -1105,6 +1105,7 @@ function switchTab(name) {
                     ? updateWheelSegmentsForGame(gameFirstState.selectedGame)
                     : updateWheelSegments();
                 renderWheel();
+                refreshRouletteControls();
             }, 80);
         },
         streamer: () => { 
@@ -1579,7 +1580,6 @@ function renderRouletteTab() {
             <div class="roulette-controls">
                 <button onclick="startSpin()" class="cyber-btn spin-btn" ${spinning||!canSpin?'disabled':''}>${spinTxt}</button>
                 ${gameFirstState.active && canSpin ? '<br><button onclick="resetGameFirstMode()" class="cyber-btn danger-btn outline-btn" style="margin-top:8px">🔄 Сбросить режим</button>' : ''}
-                ${rouletteSettings.removeAfterSpin && countSpentTasks() > 0 ? `<br><button onclick="confirmResetSpentTasks()" class="cyber-btn danger-btn outline-btn" style="margin-top:8px">🗑️ Сброс заданий (${countSpentTasks()} выпало)</button>` : ''}
                 <p class="spin-hint">${avail.length===0?'⚠️ Добавьте игры с заданиями':'✅ Готово: '+gCount+' игр, '+tCount+' зад., '+players.length+' игр.'}</p>
             </div>
             <div id="spinResult" class="spin-result hidden">
@@ -1804,9 +1804,10 @@ function renderWheel() {
         const scale = (segmentScales[i] !== undefined) ? segmentScales[i] : 1;
         if (scale <= 0) return; // полностью исчез — не рисуем
 
-        ctx.save();
+        ctx.save(); // ← сохраняем чистое состояние для каждого сегмента
+
         if (scale < 1) {
-            // Масштабируем сегмент от его центра
+            // Масштабируем сегмент от его центра (сжатие к центру сегмента)
             const midAngle = sA + segAngle / 2;
             const midR = (innerR + outerR) / 2;
             const pivotX = cx + Math.cos(midAngle) * midR;
@@ -1826,7 +1827,8 @@ function renderWheel() {
         ctx.fillStyle = grd; ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
 
-        // Segment label
+        // Segment label — отдельный save/restore чтобы трансформации не накапливались
+        ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(sA + segAngle/2);
         ctx.fillStyle = '#fff';
@@ -1843,7 +1845,9 @@ function renderWheel() {
             ctx.fillStyle = 'rgba(255,255,255,0.7)';
             ctx.fillText(`${seg.items?.length||0} зад.`, textR, fs+2);
         }
-        ctx.restore();
+        ctx.restore(); // ← восстанавливаем после лейбла
+
+        ctx.restore(); // ← восстанавливаем полностью чистое состояние
     });
 
     // Tick dots on the outer ring
@@ -1905,7 +1909,7 @@ function confirmResetSpentTasks() {
             localStorage.setItem('spentTasks', JSON.stringify(spentTasks));
             updateWheelSegments();
             renderWheel();
-            switchTab('roulette');
+            refreshRouletteControls();
             showNotification(`🔄 Потраченные задания сброшены (${total} шт.)`, 'success');
         }
     );
@@ -2270,7 +2274,30 @@ function showWheel() {
     const wc = document.getElementById('wheelContainer');
     if (wc) { wc.style.transition='all 0.5s ease'; wc.style.opacity='1'; wc.style.transform='scale(1)'; wc.style.maxHeight='600px'; wc.style.margin=''; wc.style.pointerEvents='auto'; wc.style.overflow='' }
 }
-function finishSpin() { spinning = false; const btn = document.querySelector('.spin-btn'); if (btn) btn.disabled = false }
+function finishSpin() {
+    spinning = false;
+    const btn = document.querySelector('.spin-btn');
+    if (btn) btn.disabled = false;
+    refreshRouletteControls();
+}
+
+// Обновляет кнопки управления рулеткой прямо в DOM (без перерендера вкладки)
+function refreshRouletteControls() {
+    const ctrl = document.querySelector('.roulette-controls');
+    if (!ctrl) return;
+    // Убираем старую кнопку сброса если есть
+    ctrl.querySelectorAll('.spent-reset-btn').forEach(b => b.remove());
+    // Добавляем свежую если нужна
+    if (rouletteSettings.removeAfterSpin && countSpentTasks() > 0) {
+        const btn = document.createElement('button');
+        btn.className = 'cyber-btn danger-btn outline-btn spent-reset-btn';
+        btn.style.marginTop = '8px';
+        btn.textContent = `🗑️ Сброс заданий (${countSpentTasks()} выпало)`;
+        btn.onclick = confirmResetSpentTasks;
+        ctrl.insertBefore(document.createElement('br'), ctrl.querySelector('.spin-hint'));
+        ctrl.insertBefore(btn, ctrl.querySelector('.spin-hint'));
+    }
+}
 
 // ── ANIMATION ENGINE ──────────────────────────────────────
 function spinWheel(tasks, targetIdx, callback) {
