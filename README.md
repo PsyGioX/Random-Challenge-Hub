@@ -37,14 +37,5 @@
 ### Онлайн
 Просто откройте [демо-версию](https://random-challenge-hub.vercel.app) в браузере!
 
-### Локально
-
-```bash
-# Клонируйте репозиторий
-git clone https://github.com/PsyGioX/Random-Challenge-Hub.git
-
-# Перейдите в папку проекта
-cd Random-Challenge-Hub
-
 # Откройте в браузере
 open index.html
