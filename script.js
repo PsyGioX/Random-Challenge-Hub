@@ -42,13 +42,6 @@ let streamerState = {
 // УДАЛЕНО: OAuth токен для отправки сообщений
     overlayOpen:   false,
     // Новые данные для IndexedDB
-    streamerProfile: {
-        displayName: '',
-        profileImage: '',
-        followers: 0,
-        subscribers: 0,
-        viewCount: 0,
-    },
     recentFollowers: [],
     recentSubscribers: [],
     chatStats: {
@@ -78,9 +71,6 @@ function twitchConnect(channel) {
     streamerState.twitchStatus = 'connecting';
     _updateConnectBtn();
     showNotification(`🔌 Подключение к #${ch}...`, 'info');
-
-    // Получаем информацию о канале через Twitch API
-    fetchChannelInfo(ch);
 
     const ws = new WebSocket(TWITCH_IRC);
     streamerState.twitchWs = ws;
@@ -128,78 +118,6 @@ function twitchConnect(channel) {
     };
 }
 
-// Получение информации о канале через Twitch API (публичные данные)
-async function fetchChannelInfo(channelName) {
-    // Сразу ставим displayName из ника
-    streamerState.streamerProfile.displayName = channelName;
-    saveStreamerData();
-
-    try {
-        // Прямой GQL запрос — без persistedQuery (хеши быстро устаревают)
-        const res = await fetch('https://gql.twitch.tv/gql', {
-            method: 'POST',
-            headers: {
-                'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                query: `{
-                    user(login: "${channelName.toLowerCase()}") {
-                        id
-                        login
-                        displayName
-                        profileImageURL(width: 70)
-                        stream {
-                            id
-                            viewersCount
-                            game { displayName }
-                            broadcastSettings { title }
-                        }
-                    }
-                }`
-            })
-        });
-
-        if (!res.ok) throw new Error('GQL ' + res.status);
-        const json = await res.json();
-        const user = json?.data?.user;
-        if (!user) {
-            console.warn('Twitch: пользователь не найден:', channelName);
-            return;
-        }
-
-        streamerState.streamerProfile.displayName     = user.displayName || channelName;
-        if (user.profileImageURL) {
-            streamerState.streamerProfile.profileImageUrl = user.profileImageURL;
-        }
-        streamerState.streamerProfile.isLive          = !!user.stream;
-        streamerState.streamerProfile.viewerCount     = user.stream?.viewersCount || 0;
-        streamerState.streamerProfile.gameName        = user.stream?.game?.displayName || '';
-        streamerState.streamerProfile.streamTitle     = user.stream?.broadcastSettings?.title || '';
-
-        saveStreamerData();
-
-        // Обновляем карточку стримера если вкладка открыта
-        const card = document.querySelector('.streamer-profile-card');
-        if (card) {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = renderStreamerProfileCard();
-            if (tmp.firstElementChild) card.replaceWith(tmp.firstElementChild);
-        }
-
-        // Обновляем оверлей если открыт
-        updateOverlayChatData();
-
-        console.log(`📡 Twitch данные загружены: ${streamerState.streamerProfile.displayName}`, {
-            live: streamerState.streamerProfile.isLive,
-            viewers: streamerState.streamerProfile.viewerCount,
-            game: streamerState.streamerProfile.gameName,
-            avatar: streamerState.streamerProfile.profileImageUrl ? '✅' : '❌'
-        });
-    } catch (error) {
-        console.warn('Не удалось получить информацию о канале:', error);
-    }
-}
 
 function twitchDisconnect() {
     if (streamerState.twitchWs) {
@@ -679,11 +597,6 @@ async function initStreamerDB() {
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
             
-            // Хранилище для профиля стримера
-            if (!db.objectStoreNames.contains('streamerProfile')) {
-                db.createObjectStore('streamerProfile', { keyPath: 'channelName' });
-            }
-            
             // Хранилище для сообщений чата
             if (!db.objectStoreNames.contains('chatMessages')) {
                 const chatStore = db.createObjectStore('chatMessages', { keyPath: 'id', autoIncrement: true });
@@ -710,7 +623,6 @@ async function saveStreamerData() {
         // Fallback to localStorage
         const dataToSave = {
             channelName: streamerState.channelName,
-            streamerProfile: streamerState.streamerProfile,
             subWheelList: streamerState.subWheelList,
             chatStats: streamerState.chatStats,
             chatSounds: streamerState.chatSounds,
@@ -723,12 +635,11 @@ async function saveStreamerData() {
     }
     
     try {
-        const transaction = streamerDB.transaction(['streamerProfile'], 'readwrite');
-        const store = transaction.objectStore('streamerProfile');
+        const transaction = streamerDB.transaction(['chatStats'], 'readwrite');
+        const store = transaction.objectStore('chatStats');
         
         const data = {
             channelName: streamerState.channelName,
-            profile: streamerState.streamerProfile,
             subWheelList: streamerState.subWheelList,
             chatStats: streamerState.chatStats,
             chatSounds: streamerState.chatSounds,
@@ -743,7 +654,6 @@ async function saveStreamerData() {
         // Fallback to localStorage
         const dataToSave = {
             channelName: streamerState.channelName,
-            streamerProfile: streamerState.streamerProfile,
             subWheelList: streamerState.subWheelList,
             chatStats: streamerState.chatStats,
             chatSounds: streamerState.chatSounds,
@@ -764,7 +674,6 @@ async function loadStreamerData() {
                 const data = JSON.parse(saved);
                 // Восстанавливаем основные данные, но не состояние подключения
                 streamerState.channelName = data.channelName || '';
-                streamerState.streamerProfile = data.streamerProfile || streamerState.streamerProfile;
                 streamerState.subWheelList = data.subWheelList || [];
                 streamerState.chatStats = data.chatStats || streamerState.chatStats;
                 streamerState.chatSounds = data.chatSounds || false;
@@ -782,8 +691,8 @@ async function loadStreamerData() {
     }
     
     try {
-        const transaction = streamerDB.transaction(['streamerProfile'], 'readonly');
-        const store = transaction.objectStore('streamerProfile');
+        const transaction = streamerDB.transaction(['chatStats'], 'readonly');
+        const store = transaction.objectStore('chatStats');
         const request = store.getAll();
         
         request.onsuccess = () => {
@@ -791,7 +700,6 @@ async function loadStreamerData() {
             if (results.length > 0) {
                 const data = results[0];
                 streamerState.channelName = data.channelName || '';
-                streamerState.streamerProfile = data.profile || streamerState.streamerProfile;
                 streamerState.subWheelList = data.subWheelList || [];
                 streamerState.chatStats = data.chatStats || streamerState.chatStats;
                 streamerState.chatSounds = data.chatSounds || false;
@@ -1034,7 +942,6 @@ function loadStreamerDataSync() {
         try {
             const data = JSON.parse(saved);
             streamerState.channelName = data.channelName || '';
-            streamerState.streamerProfile = data.streamerProfile || streamerState.streamerProfile;
             streamerState.subWheelList = data.subWheelList || [];
             streamerState.chatStats = data.chatStats || streamerState.chatStats;
             streamerState.chatSounds = data.chatSounds || false;
@@ -1195,11 +1102,6 @@ function switchTab(name) {
                 updateStreamerUIState();
                 updateChannelInput();
                 updateTokenInput();
-
-                // Если есть имя канала — обновляем данные карточки
-                if (streamerState.channelName) {
-                    fetchChannelInfo(streamerState.channelName);
-                }
 
                 // Предлагаем переподключение если есть сохранённый канал
                 if (streamerState.channelName && streamerState.twitchStatus === 'idle') {
@@ -2473,53 +2375,6 @@ function updatePlayerStats(name) {
 }
 
 // ── STREAMER TAB ──────────────────────────────────────────
-function renderStreamerProfileCard() {
-    const p  = streamerState.streamerProfile || {};
-    const ch = streamerState.channelName;
-    if (!ch) return '';
-
-    // Try profileImageUrl first, then fall back to Twitch's public avatar CDN
-    const avatarSrc = p.profileImageUrl
-        || `https://static-cdn.jtvnw.net/user-default-pictures-uv/ead5c8b2-a4c9-4724-b1dd-9f00b46cbd3d-profile_image-70x70.png`;
-
-    const avatarHtml = `<img class="spc-avatar" src="${avatarSrc}" alt="${p.displayName || ch}"
-           onerror="this.src='https://static-cdn.jtvnw.net/user-default-pictures-uv/ead5c8b2-a4c9-4724-b1dd-9f00b46cbd3d-profile_image-70x70.png'">`;
-
-    const statusBadge = p.isLive
-        ? `<span class="spc-badge-live">🔴 LIVE${p.viewerCount ? ' · <span class="spc-viewers">' + fmtViewers(p.viewerCount) + '</span>' : ''}</span>`
-        : `<span class="spc-badge-offline">⚫ OFFLINE</span>`;
-
-    const gameLine = p.gameName
-        ? `<div class="spc-game-line">🎮 ${p.gameName}${p.streamTitle ? ' · ' + p.streamTitle.substring(0,40) + (p.streamTitle.length > 40 ? '…' : '') : ''}</div>`
-        : '';
-
-    return `<div class="streamer-profile-card">
-        ${avatarHtml}
-        <div class="spc-info">
-            <div class="spc-name-row">
-                <span class="spc-display-name">${p.displayName || ch}</span>
-                ${statusBadge}
-            </div>
-            <div class="spc-channel-link">twitch.tv/${ch}</div>
-            ${gameLine}
-        </div>
-        <button class="spc-refresh-btn" id="spcRefreshBtn" onclick="refreshStreamerCard()" title="Обновить данные">🔄</button>
-    </div>`;
-}
-
-function fmtViewers(n) {
-    if (!n) return '';
-    if (n >= 1000) return (n/1000).toFixed(1) + 'K зрит.';
-    return n + ' зрит.';
-}
-
-async function refreshStreamerCard() {
-    const btn = document.getElementById('spcRefreshBtn');
-    if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
-    await fetchChannelInfo(streamerState.channelName);
-    if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
-}
-
 function renderStreamerTab() {
     return `<div class="streamer-panel">
         <div class="streamer-hero">
@@ -2527,7 +2382,6 @@ function renderStreamerTab() {
             <h2>СТРИМЕР-РЕЖИМ</h2>
             <p>Продвинутые инструменты для трансляций: OBS overlay, голосование чатом, таймер, быстрые команды и подписчики</p>
         </div>
-        ${renderStreamerProfileCard()}
         <div class="streamer-tools-grid">
 
             <!-- OBS Overlay -->
@@ -2995,7 +2849,7 @@ function sendChatMsg() {
     // Добавляем в локальный чат как превью
     const colors = ['#818cf8','#34d399','#fbbf24','#f472b6','#67e8f9','#a3e635'];
     const msgObj = {
-        user: streamerState.streamerProfile.displayName || 'Стример',
+        user: streamerState.channelName || 'Стример',
         text,
         color: colors[Math.floor(Math.random()*colors.length)],
         badge: 'broadcaster',

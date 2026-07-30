@@ -143,64 +143,6 @@
         .ow-winner-label { font-size:9px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px }
         .ow-winner-name  { font-size:20px; font-weight:700; color:#3fb950 }
         .ow-winner-from  { font-size:10px; color:rgba(255,255,255,0.4); margin-top:3px }
-        /* ── STREAMER INFO WIDGET ── */
-        .streamer-widget { min-width: 220px; max-width: 280px }
-        .streamer-profile {
-            display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
-        }
-        .streamer-avatar {
-            width: 48px; height: 48px; border-radius: 50%;
-            border: 2px solid var(--accent-primary, #6366f1);
-            object-fit: cover; flex-shrink: 0;
-            box-shadow: 0 0 12px rgba(99,102,241,0.4);
-        }
-        .streamer-avatar-placeholder {
-            width: 48px; height: 48px; border-radius: 50%;
-            border: 2px solid var(--accent-primary, #6366f1);
-            background: rgba(99,102,241,0.2);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px; flex-shrink: 0;
-        }
-        .streamer-info { flex: 1; min-width: 0 }
-        .streamer-name {
-            font-size: 14px; font-weight: 700; color: #fff;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .streamer-channel {
-            font-size: 10px; color: rgba(255,255,255,0.45);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .streamer-stats {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-        }
-        .streamer-stat {
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px; padding: 6px 8px;
-            display: flex; flex-direction: column; gap: 1px;
-        }
-        .stat-value {
-            font-size: 15px; font-weight: 700; color: #fff;
-            font-family: 'Orbitron', sans-serif;
-        }
-        .stat-value.live { color: #f85149 }
-        .stat-value.viewers { color: #3fb950 }
-        .stat-label {
-            font-size: 8px; color: rgba(255,255,255,0.4);
-            text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        .streamer-game-tag {
-            margin-top: 8px; padding: 5px 8px;
-            background: rgba(99,102,241,0.15);
-            border: 1px solid rgba(99,102,241,0.25);
-            border-radius: 6px; font-size: 10px;
-            color: rgba(255,255,255,0.6);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .streamer-loading {
-            text-align: center; padding: 16px 0;
-            color: rgba(255,255,255,0.35); font-size: 11px;
-        }
-
         /* ── CHAT WIDGET ── */
         .chat-widget { min-width: 260px; max-width: 320px; max-height: 320px }
         .chat-messages { max-height: 200px; overflow-y: auto; font-size: 11px; line-height: 1.45 }
@@ -294,22 +236,6 @@
             </div>
         </div>
 
-        <!-- STREAMER INFO WIDGET -->
-        <div class="overlay-widget streamer-widget" id="streamerWidget" style="top:18px;right:18px;left:auto;display:none">
-            <div class="widget-drag-handle">
-                <span class="widget-close-btn" onclick="hideWidget('streamerWidget')">✕</span>
-                <span class="widget-drag-dots">⋮⋮⋮</span>
-            </div>
-            <div class="ow-header">
-                <span class="ow-logo">📡</span>
-                <span class="ow-title">Twitch Info</span>
-                <span class="ow-live-dot" id="streamerLiveDot" style="display:none"></span>
-            </div>
-            <div id="streamerWidgetBody">
-                <div class="streamer-loading">Загрузка данных канала...</div>
-            </div>
-        </div>
-
         <!-- CHAT WIDGET -->
         <div class="overlay-widget chat-widget" id="chatWidget" style="bottom:80px;right:18px;top:auto;left:auto;display:none">
             <div class="widget-drag-handle">
@@ -335,7 +261,6 @@
         <button class="ow-ctrl-btn" onclick="showDemo('vote')">🗳️ Голосование</button>
         <button class="ow-ctrl-btn" onclick="showDemo('winner')">🏆 Победитель</button>
         <button class="ow-ctrl-btn" onclick="showIdle()">⏸ Ожидание</button>
-        <button class="ow-ctrl-btn" onclick="toggleWidget('streamerWidget')">📡 Инфо стримера</button>
         <button class="ow-ctrl-btn" onclick="toggleWidget('chatWidget')">💬 Чат</button>
         <button class="ow-ctrl-btn" onclick="toggleTheme()">🎨 Тема</button>
         <button class="ow-ctrl-btn" onclick="toggleChroma()">🟢 Chroma</button>
@@ -379,9 +304,6 @@ let voteTimerInt   = null;
     // Drag & drop
     initDrag();
     loadAllPositions();
-
-    // Load streamer data if channel is known
-    tryLoadStreamerData();
 })();
 
 // ── THEME ─────────────────────────────────────────
@@ -406,8 +328,6 @@ function toggleWidget(id) {
         w.style.display = 'none';
     } else {
         w.style.display = '';
-        // if streamer widget — refresh data
-        if (id === 'streamerWidget') tryLoadStreamerData();
     }
 }
 
@@ -561,152 +481,6 @@ function startPolling() {
             if (cr && cr !== _lastChat) { _lastChat=cr; updateChatWidget(JSON.parse(cr)) }
         } catch(e){}
     }, 500);
-
-    // Refresh streamer data every 60s
-    setInterval(() => {
-        const sw = document.getElementById('streamerWidget');
-        if (sw && sw.style.display !== 'none') tryLoadStreamerData();
-    }, 60000);
-}
-
-// ── STREAMER DATA via Twitch GQL ──────────────────
-async function tryLoadStreamerData() {
-    try {
-        const sd = JSON.parse(localStorage.getItem('streamerState')||'{}');
-        const channel = sd.channelName || '';
-        if (!channel) {
-            renderStreamerLoading('Укажите ник канала в настройках');
-            return;
-        }
-        renderStreamerLoading('Загрузка данных ' + channel + '...');
-        await fetchStreamerData(channel);
-    } catch(e) {
-        renderStreamerLoading('Не удалось загрузить данные');
-    }
-}
-
-async function fetchStreamerData(login) {
-    try {
-        // Прямой GQL запрос без persistedQuery (хеши устаревают)
-        const gqlRes = await fetch('https://gql.twitch.tv/gql', {
-            method: 'POST',
-            headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                query: `{
-                    user(login: "${login.toLowerCase()}") {
-                        id
-                        login
-                        displayName
-                        profileImageURL(width: 70)
-                        followers { totalCount }
-                        stream {
-                            id
-                            viewersCount
-                            game { displayName }
-                            broadcastSettings { title }
-                        }
-                    }
-                }`
-            })
-        });
-
-        if (!gqlRes.ok) throw new Error('GQL ' + gqlRes.status);
-        const gql = await gqlRes.json();
-        const user = gql?.data?.user;
-
-        if (!user) {
-            renderStreamerNotFound(login);
-            return;
-        }
-
-        const stream = user.stream;
-
-        renderStreamerInfo({
-            login:       login,
-            displayName: user.displayName || login,
-            avatar:      user.profileImageURL || null,
-            isLive:      !!stream,
-            viewers:     stream?.viewersCount || 0,
-            gameName:    stream?.game?.displayName || (stream ? 'Стримит' : 'Офлайн'),
-            title:       stream?.broadcastSettings?.title || '',
-            followers:   user.followers?.totalCount || null,
-        });
-
-    } catch(err) {
-        console.warn('Twitch GQL fetch failed:', err);
-        renderStreamerFromLocal();
-    }
-}
-
-function renderStreamerFromLocal() {
-    try {
-        const sd = JSON.parse(localStorage.getItem('streamerState')||'{}');
-        const p  = sd.streamerProfile || {};
-        const ch = sd.channelName || 'Канал';
-        renderStreamerInfo({
-            login: ch, displayName: p.displayName || ch,
-            avatar: p.profileImageUrl || null,
-            isLive: sd.connected || false,
-            viewers: null, gameName: null, title: null, followers: null,
-            offline: true
-        });
-    } catch(e) {
-        renderStreamerLoading('Данные недоступны');
-    }
-}
-
-function renderStreamerLoading(msg) {
-    const body = document.getElementById('streamerWidgetBody');
-    if (body) body.innerHTML = `<div class="streamer-loading">${msg}</div>`;
-}
-function renderStreamerNotFound(login) {
-    const body = document.getElementById('streamerWidgetBody');
-    if (body) body.innerHTML = `<div class="streamer-loading">Канал "${login}" не найден</div>`;
-}
-
-function renderStreamerInfo(d) {
-    const dot = document.getElementById('streamerLiveDot');
-    if (dot) dot.style.display = d.isLive ? '' : 'none';
-
-    const avatarHtml = d.avatar
-        ? `<img class="streamer-avatar" src="${d.avatar}" alt="${d.displayName}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-          + `<div class="streamer-avatar-placeholder" style="display:none">🎮</div>`
-        : `<div class="streamer-avatar-placeholder">🎮</div>`;
-
-    const viewersHtml = d.viewers !== null
-        ? `<div class="streamer-stat"><span class="stat-value viewers">${fmtNum(d.viewers)}</span><span class="stat-label">Зрителей</span></div>`
-        : '';
-    const followersHtml = d.followers !== null
-        ? `<div class="streamer-stat"><span class="stat-value">${fmtNum(d.followers)}</span><span class="stat-label">Фолловеров</span></div>`
-        : '';
-    const statusHtml = `<div class="streamer-stat"><span class="stat-value ${d.isLive?'live':''}">${d.isLive ? '🔴 LIVE' : '⚫ OFFLINE'}</span><span class="stat-label">Статус</span></div>`;
-
-    const gameTag = d.gameName ? `<div class="streamer-game-tag">🎮 ${d.gameName}${d.title ? ' · ' + d.title.substring(0,40) + (d.title.length>40?'…':'') : ''}</div>` : '';
-
-    const body = document.getElementById('streamerWidgetBody');
-    if (body) body.innerHTML = `
-        <div class="streamer-profile">
-            ${avatarHtml}
-            <div class="streamer-info">
-                <div class="streamer-name">${d.displayName}</div>
-                <div class="streamer-channel">twitch.tv/${d.login}</div>
-            </div>
-        </div>
-        <div class="streamer-stats">
-            ${statusHtml}
-            ${viewersHtml}
-            ${followersHtml}
-        </div>
-        ${gameTag}
-        ${d.offline ? '<div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:6px;text-align:center">Данные из кэша (нет подключения)</div>' : ''}
-    `;
-}
-
-function fmtNum(n) {
-    if (n === null || n === undefined) return '—';
-    if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
-    if (n >= 1000)    return (n/1000).toFixed(1) + 'K';
-    return String(n);
 }
 
 // ── CHAT WIDGET ───────────────────────────────────
@@ -745,7 +519,7 @@ function showDemo(type) {
             const g = gl.length ? gl[Math.floor(Math.random()*gl.length)] : 'Minecraft';
             const tasks = games[g] || ['Выполните задание'];
             const task  = tasks[Math.floor(Math.random()*tasks.length)];
-            showResult(g, sd.streamerProfile?.displayName || 'Стример', task, 8000);
+            showResult(g, sd.channelName || 'Стример', task, 8000);
         } else if (type==='vote') {
             const opts = (gl.length ? gl.slice(0,4) : ['Minecraft','CS2','Apex','Valorant']).map(n=>({name:n,count:0}));
             const demoTitle = sd.voteTitle || 'Тестовое голосование';
@@ -942,8 +716,6 @@ function resetWidgetPositions() {
     // Reset defaults
     const rw = document.getElementById('resultWidget');
     if (rw) { rw.style.cssText = 'top:18px;left:18px'; }
-    const sw = document.getElementById('streamerWidget');
-    if (sw) { sw.style.cssText = 'top:18px;right:18px;left:auto;display:none'; }
     const cw = document.getElementById('chatWidget');
     if (cw) { cw.style.cssText = 'bottom:80px;right:18px;top:auto;left:auto;display:none'; }
 }
