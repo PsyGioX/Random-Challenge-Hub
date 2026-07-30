@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCH Overlay — OBS Browser Source</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ── OVERLAY SPECIFIC ── */
+        html, body {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            background: transparent;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        body.chromakey { background: #00ff00 !important }
+
+        /* Overlay container */
+        #overlayRoot {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 18px;
+        }
+        #overlayRoot.pos-top-right     { justify-content: flex-end }
+        #overlayRoot.pos-bottom-left   { align-items: flex-end }
+        #overlayRoot.pos-bottom-right  { align-items: flex-end; justify-content: flex-end }
+        #overlayRoot.pos-center        { align-items: center; justify-content: center }
+
+        /* Widget card */
+        .overlay-widget {
+            background: rgba(13, 17, 23, 0.92);
+            border: 2px solid var(--accent-primary, #6366f1);
+            border-radius: 16px;
+            padding: 14px 18px;
+            min-width: 260px;
+            max-width: 340px;
+            backdrop-filter: blur(14px);
+            pointer-events: none;
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.4), 0 8px 24px rgba(0,0,0,0.7);
+            animation: widgetIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes widgetIn {
+            from { opacity: 0; transform: scale(0.8) translateY(-20px) }
+            to   { opacity: 1; transform: scale(1)   translateY(0)     }
+        }
+        .overlay-widget.hidden-widget { display: none }
+
+        /* Widget header */
+        .ow-header {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 10px; padding-bottom: 8px;
+            border-bottom: 1px solid rgba(99,102,241,0.3);
+        }
+        .ow-logo { font-size: 18px }
+        .ow-title {
+            font-family: 'Orbitron', 'Inter', sans-serif;
+            font-size: 10px; font-weight: 700; letter-spacing: 2px;
+            color: var(--accent-primary, #818cf8); text-transform: uppercase;
+            flex: 1;
+        }
+        .ow-live-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #f85149; animation: livePulse 1.2s infinite;
+            box-shadow: 0 0 6px #f85149;
+        }
+        @keyframes livePulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+
+        /* Result rows */
+        .ow-row {
+            display: flex; align-items: baseline; gap: 6px;
+            margin-bottom: 6px; animation: rowFadeIn 0.4s ease;
+        }
+        @keyframes rowFadeIn { from { opacity:0; transform: translateX(-10px) } to { opacity:1; transform:translateX(0) } }
+        .ow-label {
+            font-size: 9px; color: rgba(255,255,255,0.45);
+            text-transform: uppercase; letter-spacing: 1px;
+            min-width: 40px; flex-shrink: 0;
+        }
+        .ow-value {
+            font-size: 13px; font-weight: 600;
+            color: rgba(255,255,255,0.9); flex: 1; line-height: 1.3;
+        }
+        .ow-value.game   { color: #818cf8 }
+        .ow-value.player { color: #67e8f9 }
+        .ow-value.task   { color: #3fb950; font-weight: 700 }
+
+        /* Spinning wheel view */
+        .ow-wheel-section {
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            padding: 8px 0 4px;
+        }
+        #overlayCanvas {
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(99,102,241,0.5);
+            max-width: 220px; max-height: 220px;
+        }
+        .ow-pointer {
+            font-size: 20px; color: #f85149; margin-top: -4px;
+            filter: drop-shadow(0 2px 4px rgba(248,81,73,0.6));
+            animation: pointerBob 1.5s infinite;
+        }
+        @keyframes pointerBob { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-4px) } }
+
+        /* Countdown bar */
+        .ow-countdown {
+            height: 4px; background: rgba(255,255,255,0.1);
+            border-radius: 2px; overflow: hidden; margin-top: 8px;
+        }
+        .ow-countdown-fill {
+            height: 100%; background: var(--accent-primary, #6366f1);
+            border-radius: 2px;
+            transition: width 1s linear, background 0.3s;
+        }
+        .ow-countdown-fill.urgent { background: #f85149 }
+
+        /* Vote widget */
+        .ow-vote { padding: 4px 0 }
+        .ow-vote-title {
+            font-size: 10px; color: rgba(255,255,255,0.5);
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .ow-vote-option {
+            display: flex; align-items: center; gap: 7px;
+            margin-bottom: 5px;
+        }
+        .ow-vote-key {
+            font-size: 11px; font-weight: 700; color: #818cf8;
+            min-width: 16px; text-align: center;
+        }
+        .ow-vote-bar { flex: 1; height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden }
+        .ow-vote-fill { height: 100%; background: linear-gradient(90deg,#6366f1,#8b5cf6); border-radius: 3px; transition: width 0.5s ease }
+        .ow-vote-name { font-size: 11px; color: rgba(255,255,255,0.7); min-width: 80px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+        .ow-vote-count { font-size: 10px; color: rgba(255,255,255,0.4); min-width: 28px; text-align: right }
+        .ow-vote-timer { font-family: 'Orbitron',sans-serif; font-size: 20px; font-weight: 900; text-align: center; color: #fbbf24; margin: 6px 0 }
+        .ow-vote-timer.urgent { color: #f85149; animation: timerPulse 0.5s infinite }
+        @keyframes timerPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+
+        /* Winner announcement */
+        .ow-winner {
+            text-align: center; padding: 10px;
+            animation: winnerAnim 0.8s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes winnerAnim { from{opacity:0;transform:scale(0.5)} to{opacity:1;transform:scale(1)} }
+        .ow-winner-emoji { font-size: 32px; margin-bottom: 6px; display:block }
+        .ow-winner-label { font-size: 9px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px }
+        .ow-winner-name  { font-size: 20px; font-weight:700; color:#3fb950 }
+        .ow-winner-from  { font-size: 10px; color:rgba(255,255,255,0.4); margin-top:3px }
+
+        /* Controls bar (hidden in obs, shown in preview) */
+        .ow-controls {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+            padding: 10px 16px; display: flex; gap: 8px; flex-wrap: wrap;
+            border-top: 1px solid rgba(99,102,241,0.3);
+            pointer-events: all;
+        }
+        .ow-controls.obs-hidden { display: none }
+        .ow-ctrl-btn {
+            padding: 6px 14px; font-size: 11px; font-weight: 600;
+            background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4);
+            border-radius: 8px; color: #818cf8; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap; pointer-events: all;
+        }
+        .ow-ctrl-btn:hover { background: rgba(99,102,241,0.4); transform: translateY(-1px) }
+        .ow-ctrl-btn.active { background: rgba(99,102,241,0.6); color: #fff }
+
+        /* Typewriter cursor */
+        .tw-cursor { animation: blink 0.8s infinite }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+        /* Chat widget styles */
+        .chat-widget {
+            max-width: 300px;
+            max-height: 250px;
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+        }
+        
+        .chat-messages {
+            max-height: 180px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .chat-message {
+            margin-bottom: 4px;
+            word-wrap: break-word;
+            animation: chatMessageIn 0.3s ease;
+        }
+        
+        @keyframes chatMessageIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .chat-user {
+            font-weight: 600;
+            color: var(--user-color, #818cf8);
+        }
+        
+        .chat-text {
+            color: rgba(255, 255, 255, 0.85);
+            margin-left: 4px;
+        }
+        
+        .chat-badge {
+            display: inline-block;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 8px;
+            margin-right: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .chat-badge.broadcaster { background: #e91e63; color: white; }
+        .chat-badge.mod { background: #00c853; color: white; }
+        .chat-badge.sub { background: #9147ff; color: white; }
+        
+        .chat-placeholder {
+            color: rgba(255, 255, 255, 0.4);
+            text-align: center;
+            padding: 20px 0;
+            font-style: italic;
+        }
+        
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(129, 140, 248, 0.5);
+            border-radius: 2px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(129, 140, 248, 0.7);
+        }
+
+        /* Drag and Drop */
+        .overlay-widget.dragging {
+            cursor: move !important;
+            z-index: 9999 !important;
+            pointer-events: all !important;
+            transition: none !important;
+        }
+        
+        .overlay-widget.draggable {
+            cursor: grab;
+        }
+        
+        .overlay-widget.draggable:hover {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.6), 0 8px 24px rgba(0,0,0,0.8);
+        }
+        
+        .drag-handle {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 4px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .overlay-widget:hover .drag-handle,
+        .overlay-widget.dragging .drag-handle {
+            opacity: 1;
+        }
+        
+        .drag-handle:hover {
+            background: rgba(99, 102, 241, 0.4);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="overlayRoot" class="pos-top-left">
+
+        <!-- RESULT WIDGET -->
+        <div class="overlay-widget draggable" id="resultWidget">
+            <div class="drag-handle" title="Перетащить">⋮⋮</div>
+            <div class="ow-header">
+                <span class="ow-logo">🎲</span>
+                <span class="ow-title">Random Challenge Hub</span>
+                <span class="ow-live-dot"></span>
+            </div>
+
+            <!-- Default / idle state -->
+            <div id="owIdle">
+                <div class="ow-row">
+                    <span class="ow-label">статус</span>
+                    <span class="ow-value" id="owIdleText">Ожидание результата...</span>
+                </div>
+            </div>
+
+            <!-- Result state -->
+            <div id="owResult" style="display:none">
+                <div class="ow-row">
+                    <span class="ow-label">🎮 Игра</span>
+                    <span class="ow-value game" id="owGame"></span>
+                </div>
+                <div class="ow-row">
+                    <span class="ow-label">👤 Игрок</span>
+                    <span class="ow-value player" id="owPlayer"></span>
+                </div>
+                <div class="ow-row">
+                    <span class="ow-label">⚡ Задание</span>
+                    <span class="ow-value task" id="owTask"></span>
+                </div>
+                <div class="ow-countdown">
+                    <div class="ow-countdown-fill" id="owCountdown" style="width:100%"></div>
+                </div>
+            </div>
+
+            <!-- Vote state -->
+            <div id="owVote" style="display:none">
+                <div class="ow-vote">
+                    <div class="ow-vote-title">🗳️ Голосование в чате</div>
+                    <div class="ow-vote-timer" id="owVoteTimer">30с</div>
+                    <div id="owVoteOptions"></div>
+                </div>
+            </div>
+
+            <!-- Winner state -->
+            <div id="owWinner" style="display:none">
+                <div class="ow-winner">
+                    <span class="ow-winner-emoji">🏆</span>
+                    <div class="ow-winner-label">Победитель</div>
+                    <div class="ow-winner-name" id="owWinnerName"></div>
+                    <div class="ow-winner-from" id="owWinnerFrom"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHAT WIDGET -->
+        <div class="overlay-widget chat-widget draggable" id="chatWidget" style="display: none;">
+            <div class="drag-handle" title="Перетащить">⋮⋮</div>
+            <div class="ow-header">
+                <span class="ow-logo">💬</span>
+                <span class="ow-title">Live Chat</span>
+                <span class="ow-live-dot" id="chatLiveDot" style="display: none;"></span>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-placeholder">Подключение к чату...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- CONTROLS (visible in preview window, hide via URL param ?obs=1) -->
+    <div class="ow-controls" id="owControls">
+        <span style="font-size:11px;color:rgba(255,255,255,0.4);align-self:center">OBS Preview:</span>
+        <button class="ow-ctrl-btn" onclick="showDemo('result')">🎯 Показать результат</button>
+        <button class="ow-ctrl-btn" onclick="showDemo('vote')">🗳️ Голосование</button>
+        <button class="ow-ctrl-btn" onclick="showDemo('winner')">🏆 Победитель</button>
+        <button class="ow-ctrl-btn" onclick="showIdle()">⏸ Ожидание</button>
+        <button class="ow-ctrl-btn" onclick="toggleTheme()">🎨 Тема</button>
+        <button class="ow-ctrl-btn" onclick="toggleChroma()">🟢 Chroma</button>
+        <button class="ow-ctrl-btn" onclick="toggleChat()">💬 Чат</button>
+        <button class="ow-ctrl-btn" id="posBtn" onclick="cyclePosition()">📍 Позиция</button>
+        <button class="ow-ctrl-btn" onclick="togglePreview()">👁️ Скрыть превью</button>
+        <button class="ow-ctrl-btn" onclick="resetWidgetPositions()">🔄 Сброс позиций</button>
+    </div>
+
+    <script>
+    // ── OVERLAY SCRIPT ──────────────────────────────────────
+
+    const THEMES = ['dark','neon','cyber','streamer','pastel'];
+    let themeIdx  = 0;
+    const POSITIONS = ['pos-top-left','pos-top-right','pos-bottom-left','pos-bottom-right','pos-center'];
+    let posIdx = 0;
+    let chromaOn = false;
+    let countdownTimer = null;
+
+    // Init from URL params
+    (function init() {
+        const p = new URLSearchParams(window.location.search);
+
+        // ?obs=1 hides controls
+        if (p.get('obs') === '1') {
+            document.getElementById('owControls')?.classList.add('obs-hidden');
+        }
+
+        // ?theme=neon
+        const t = p.get('theme') || localStorage.getItem('appTheme') || 'dark';
+        applyTheme(t);
+
+        // ?chroma=1
+        if (p.get('chroma') === '1') document.body.classList.add('chromakey');
+
+        // ?pos=top-right
+        const pos = p.get('pos') || 'top-left';
+        setPosition('pos-' + pos);
+
+        // Загружаем настройку скрытия превью
+        const previewHidden = localStorage.getItem('overlayPreviewHidden') === 'true';
+        if (previewHidden) {
+            previewVisible = false;
+            document.getElementById('owControls').style.display = 'none';
+        }
+
+        // Listen for postMessage from main window
+        window.addEventListener('message', handleMessage);
+
+        // Poll localStorage for changes from main app
+        startPolling();
+        
+        // Инициализируем drag & drop
+        setTimeout(() => {
+            initDragAndDrop();
+            loadWidgetPositions();
+        }, 100);
+    })();
+
+    function applyTheme(name) {
+        document.documentElement.setAttribute('data-theme', name);
+        themeIdx = THEMES.indexOf(name);
+        if (themeIdx < 0) themeIdx = 0;
+    }
+    function toggleTheme() {
+        themeIdx = (themeIdx + 1) % THEMES.length;
+        applyTheme(THEMES[themeIdx]);
+    }
+    function toggleChroma() {
+        chromaOn = !chromaOn;
+        document.body.classList.toggle('chromakey', chromaOn);
+    }
+    function setPosition(cls) {
+        const root = document.getElementById('overlayRoot');
+        if (!root) return;
+        POSITIONS.forEach(p => root.classList.remove(p));
+        root.classList.add(cls);
+        posIdx = POSITIONS.indexOf(cls);
+        const btn = document.getElementById('posBtn');
+        if (btn) btn.textContent = '📍 ' + cls.replace('pos-','');
+    }
+    function cyclePosition() {
+        posIdx = (posIdx + 1) % POSITIONS.length;
+        setPosition(POSITIONS[posIdx]);
+    }
+
+    // ── STATE MANAGEMENT ──
+    function showIdle() {
+        hide('owResult'); hide('owVote'); hide('owWinner'); show('owIdle');
+        stopCountdown();
+    }
+    function showResult(game, player, task, duration) {
+        hide('owIdle'); hide('owVote'); hide('owWinner'); show('owResult');
+        typeEl('owGame',   game   || '—', 30);
+        typeEl('owPlayer', player || '—', 30);
+        typeEl('owTask',   task   || '—', 20);
+        if (duration > 0) startCountdown(duration);
+    }
+    function showVote(options, timerSec) {
+        hide('owIdle'); hide('owResult'); hide('owWinner'); show('owVote');
+        renderVoteOptions(options);
+        runVoteTimer(timerSec || 30, options);
+    }
+    function showWinner(name, fromText) {
+        hide('owIdle'); hide('owResult'); hide('owVote'); show('owWinner');
+        document.getElementById('owWinnerName').textContent = name || '?';
+        document.getElementById('owWinnerFrom').textContent = fromText || '';
+        stopCountdown();
+    }
+
+    function show(id) { const el = document.getElementById(id); if (el) el.style.display = '' }
+    function hide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none' }
+
+    // Typewriter
+    function typeEl(id, text, speed) {
+        const el = document.getElementById(id); if (!el) return;
+        el.textContent = ''; let i = 0;
+        const t = setInterval(() => {
+            if (i < text.length) { el.textContent += text[i]; i++ }
+            else clearInterval(t);
+        }, speed);
+    }
+
+    // Countdown bar
+    function startCountdown(ms) {
+        stopCountdown();
+        const bar = document.getElementById('owCountdown'); if (!bar) return;
+        bar.style.width = '100%'; bar.classList.remove('urgent');
+        const start = Date.now();
+        countdownTimer = setInterval(() => {
+            const elapsed = Date.now() - start;
+            const pct = Math.max(0, 100 - (elapsed / ms) * 100);
+            bar.style.width = pct + '%';
+            if (pct < 20) bar.classList.add('urgent');
+            if (pct <= 0) stopCountdown();
+        }, 50);
+    }
+    function stopCountdown() {
+        if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+    }
+
+    // Vote rendering
+    function renderVoteOptions(options) {
+        const c = document.getElementById('owVoteOptions'); if (!c) return;
+        c.innerHTML = (options || []).map((o, i) => `
+            <div class="ow-vote-option">
+                <span class="ow-vote-key">${i+1}</span>
+                <span class="ow-vote-name">${o.name || o}</span>
+                <div class="ow-vote-bar"><div class="ow-vote-fill" id="vf${i}" style="width:${o.pct||0}%"></div></div>
+                <span class="ow-vote-count" id="vc${i}">${o.count||0}</span>
+            </div>`).join('');
+    }
+    function updateVoteOption(idx, pct, count) {
+        const f = document.getElementById('vf'+idx); if (f) f.style.width = pct + '%';
+        const c = document.getElementById('vc'+idx); if (c) c.textContent = count;
+    }
+
+    let voteTimerInt = null;
+    function runVoteTimer(sec, options) {
+        if (voteTimerInt) clearInterval(voteTimerInt);
+        let s = sec;
+        const el = document.getElementById('owVoteTimer');
+        if (el) { el.textContent = s + 'с'; el.className = 'ow-vote-timer' }
+        
+        voteTimerInt = setInterval(() => {
+            s--;
+            if (el) {
+                el.textContent = s + 'с';
+                el.className = 'ow-vote-timer' + (s <= 5 ? ' urgent' : '');
+            }
+            
+            // Проверяем реальные данные голосования из localStorage
+            try {
+                const streamerData = JSON.parse(localStorage.getItem('streamerState') || '{}');
+                if (streamerData.voteActive && streamerData.voteVotes) {
+                    // Используем реальные голоса
+                    const votes = streamerData.voteVotes;
+                    const total = Object.values(votes).reduce((sum, v) => sum + (v.count || 0), 0) || 1;
+                    
+                    options.forEach((o, i) => {
+                        const voteKey = i + 1;
+                        const count = votes[voteKey]?.count || 0;
+                        const pct = Math.round((count / total) * 100);
+                        updateVoteOption(i, pct, count);
+                    });
+                } else if (options && options.length) {
+                    // Fallback: симулируем голосование для демо
+                    const isDemo = !streamerData.connected;
+                    if (isDemo && Math.random() > 0.3) { // 70% шанс на активность в демо
+                        options.forEach((o, i) => {
+                            if (!o.count) o.count = 0;
+                            if (Math.random() > 0.7) { // 30% шанс получить голос
+                                o.count += Math.floor(Math.random() * 2) + 1;
+                            }
+                        });
+                        const total = options.reduce((sum, o) => sum + o.count, 0) || 1;
+                        options.forEach((o, i) => updateVoteOption(i, Math.round((o.count / total) * 100), o.count));
+                    }
+                }
+            } catch (error) {
+                // При ошибке используем простую симуляцию
+                if (options && options.length && Math.random() > 0.5) {
+                    const randomIdx = Math.floor(Math.random() * options.length);
+                    if (!options[randomIdx].count) options[randomIdx].count = 0;
+                    options[randomIdx].count++;
+                    const total = options.reduce((sum, o) => sum + (o.count || 0), 0) || 1;
+                    options.forEach((o, i) => updateVoteOption(i, Math.round(((o.count || 0) / total) * 100), o.count || 0));
+                }
+            }
+            
+            if (s <= 0) {
+                clearInterval(voteTimerInt);
+                // Находим победителя
+                if (options && options.length) {
+                    const w = options.reduce((mx, o) => (o.count || 0) > (mx.count || 0) ? o : mx, options[0]);
+                    setTimeout(() => showWinner(w.name || w, `Победил в голосовании с ${w.count || 0} голос${(w.count === 1) ? 'ом' : 'ами'}`), 800);
+                }
+            }
+        }, 1000);
+    }
+
+    // ── POSTMESSAGE BRIDGE ──
+    function handleMessage(e) {
+        const d = e.data;
+        if (!d || !d.type) return;
+        switch(d.type) {
+            case 'result': showResult(d.game, d.player, d.task, d.duration || 6000); break;
+            case 'vote':   showVote(d.options, d.timer); break;
+            case 'winner': showWinner(d.name, d.from); break;
+            case 'idle':   showIdle(); break;
+            case 'theme':  applyTheme(d.theme); break;
+        }
+    }
+
+    // ── LOCALSTORAGE POLLING ──
+    // Polls for changes written by main app
+    let lastResult = null;
+    let lastChatData = null;
+    
+    function startPolling() {
+        setInterval(() => {
+            try {
+                // Poll overlay state
+                const raw = localStorage.getItem('overlayState');
+                if (raw && raw !== lastResult) {
+                    lastResult = raw;
+                    const state = JSON.parse(raw);
+                    if (state.type === 'result') showResult(state.game, state.player, state.task, state.duration);
+                    if (state.type === 'vote')   showVote(state.options, state.timer);
+                    if (state.type === 'winner') showWinner(state.name, state.from);
+                    if (state.type === 'idle')   showIdle();
+                }
+                
+                // Poll chat data
+                const chatRaw = localStorage.getItem('overlayChatData');
+                if (chatRaw && chatRaw !== lastChatData) {
+                    lastChatData = chatRaw;
+                    const chatData = JSON.parse(chatRaw);
+                    updateChatWidget(chatData);
+                }
+            } catch(e) {}
+        }, 500);
+    }
+
+    // ── DEMO FUNCTIONS ──
+    function showDemo(type) {
+        // Проверяем актуальные данные из main app
+        try {
+            const streamerData = JSON.parse(localStorage.getItem('streamerState') || '{}');
+            const games = JSON.parse(localStorage.getItem('challengeGames') || '{}');
+            const gamesList = Object.keys(games).slice(0, 4);
+            
+            if (type === 'result') {
+                // Используем реальные игры и данные стримера
+                const randomGame = gamesList.length ? gamesList[Math.floor(Math.random() * gamesList.length)] : 'Minecraft';
+                const randomTask = games[randomGame] && games[randomGame].length ? 
+                    games[randomGame][Math.floor(Math.random() * games[randomGame].length)] : 
+                    'Выполните случайное задание';
+                const playerName = streamerData.streamerProfile?.displayName || 'Стример';
+                
+                showResult(randomGame, playerName, randomTask, 8000);
+            } else if (type === 'vote') {
+                // Используем реальные игры для голосования
+                const voteOptions = gamesList.length ? 
+                    gamesList.map(game => ({ name: game, count: 0 })) :
+                    [
+                        { name: 'Minecraft', count: 0 },
+                        { name: 'CS2', count: 0 },
+                        { name: 'Apex', count: 0 },
+                        { name: 'Valorant', count: 0 }
+                    ];
+                
+                showVote(voteOptions, 20);
+            } else if (type === 'winner') {
+                // Используем реального пользователя из чата если есть
+                const recentUsers = streamerData.chatUserPool ? 
+                    Array.from(streamerData.chatUserPool).slice(-10) : 
+                    ['NightWolf99', 'GamerPro2024', 'TwitchViewer'];
+                const winner = recentUsers[Math.floor(Math.random() * recentUsers.length)];
+                const totalUsers = streamerData.chatUserPool ? streamerData.chatUserPool.size : 247;
+                
+                showWinner(winner, `из ${totalUsers} зрителей`);
+            }
+        } catch (error) {
+            // Fallback на демо данные если что-то пошло не так
+            if (type === 'result') {
+                showResult('Minecraft', 'Стример', 'Выполните задание', 8000);
+            } else if (type === 'vote') {
+                showVote([
+                    { name: 'Minecraft', count: 0 },
+                    { name: 'CS2', count: 0 },
+                    { name: 'Apex', count: 0 },
+                    { name: 'Valorant', count: 0 }
+                ], 20);
+            } else if (type === 'winner') {
+                showWinner('Зритель', 'из чата');
+            }
+        }
+    }
+    
+    // ── CHAT FUNCTIONS ──
+    let chatVisible = false;
+    let previewVisible = true;
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+    let currentDragElement = null;
+    
+    function togglePreview() {
+        previewVisible = !previewVisible;
+        const controls = document.getElementById('owControls');
+        const btn = event.target;
+        
+        if (previewVisible) {
+            controls.style.display = '';
+            btn.textContent = '👁️ Скрыть превью';
+            btn.classList.remove('active');
+        } else {
+            controls.style.display = 'none';
+            btn.textContent = '👁️ Показать превью';
+            btn.classList.add('active');
+        }
+        
+        // Сохраняем настройку
+        localStorage.setItem('overlayPreviewHidden', !previewVisible);
+    }
+    
+    function toggleChat() {
+        chatVisible = !chatVisible;
+        const chatWidget = document.getElementById('chatWidget');
+        const btn = event.target;
+        
+        if (chatVisible) {
+            chatWidget.style.display = '';
+            btn.classList.add('active');
+            
+            // Загружаем реальные сообщения чата вместо демо
+            loadRealChatMessages();
+        } else {
+            chatWidget.style.display = 'none';
+            btn.classList.remove('active');
+        }
+    }
+    
+    // Загружаем реальные сообщения из streamerState
+    function loadRealChatMessages() {
+        try {
+            const streamerData = JSON.parse(localStorage.getItem('streamerState') || '{}');
+            const messages = streamerData.chatMessages || [];
+            
+            if (messages.length > 0) {
+                updateChatWidget({
+                    connected: streamerData.connected || false,
+                    messages: messages.slice(-10) // Последние 10 сообщений
+                });
+            } else {
+                updateChatWidget({
+                    connected: false,
+                    messages: []
+                });
+            }
+        } catch (error) {
+            console.warn('Ошибка загрузки чата:', error);
+            updateChatWidget({ connected: false, messages: [] });
+        }
+    }
+    
+    // Обновляет виджет чата
+    function updateChatWidget(data) {
+        const messagesContainer = document.getElementById('chatMessages');
+        const liveDot = document.getElementById('chatLiveDot');
+        
+        if (!messagesContainer) return;
+        
+        // Обновляем индикатор подключения
+        if (liveDot) {
+            liveDot.style.display = data.connected ? '' : 'none';
+        }
+        
+        if (!data.connected || !data.messages || data.messages.length === 0) {
+            messagesContainer.innerHTML = `
+                <div class="chat-placeholder">
+                    ${data.connected ? 'Ожидание сообщений...' : 'Чат не подключён'}
+                </div>
+            `;
+            return;
+        }
+        
+        // Отображаем реальные сообщения
+        const messagesHtml = data.messages.map(msg => {
+            const badge = msg.badge ? `<span class="chat-badge ${msg.badge}">${msg.badge}</span>` : '';
+            return `
+                <div class="chat-message">
+                    ${badge}<span class="chat-user" style="color: ${msg.color || '#818cf8'}">${msg.user}:</span>
+                    <span class="chat-text">${escapeHtml(msg.text)}</span>
+                </div>
+            `;
+        }).join('');
+        
+        messagesContainer.innerHTML = messagesHtml;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    // Экранирование HTML для безопасности
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // ── DRAG & DROP FUNCTIONS ──
+    function initDragAndDrop() {
+        const widgets = document.querySelectorAll('.draggable');
+        
+        widgets.forEach(widget => {
+            const handle = widget.querySelector('.drag-handle');
+            if (!handle) return;
+            
+            handle.addEventListener('mousedown', startDrag);
+            widget.addEventListener('mousedown', startWidgetDrag);
+        });
+        
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', stopDrag);
+    }
+    
+    function startWidgetDrag(e) {
+        if (e.target.closest('.drag-handle') || e.target.closest('.ow-controls')) return;
+        startDrag(e);
+    }
+    
+    function startDrag(e) {
+        e.preventDefault();
+        const widget = e.target.closest('.overlay-widget');
+        if (!widget) return;
+        
+        isDragging = true;
+        currentDragElement = widget;
+        
+        const rect = widget.getBoundingClientRect();
+        dragOffset.x = e.clientX - rect.left;
+        dragOffset.y = e.clientY - rect.top;
+        
+        widget.classList.add('dragging');
+        widget.style.position = 'fixed';
+        widget.style.zIndex = '10000';
+        
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'grabbing';
+    }
+    
+    function drag(e) {
+        if (!isDragging || !currentDragElement) return;
+        
+        e.preventDefault();
+        const x = e.clientX - dragOffset.x;
+        const y = e.clientY - dragOffset.y;
+        
+        // Ограничиваем перемещение в пределах viewport
+        const maxX = window.innerWidth - currentDragElement.offsetWidth;
+        const maxY = window.innerHeight - currentDragElement.offsetHeight;
+        
+        const boundedX = Math.max(0, Math.min(x, maxX));
+        const boundedY = Math.max(0, Math.min(y, maxY));
+        
+        currentDragElement.style.left = boundedX + 'px';
+        currentDragElement.style.top = boundedY + 'px';
+    }
+    
+    function stopDrag() {
+        if (!isDragging || !currentDragElement) return;
+        
+        isDragging = false;
+        currentDragElement.classList.remove('dragging');
+        
+        // Сохраняем позицию
+        const rect = currentDragElement.getBoundingClientRect();
+        const widgetId = currentDragElement.id;
+        const position = {
+            x: rect.left,
+            y: rect.top,
+            width: rect.width,
+            height: rect.height
+        };
+        
+        localStorage.setItem(`widget-${widgetId}-position`, JSON.stringify(position));
+        
+        currentDragElement = null;
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+    }
+    
+    function loadWidgetPositions() {
+        const widgets = document.querySelectorAll('.overlay-widget');
+        widgets.forEach(widget => {
+            const widgetId = widget.id;
+            const saved = localStorage.getItem(`widget-${widgetId}-position`);
+            if (saved) {
+                try {
+                    const position = JSON.parse(saved);
+                    widget.style.position = 'fixed';
+                    widget.style.left = position.x + 'px';
+                    widget.style.top = position.y + 'px';
+                    
+                    // Убираем позиционирование через CSS классы
+                    const root = document.getElementById('overlayRoot');
+                    if (root) {
+                        root.style.position = 'static';
+                        root.style.display = 'block';
+                    }
+                } catch (e) {
+                    console.warn('Ошибка загрузки позиции виджета:', e);
+                }
+            }
+        });
+    }
+    
+    function resetWidgetPositions() {
+        const widgets = document.querySelectorAll('.overlay-widget');
+        widgets.forEach(widget => {
+            const widgetId = widget.id;
+            localStorage.removeItem(`widget-${widgetId}-position`);
+            
+            // Сбрасываем стили
+            widget.style.position = '';
+            widget.style.left = '';
+            widget.style.top = '';
+        });
+        
+        // Восстанавливаем позиционирование через CSS
+        const root = document.getElementById('overlayRoot');
+        if (root) {
+            root.style.position = '';
+            root.style.display = '';
+        }
+        
+        // Перезагружаем страницу для сброса
+        location.reload();
+    }
+    
+    function updateChatWidget(data) {
+        const chatWidget = document.getElementById('chatWidget');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatLiveDot = document.getElementById('chatLiveDot');
+        
+        if (!data || !data.connected) {
+            chatLiveDot.style.display = 'none';
+            chatMessages.innerHTML = '<div class="chat-placeholder">Чат не подключён</div>';
+            return;
+        }
+        
+        // Show live indicator
+        chatLiveDot.style.display = '';
+        
+        // Update messages
+        if (data.messages && data.messages.length > 0) {
+            const messagesHtml = data.messages.slice(-15).map(msg => {
+                const badgeHtml = msg.badge ? 
+                    `<span class="chat-badge ${msg.badge}">${
+                        msg.badge === 'broadcaster' ? 'СТРИМЕР' : 
+                        msg.badge === 'mod' ? 'МОД' : 
+                        msg.badge === 'sub' ? 'SUB' : msg.badge.toUpperCase()
+                    }</span>` : '';
+                
+                return `
+                    <div class="chat-message">
+                        ${badgeHtml}
+                        <span class="chat-user" style="--user-color: ${msg.color || '#818cf8'}">${msg.user}:</span>
+                        <span class="chat-text">${msg.text}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            chatMessages.innerHTML = messagesHtml;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } else {
+            chatMessages.innerHTML = '<div class="chat-placeholder">Ожидание сообщений...</div>';
+        }
+    }
+    
+    function showDemoChat() {
+        const demoMessages = [
+            { user: 'xXxGamer', text: 'LUL', color: '#ff6b6b' },
+            { user: 'StreamQueen', text: 'PogChamp', color: '#4ecdc4', badge: 'sub' },
+            { user: 'NightWolf', text: 'Крути рулетку!', color: '#45b7d1' },
+            { user: 'CyberKid', text: '!spin', color: '#96ceb4' },
+            { user: 'Moderator', text: 'Привет чат!', color: '#feca57', badge: 'mod' },
+            { user: 'Стример', text: 'Поехали!', color: '#ff9ff3', badge: 'broadcaster' }
+        ];
+        
+        updateChatWidget({
+            connected: true,
+            messages: demoMessages
+        });
+    }
+    </script>
+</body>
+</html>
