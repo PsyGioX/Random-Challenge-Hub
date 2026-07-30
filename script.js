@@ -972,9 +972,11 @@ function init() {
     if (rawGames && typeof rawGames === 'object') {
         Object.entries(rawGames).forEach(([gameName, tasks]) => {
             if (!Array.isArray(tasks)) return;
-            games[gameName] = tasks.map(t =>
+            const normalized = tasks.map(t =>
                 typeof t === 'string' ? t : (t && typeof t.task === 'string' ? t.task : String(t))
             ).filter(t => t && t.trim());
+            // Убираем дубликаты заданий
+            games[gameName] = [...new Set(normalized)];
         });
     }
     if (!Object.keys(games).length) {
@@ -1311,6 +1313,7 @@ function addTask() {
     const game = gs.value, task = ti.value.trim();
     if (!task) return showNotification('Введите описание задания', 'error');
     if (!games[game]) return showNotification('Выберите игру', 'error');
+    if (games[game].includes(task)) return showNotification('Такое задание уже есть', 'warning');
     games[game].push(task); saveAll(); switchTab('games');
     showNotification('✅ Задание добавлено', 'success');
 }
@@ -1320,6 +1323,7 @@ function quickAddTask(gameName) {
     const task = inp.value.trim();
     if (!task) return showNotification('Введите описание задания', 'error');
     if (!games[gameName]) return showNotification('Игра не найдена', 'error');
+    if (games[gameName].includes(task)) return showNotification('Такое задание уже есть', 'warning');
     games[gameName].push(task); saveAll(); inp.value = ''; openDropdowns[sid] = true;
     const c = document.getElementById('tabContent');
     if (c) { c.innerHTML = renderGamesTab(); setTimeout(restoreDropdownState, 50) }
@@ -1357,8 +1361,15 @@ function showBulkAddModal() {
         const raw  = document.getElementById('bulkTasks')?.value || '';
         const tasks = raw.split('\n').map(t => t.trim()).filter(t => t.length > 0);
         if (game && tasks.length) {
-            games[game].push(...tasks); saveAll(); closeModal(); switchTab('games');
-            showNotification(`✅ Добавлено ${tasks.length} заданий для "${game}"`, 'success');
+            const existing = games[game] || [];
+            const newTasks = tasks.filter(t => !existing.includes(t));
+            const skipped = tasks.length - newTasks.length;
+            if (!newTasks.length) return showNotification('Все задания уже существуют', 'warning');
+            games[game].push(...newTasks); saveAll(); closeModal(); switchTab('games');
+            const msg = skipped > 0
+                ? `✅ Добавлено ${newTasks.length} зад., пропущено ${skipped} дубл.`
+                : `✅ Добавлено ${newTasks.length} заданий для "${game}"`;
+            showNotification(msg, 'success');
         } else { showNotification('Выберите игру и введите задания', 'error') }
     };
     const cancelBtn = modal.querySelector('.cancel-btn');
@@ -2352,7 +2363,9 @@ function spinWheel(tasks, targetIdx, callback) {
     const segAngle = (Math.PI*2) / tasks.length;
     const targetAngle = targetIdx * segAngle + segAngle/2;
     const spins = rouletteSettings.minSpins + Math.floor(Math.random() * (rouletteSettings.maxSpins - rouletteSettings.minSpins + 1));
-    const totalRot = spins * Math.PI*2 + (Math.PI*2 - targetAngle);
+    // Указатель находится сверху (12 часов = -π/2 в canvas), поэтому вычитаем π/2
+    // чтобы середина целевого сегмента оказалась именно под указателем
+    const totalRot = spins * Math.PI*2 + (Math.PI*2 - targetAngle) - Math.PI/2;
     if (rouletteSettings.soundEnabled) playSpinSound();
     animateWheel(totalRot, callback);
 }
@@ -3822,9 +3835,12 @@ function importData() {
                     if (typeof gameName !== 'string' || !gameName.trim()) return;
                     if (gameName === '__proto__' || gameName === 'constructor') return;
                     if (!Array.isArray(tasks)) return;
-                    games[gameName.trim().slice(0, 200)] = tasks
-                        .filter(t => typeof t === 'string' && t.trim())
-                        .map(t => String(t).trim().slice(0, 500));
+                    // Убираем дубликаты при импорте
+                    games[gameName.trim().slice(0, 200)] = [...new Set(
+                        tasks
+                            .filter(t => typeof t === 'string' && t.trim())
+                            .map(t => String(t).trim().slice(0, 500))
+                    )];
                 });
                 // Режим и тема — только допустимые значения
                 const safeModes = ['full', 'game-first', 'player-only', 'task-only'];
