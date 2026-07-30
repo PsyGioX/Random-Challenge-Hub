@@ -4,6 +4,24 @@
 //           chat vote, viewer wheel, timer, quick commands
 // ============================================================
 
+// ── i18n GUARD ────────────────────────────────────────────
+// Fallback: if i18n.js hasn't loaded yet (e.g. direct file open),
+// t() returns the last segment of the key so the UI still shows
+// something readable instead of a blank.
+if (typeof t !== 'function') {
+    window.t = function (key, vars) {
+        let s = String(key).split('.').pop().replace(/_/g, ' ');
+        if (vars) s = s.replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? vars[k] : '{' + k + '}');
+        return s;
+    };
+}
+// Re-run t() after language changes so dynamic renders pick up new lang
+window.addEventListener('rch:langchange', function () {
+    if (typeof switchTab === 'function' && typeof currentTab !== 'undefined') {
+        switchTab(currentTab);
+    }
+});
+
 // ── GLOBAL STATE ──────────────────────────────────────────
 // Безопасная загрузка из localStorage с защитой от повреждённых данных
 function _safeParse(key, fallback) {
@@ -104,7 +122,7 @@ function twitchConnect(channel) {
     streamerState.channelName = ch;
     streamerState.twitchStatus = 'connecting';
     _updateConnectBtn();
-    showNotification(`🔌 Подключение к #${ch}...`, 'info');
+    showNotification(t('streamer.connecting_to', {ch}), 'info');
 
     const ws = new WebSocket(TWITCH_IRC);
     streamerState.twitchWs = ws;
@@ -118,9 +136,7 @@ function twitchConnect(channel) {
 
     ws.onmessage = (e) => {
         const raw = e.data;
-        // PING/PONG для keepalive
         if (raw.startsWith('PING')) { ws.send('PONG :tmi.twitch.tv'); return; }
-        // Определяем тип сообщения
         if (raw.includes('PRIVMSG')) {
             _parseTwitchMsg(raw);
         }
@@ -128,7 +144,7 @@ function twitchConnect(channel) {
             streamerState.twitchStatus = 'connected';
             streamerState.connected    = true;
             _updateConnectBtn();
-            showNotification(`✅ Подключён к #${ch} (только чтение)`, 'success');
+            showNotification(t('streamer.connected_msg', {ch}), 'success');
             saveStreamerData();
             updateOverlayChatData();
         }
@@ -138,7 +154,7 @@ function twitchConnect(channel) {
         streamerState.twitchStatus = 'error';
         streamerState.connected    = false;
         _updateConnectBtn();
-        showNotification('❌ Ошибка подключения к Twitch', 'error');
+        showNotification(t('streamer.connect_error'), 'error');
         updateOverlayChatData();
     };
 
@@ -161,7 +177,7 @@ function twitchDisconnect() {
     streamerState.twitchStatus = 'idle';
     streamerState.connected    = false;
     _updateConnectBtn();
-    showNotification('Отключено от Twitch', 'info');
+    showNotification(t('streamer.disconnected'), 'info');
     updateOverlayChatData();
 }
 
@@ -352,12 +368,10 @@ function addAllChattersToWheel() {
     
     if (added > 0) {
         saveStreamerData();
-        if (currentTab === 'streamer') {
-            switchTab('streamer');
-        }
-        showNotification(`💜 Добавлено ${added} участников из чата в колесо`, 'success');
+        if (currentTab === 'streamer') switchTab('streamer');
+        showNotification(t('streamer.all_chatters_added', {n: added}), 'success');
     } else {
-        showNotification('Все активные участники чата уже в колесе', 'info');
+        showNotification(t('streamer.all_already_in_wheel'), 'info');
     }
 }
 
@@ -365,15 +379,10 @@ function addSubToWheelFromChat(user) {
     if (!streamerState.subWheelList.includes(user)) {
         streamerState.subWheelList.push(user);
         saveStreamerData();
-        
-        // Обновляем UI если открыта вкладка стримера
-        if (currentTab === 'streamer') {
-            switchTab('streamer');
-        }
-        
-        showNotification(`💜 ${user} добавлен в колесо подписчиков`, 'success');
+        if (currentTab === 'streamer') switchTab('streamer');
+        showNotification(t('streamer.sub_added', {name: user}), 'success');
     } else {
-        showNotification(`${user} уже в колесе подписчиков`, 'info');
+        showNotification(t('streamer.sub_active_count', {n: streamerState.subWheelList.length}), 'info');
     }
 }
 
@@ -381,21 +390,20 @@ function setTimerFromChat(minutes) {
     streamerState.timerSeconds = minutes * 60;
     streamerState.timerInitial = streamerState.timerSeconds;
     updateTimerDisplay();
-    const message = `⏱️ Таймер установлен на ${minutes} минут`;
-    showNotification(message, 'info');
+    showNotification(t('streamer.stats_min', {n: minutes}), 'info');
 }
 
 // Новые функции для инструментов стрима
 function toggleChatSounds(enabled) {
     streamerState.chatSounds = enabled;
     saveStreamerData();
-    showNotification(`🔊 Звуки чата ${enabled ? 'включены' : 'выключены'}`, 'info');
+    showNotification(enabled ? t('streamer.chat_sounds_on') : t('streamer.chat_sounds_off'), 'info');
 }
 
 function toggleAutoSpin(enabled) {
     streamerState.autoSpin = enabled;
     saveStreamerData();
-    showNotification(`🎰 Авто-спин ${enabled ? 'включён' : 'выключен'}`, 'info');
+    showNotification(enabled ? t('streamer.autospin_on') : t('streamer.autospin_off'), 'info');
 }
 
 function playChatNotificationSound() {
@@ -432,19 +440,19 @@ function showStreamStats() {
     
     const modal = document.getElementById('confirmModal');
     if (modal) {
-        document.getElementById('modalTitle').textContent = '📊 Статистика стрима';
+        document.getElementById('modalTitle').textContent = t('streamer.stats_title');
         document.getElementById('modalMessage').innerHTML = `
             <div style="text-align:left;font-size:13px;line-height:1.6">
-                <div style="margin-bottom:12px"><strong>📺 Сессия:</strong> ${duration} минут</div>
-                <div style="margin-bottom:12px"><strong>💬 Сообщений:</strong> ${totalMessages}</div>
-                <div style="margin-bottom:12px"><strong>👥 Уникальных зрителей:</strong> ${uniqueViewers}</div>
-                <div style="margin-bottom:12px"><strong>🔥 Самый активный:</strong> ${mostActive || 'нет данных'}</div>
-                <div style="margin-bottom:12px"><strong>🎯 В колесе:</strong> ${streamerState.subWheelList.length} участников</div>
-                <div style="margin-bottom:12px"><strong>💜 Доступно из чата:</strong> ${participants.length} активных</div>
-                ${streamerState.voteActive ? '<div style="color:var(--accent-warning)">🗳️ Голосование активно</div>' : ''}
+                <div style="margin-bottom:12px"><strong>${t('streamer.stats_session')}</strong> ${t('streamer.stats_min', {n: duration})}</div>
+                <div style="margin-bottom:12px"><strong>${t('streamer.stats_messages')}</strong> ${totalMessages}</div>
+                <div style="margin-bottom:12px"><strong>${t('streamer.stats_unique')}</strong> ${uniqueViewers}</div>
+                <div style="margin-bottom:12px"><strong>${t('streamer.stats_most_active')}</strong> ${mostActive || t('streamer.stats_no_data')}</div>
+                <div style="margin-bottom:12px"><strong>${t('streamer.stats_in_wheel')}</strong> ${streamerState.subWheelList.length}</div>
+                <div style="margin-bottom:12px"><strong>${t('streamer.stats_participants')}</strong> ${t('streamer.stats_active', {n: participants.length})}</div>
+                ${streamerState.voteActive ? `<div style="color:var(--accent-warning)">${t('streamer.stats_vote_active')}</div>` : ''}
             </div>
         `;
-        document.getElementById('modalConfirm').textContent = 'ЗАКРЫТЬ';
+        document.getElementById('modalConfirm').textContent = t('streamer.stats_close');
         document.getElementById('modalConfirm').onclick = closeModal;
         const cancelBtn = modal.querySelector('.cancel-btn');
         if (cancelBtn) cancelBtn.style.display = 'none';
@@ -474,24 +482,19 @@ function exportStreamData() {
     a.download = `stream-data-${streamerState.channelName}-${Date.now()}.json`;
     a.click();
     
-    showNotification('📤 Данные стрима экспортированы', 'success');
+    showNotification(t('streamer.export_done'), 'success');
 }
 
 function resetStreamSession() {
-    showConfirmModal('🔄 Сброс сессии', 'Сбросить данные текущей сессии стрима?', 'СБРОСИТЬ', 'ОТМЕНА', () => {
+    showConfirmModal(t('streamer.reset_confirm'), t('streamer.reset_msg'), t('streamer.reset_btn2'), t('common.cancel'), () => {
         streamerState.chatMessages = [];
         streamerState.chatStats = { totalMessages: 0, uniqueViewers: 0, mostActiveUser: '' };
         streamerState.userActivity = {};
         streamerState.chatUserPool = new Set();
         streamerState.sessionStartTime = Date.now();
-        
         saveStreamerData();
-        
-        if (currentTab === 'streamer') {
-            switchTab('streamer');
-        }
-        
-        showNotification('🔄 Сессия сброшена', 'success');
+        if (currentTab === 'streamer') switchTab('streamer');
+        showNotification(t('streamer.session_reset'), 'success');
     });
 }
 
@@ -529,14 +532,12 @@ function _updateConnectBtn() {
     const btn = document.getElementById('chatConnectBtn');
     if (!btn) return;
     const s = streamerState.twitchStatus;
-    btn.textContent = s === 'connected'   ? '✅ Отключиться'
-                    : s === 'connecting'  ? '⏳ Подключение...'
-                    : s === 'error'       ? '❌ Ошибка — retry'
-                    :                       '🔌 Подключить';
+    btn.textContent = s === 'connected'   ? t('streamer.disconnect_btn')
+                    : s === 'connecting'  ? t('streamer.connecting_btn')
+                    : s === 'error'       ? t('streamer.error_btn')
+                    :                       t('streamer.connect_btn');
     btn.className = `cyber-btn channel-connect-btn ${s === 'connected' ? 'danger-btn' : 'add-btn'}`;
     btn.disabled = s === 'connecting';
-    
-    // Обновляем состояние других кнопок
     updateStreamerUIState();
 }
 
@@ -594,10 +595,10 @@ function updateStreamerUIState() {
         statusBar.style.color = statusColor;
         
         statusBar.innerHTML = isConnected
-            ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> Читаем чат #${esc(streamerState.channelName)}</span>`
-            : streamerState.twitchStatus === 'connecting' ? '⏳ Подключение к Twitch IRC...'
-            : streamerState.twitchStatus === 'error' ? '❌ Не удалось подключиться'
-            : 'Введите ник канала и нажмите Подключить';
+            ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> ${t('streamer.status_reading', {ch: esc(streamerState.channelName)})}</span>`
+            : streamerState.twitchStatus === 'connecting' ? t('streamer.status_connecting')
+            : streamerState.twitchStatus === 'error' ? t('streamer.status_error')
+            : t('streamer.status_idle');
     }
 }
 
@@ -764,10 +765,10 @@ function showReconnectToast(channelName) {
     toast.id = 'reconnectToast';
     toast.className = 'reconnect-toast';
     toast.innerHTML = `
-        <span>🔌 Переподключиться к <strong>#${channelName}</strong>?</span>
+        <span>${t('streamer.reconnect_msg', {ch: channelName})}</span>
         <div class="reconnect-toast-actions">
-            <button class="reconnect-toast-yes" id="reconnectYes">Да</button>
-            <button class="reconnect-toast-no"  id="reconnectNo">Нет</button>
+            <button class="reconnect-toast-yes" id="reconnectYes">${t('common.yes')}</button>
+            <button class="reconnect-toast-no"  id="reconnectNo">${t('common.no')}</button>
         </div>
     `;
     group.insertAdjacentElement('afterend', toast);
@@ -1044,15 +1045,15 @@ function createFloatingButton() {
     if (ex) ex.remove();
     document.body.insertAdjacentHTML('beforeend', `
         <div class="floating-actions">
-            <button class="floating-btn main-btn" onclick="toggleFloatingMenu()" title="Меню">⚙️</button>
+            <button class="floating-btn main-btn" onclick="toggleFloatingMenu()" title="${t('floating.settings')}">⚙️</button>
             <div class="floating-menu hidden" id="floatingMenu">
-                <button onclick="confirmClearCache()"  class="floating-menu-btn">🗑️ Сбросить кеш</button>
-                <button onclick="confirmResetAll()"    class="floating-menu-btn">🔄 Сбросить всё</button>
-                <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="floating-menu-btn">⬆️ Наверх</button>
-                <button onclick="switchTab('settings')"  class="floating-menu-btn">⚙️ Настройки</button>
-                <button onclick="switchTab('roulette')"  class="floating-menu-btn">🎰 Рулетка</button>
-                <button onclick="switchTab('streamer')"  class="floating-menu-btn">📡 Стример</button>
-                <button onclick="openOverlayWindow()"    class="floating-menu-btn">🖥️ OBS Overlay</button>
+                <button onclick="confirmClearCache()"  class="floating-menu-btn">${t('floating.clear_cache')}</button>
+                <button onclick="confirmResetAll()"    class="floating-menu-btn">${t('floating.reset_all')}</button>
+                <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="floating-menu-btn">${t('floating.scroll_top')}</button>
+                <button onclick="switchTab('settings')"  class="floating-menu-btn">${t('floating.settings')}</button>
+                <button onclick="switchTab('roulette')"  class="floating-menu-btn">${t('floating.roulette')}</button>
+                <button onclick="switchTab('streamer')"  class="floating-menu-btn">${t('floating.streamer')}</button>
+                <button onclick="openOverlayWindow()"    class="floating-menu-btn">${t('floating.overlay')}</button>
             </div>
         </div>
     `);
@@ -1103,25 +1104,25 @@ function saveSettings() { localStorage.setItem('rouletteSettings', JSON.stringif
 
 function confirmClearCache() {
     document.getElementById('floatingMenu')?.classList.add('hidden');
-    showConfirmModal('🗑️ Сброс кеша', 'Очистить кеш браузера? Данные вернутся к стандартным.', 'СБРОСИТЬ', 'ОТМЕНА', clearCache);
+    showConfirmModal(t('modal.clear_cache_title'), t('modal.clear_cache_msg'), t('modal.clear_cache_btn'), t('common.cancel'), clearCache);
 }
 function clearCache() {
     localStorage.removeItem('challengePlayers'); localStorage.removeItem('challengeGames'); sessionStorage.clear();
     players = []; games = getDefaultGames();
     gameFirstState = { active:false, selectedGame:null, currentPlayerIndex:0, assignedTasks:{} };
     saveAll(); updateWheelSegments(); switchTab('games');
-    showNotification('✅ Кеш очищен!', 'success');
+    showNotification(t('modal.cache_cleared'), 'success');
 }
 function confirmResetAll() {
     document.getElementById('floatingMenu')?.classList.add('hidden');
-    showConfirmModal('🔄 Полный сброс', 'Удалить ВСЕ данные? Восстановить невозможно.', 'СБРОСИТЬ ВСЁ', 'ОТМЕНА', resetAllData);
+    showConfirmModal(t('modal.reset_all_title'), t('modal.reset_all_msg'), t('modal.reset_all_btn'), t('common.cancel'), resetAllData);
 }
 function resetAllData() {
     players = []; games = {};
     localStorage.removeItem('challengePlayers'); localStorage.removeItem('challengeGames'); sessionStorage.clear();
     gameFirstState = { active:false, selectedGame:null, currentPlayerIndex:0, assignedTasks:{} };
     updateWheelSegments(); switchTab('games');
-    showNotification('🔄 Все данные сброшены!', 'warning');
+    showNotification(t('modal.all_reset'), 'warning');
 }
 
 // ── TABS ──────────────────────────────────────────────────
@@ -1130,12 +1131,12 @@ function createTabs() {
     if (!mp) return;
     mp.innerHTML = `
         <div class="cyber-tabs">
-            <button class="cyber-tab active" data-tab="games"    onclick="switchTab('games')">   <span class="tab-icon">🎮</span> Игры</button>
-            <button class="cyber-tab"        data-tab="players"  onclick="switchTab('players')"> <span class="tab-icon">👥</span> Игроки <span class="tab-badge" id="playersBadge">${players.length}</span></button>
-            <button class="cyber-tab"        data-tab="roulette" onclick="switchTab('roulette')"><span class="tab-icon">🎰</span> Рулетка</button>
-            <button class="cyber-tab"        data-tab="streamer" onclick="switchTab('streamer')"><span class="tab-icon">📡</span> Стример</button>
-            <button class="cyber-tab"        data-tab="stats"    onclick="switchTab('stats')">   <span class="tab-icon">📊</span> Стат</button>
-            <button class="cyber-tab"        data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> Настройки</button>
+            <button class="cyber-tab active" data-tab="games"    onclick="switchTab('games')">   <span class="tab-icon">🎮</span> ${t('tab.games')}</button>
+            <button class="cyber-tab"        data-tab="players"  onclick="switchTab('players')"> <span class="tab-icon">👥</span> ${t('tab.players')} <span class="tab-badge" id="playersBadge">${players.length}</span></button>
+            <button class="cyber-tab"        data-tab="roulette" onclick="switchTab('roulette')"><span class="tab-icon">🎰</span> ${t('tab.roulette')}</button>
+            <button class="cyber-tab"        data-tab="streamer" onclick="switchTab('streamer')"><span class="tab-icon">📡</span> ${t('tab.streamer')}</button>
+            <button class="cyber-tab"        data-tab="stats"    onclick="switchTab('stats')">   <span class="tab-icon">📊</span> ${t('tab.stats')}</button>
+            <button class="cyber-tab"        data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> ${t('tab.settings')}</button>
         </div>
         <div class="tab-content" id="tabContent"></div>
     `;
@@ -1233,41 +1234,40 @@ function toggleGameDropdown(gameName) {
 function renderGamesTab() {
     return `<div class="games-panel">
         <div class="panel-section">
-            <h3 class="section-title"><span class="neon-text">➕ ДОБАВИТЬ ИГРУ</span></h3>
+            <h3 class="section-title"><span class="neon-text">${t('games.add_game_title')}</span></h3>
             <div class="input-group">
-                <input type="text" id="newGame" placeholder="Название игры..." class="cyber-input" onkeypress="if(event.key==='Enter')addGame()">
-                <button onclick="addGame()" class="cyber-btn add-btn">+ Добавить</button>
+                <input type="text" id="newGame" placeholder="${t('games.game_placeholder')}" class="cyber-input" onkeypress="if(event.key==='Enter')addGame()">
+                <button onclick="addGame()" class="cyber-btn add-btn">${t('common.add')}</button>
             </div>
         </div>
         <div class="panel-section">
-            <h3 class="section-title"><span class="neon-text">📋 ДОБАВИТЬ ЗАДАНИЕ</span></h3>
+            <h3 class="section-title"><span class="neon-text">${t('games.add_task_title')}</span></h3>
             <div class="input-group">
                 <select id="gameList" class="cyber-select">${Object.keys(games).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}</select>
-                <input type="text" id="newTask" placeholder="Описание задания..." class="cyber-input" onkeypress="if(event.key==='Enter')addTask()">
-                <button onclick="addTask()" class="cyber-btn add-btn">+ Добавить</button>
+                <input type="text" id="newTask" placeholder="${t('games.task_placeholder')}" class="cyber-input" onkeypress="if(event.key==='Enter')addTask()">
+                <button onclick="addTask()" class="cyber-btn add-btn">${t('common.add')}</button>
             </div>
         </div>
         <div class="panel-section">
             <h3 class="section-title">
-                <span class="neon-text">🎮 ИГРЫ И ЗАДАНИЯ</span>
-                <span class="section-badge">${Object.keys(games).length} игр · ${Object.values(games).reduce((s,t)=>s+t.length,0)} заданий</span>
+                <span class="neon-text">${t('games.list_title')}</span>
+                <span class="section-badge">${t('games.games_badge', {g: Object.keys(games).length, t: Object.values(games).reduce((s,ts)=>s+ts.length,0)})}</span>
             </h3>
             <div id="gamesList" class="games-list">${renderGamesList()}</div>
         </div>
         <div class="panel-actions">
-            <button onclick="exportData()" class="cyber-btn export-btn">📤 Экспорт</button>
-            <button onclick="importData()" class="cyber-btn import-btn">📥 Импорт</button>
-            <button onclick="showBulkAddModal()" class="cyber-btn primary-btn">📝 Массовое добавление</button>
+            <button onclick="exportData()" class="cyber-btn export-btn">📤 ${t('common.export')}</button>
+            <button onclick="importData()" class="cyber-btn import-btn">📥 ${t('common.import')}</button>
+            <button onclick="showBulkAddModal()" class="cyber-btn primary-btn">${t('games.bulk_add')}</button>
         </div>
     </div>`;
 }
 
 function renderGamesList() {
-    if (!Object.keys(games).length) return '<p class="empty-text">Нет добавленных игр. Добавьте первую игру!</p>';
+    if (!Object.keys(games).length) return `<p class="empty-text">${t('games.empty_games')}</p>`;
     return Object.entries(games).map(([game, tasks]) => {
         const sid = game.replace(/[^a-zA-Z0-9]/g,'_');
         const escGame = esc(game);
-        // data-атрибуты безопаснее onclick-строк: обработчики читают dataset
         return `<div class="game-card">
             <div class="game-header" data-game="${escGame}" onclick="toggleGameDropdown(this.dataset.game)">
                 <div class="game-header-left">
@@ -1275,23 +1275,23 @@ function renderGamesList() {
                     <h4 class="game-name">🎮 ${escGame}</h4>
                 </div>
                 <div class="game-header-right">
-                    <span class="task-count">${tasks.length} зад.</span>
+                    <span class="task-count">${t('games.tasks_count', {n: tasks.length})}</span>
                     <button data-game="${escGame}" onclick="event.stopPropagation();deleteGame(this.dataset.game)" class="delete-btn">🗑️</button>
                 </div>
             </div>
             <div class="tasks-dropdown hidden" id="dropdown_${sid}">
-                <div class="tasks-list">${tasks.map((t,i)=>`
+                <div class="tasks-list">${tasks.map((tk,i)=>`
                     <div class="task-item">
-                        <span class="task-number">#${i+1}</span>
-                        <span class="task-text">${esc(t)}</span>
-                        <button data-game="${escGame}" data-idx="${i}" onclick="deleteTask(this.dataset.game,+this.dataset.idx)" class="delete-task-btn" title="Удалить">×</button>
+                        <span class="task-number">${t('games.task_number', {n: i+1})}</span>
+                        <span class="task-text">${esc(tk)}</span>
+                        <button data-game="${escGame}" data-idx="${i}" onclick="deleteTask(this.dataset.game,+this.dataset.idx)" class="delete-task-btn" title="${t('common.delete')}">×</button>
                     </div>`).join('')}
                 </div>
-                ${!tasks.length ? '<p class="empty-text">Нет заданий</p>' : ''}
+                ${!tasks.length ? `<p class="empty-text">${t('games.empty_tasks')}</p>` : ''}
                 <div class="task-actions">
                     <div class="input-group">
-                        <input type="text" id="quickTask_${sid}" placeholder="Быстрое задание..." class="cyber-input" data-game="${escGame}" onkeypress="if(event.key==='Enter')quickAddTask(this.dataset.game)">
-                        <button data-game="${escGame}" onclick="quickAddTask(this.dataset.game)" class="cyber-btn add-btn">+ Добавить</button>
+                        <input type="text" id="quickTask_${sid}" placeholder="${t('games.quick_placeholder')}" class="cyber-input" data-game="${escGame}" onkeypress="if(event.key==='Enter')quickAddTask(this.dataset.game)">
+                        <button data-game="${escGame}" onclick="quickAddTask(this.dataset.game)" class="cyber-btn add-btn">${t('common.add')}</button>
                     </div>
                 </div>
             </div>
@@ -1302,78 +1302,78 @@ function renderGamesList() {
 function addGame() {
     const inp = document.getElementById('newGame'); if (!inp) return;
     const name = inp.value.trim();
-    if (!name) return showNotification('Введите название игры', 'error');
-    if (games[name]) return showNotification('Такая игра уже существует', 'warning');
+    if (!name) return showNotification(t('games.no_game_name'), 'error');
+    if (games[name]) return showNotification(t('games.game_exists'), 'warning');
     games[name] = []; saveAll(); switchTab('games');
-    showNotification(`🎮 Игра "${name}" добавлена`, 'success');
+    showNotification(t('games.added', {name}), 'success');
 }
 function addTask() {
     const gs = document.getElementById('gameList'), ti = document.getElementById('newTask');
     if (!gs || !ti) return;
     const game = gs.value, task = ti.value.trim();
-    if (!task) return showNotification('Введите описание задания', 'error');
-    if (!games[game]) return showNotification('Выберите игру', 'error');
-    if (games[game].includes(task)) return showNotification('Такое задание уже есть', 'warning');
+    if (!task) return showNotification(t('games.no_task_desc'), 'error');
+    if (!games[game]) return showNotification(t('games.no_game_selected'), 'error');
+    if (games[game].includes(task)) return showNotification(t('games.task_exists'), 'warning');
     games[game].push(task); saveAll(); switchTab('games');
-    showNotification('✅ Задание добавлено', 'success');
+    showNotification(t('games.task_added'), 'success');
 }
 function quickAddTask(gameName) {
     const sid = gameName.replace(/[^a-zA-Z0-9]/g,'_');
     const inp = document.getElementById(`quickTask_${sid}`); if (!inp) return;
     const task = inp.value.trim();
-    if (!task) return showNotification('Введите описание задания', 'error');
-    if (!games[gameName]) return showNotification('Игра не найдена', 'error');
-    if (games[gameName].includes(task)) return showNotification('Такое задание уже есть', 'warning');
+    if (!task) return showNotification(t('games.no_task_desc'), 'error');
+    if (!games[gameName]) return showNotification(t('games.game_not_found'), 'error');
+    if (games[gameName].includes(task)) return showNotification(t('games.task_exists'), 'warning');
     games[gameName].push(task); saveAll(); inp.value = ''; openDropdowns[sid] = true;
     const c = document.getElementById('tabContent');
     if (c) { c.innerHTML = renderGamesTab(); setTimeout(restoreDropdownState, 50) }
-    showNotification('✅ Задание добавлено', 'success');
+    showNotification(t('games.task_added'), 'success');
 }
 function deleteGame(name) {
-    showConfirmModal('🗑️ Удаление игры', `Удалить игру "${name}" и все её задания?`, 'УДАЛИТЬ', 'ОТМЕНА', () => {
+    showConfirmModal(t('games.delete_game_title'), t('games.delete_game_msg', {name}), t('games.delete_btn'), t('common.cancel'), () => {
         delete games[name]; saveAll(); switchTab('games');
-        showNotification(`Игра "${name}" удалена`, 'warning');
+        showNotification(t('games.game_deleted', {name}), 'warning');
     });
 }
 function deleteTask(gameName, idx) {
-    const t = games[gameName]?.[idx];
-    showConfirmModal('🗑️ Удаление задания', `Удалить задание "${t}"?`, 'УДАЛИТЬ', 'ОТМЕНА', () => {
+    const tk = games[gameName]?.[idx];
+    showConfirmModal(t('games.delete_task_title'), t('games.delete_task_msg', {name: tk}), t('games.delete_btn'), t('common.cancel'), () => {
         games[gameName].splice(idx, 1); saveAll(); switchTab('games');
-        showNotification('Задание удалено', 'warning');
+        showNotification(t('games.task_deleted'), 'warning');
     });
 }
 function showBulkAddModal() {
     const modal = document.getElementById('confirmModal');
     if (!modal) return;
-    document.getElementById('modalTitle').textContent = '📝 Массовое добавление заданий';
+    document.getElementById('modalTitle').textContent = t('games.bulk_title');
     document.getElementById('modalMessage').innerHTML = `
         <div style="text-align:left">
             <select id="bulkGame" style="width:100%;margin-bottom:10px;padding:9px 12px;background:var(--bg-input);color:var(--text-primary);border:2px solid var(--border-light);border-radius:8px;font-size:13px">
                 ${Object.keys(games).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}
             </select>
-            <textarea id="bulkTasks" placeholder="Одно задание на строку..." style="width:100%;height:160px;padding:10px;background:var(--bg-input);color:var(--text-primary);border:2px solid var(--border-light);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
-            <p style="font-size:11px;color:var(--text-muted);margin-top:6px">Каждая строка — отдельное задание</p>
+            <textarea id="bulkTasks" placeholder="${t('games.bulk_hint')}" style="width:100%;height:160px;padding:10px;background:var(--bg-input);color:var(--text-primary);border:2px solid var(--border-light);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:6px">${t('games.bulk_hint')}</p>
         </div>`;
     const btn = document.getElementById('modalConfirm');
-    btn.textContent = 'ДОБАВИТЬ';
+    btn.textContent = t('games.bulk_add_btn');
     btn.onclick = () => {
         const game = document.getElementById('bulkGame')?.value;
         const raw  = document.getElementById('bulkTasks')?.value || '';
-        const tasks = raw.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+        const tasks = raw.split('\n').map(tk => tk.trim()).filter(tk => tk.length > 0);
         if (game && tasks.length) {
             const existing = games[game] || [];
-            const newTasks = tasks.filter(t => !existing.includes(t));
+            const newTasks = tasks.filter(tk => !existing.includes(tk));
             const skipped = tasks.length - newTasks.length;
-            if (!newTasks.length) return showNotification('Все задания уже существуют', 'warning');
+            if (!newTasks.length) return showNotification(t('games.bulk_all_exist'), 'warning');
             games[game].push(...newTasks); saveAll(); closeModal(); switchTab('games');
             const msg = skipped > 0
-                ? `✅ Добавлено ${newTasks.length} зад., пропущено ${skipped} дубл.`
-                : `✅ Добавлено ${newTasks.length} заданий для "${game}"`;
+                ? t('games.bulk_skipped', {n: newTasks.length, s: skipped})
+                : t('games.bulk_added', {n: newTasks.length, game});
             showNotification(msg, 'success');
-        } else { showNotification('Выберите игру и введите задания', 'error') }
+        } else { showNotification(t('games.bulk_select_hint'), 'error') }
     };
     const cancelBtn = modal.querySelector('.cancel-btn');
-    if (cancelBtn) { cancelBtn.textContent = 'ОТМЕНА'; cancelBtn.onclick = closeModal }
+    if (cancelBtn) { cancelBtn.textContent = t('common.cancel'); cancelBtn.onclick = closeModal }
     modal.classList.remove('hidden');
 }
 
@@ -1381,39 +1381,39 @@ function showBulkAddModal() {
 function renderPlayersTab() {
     return `<div class="players-panel">
         <div class="panel-section">
-            <h3 class="section-title"><span class="neon-text">➕ ДОБАВИТЬ ИГРОКА</span></h3>
+            <h3 class="section-title"><span class="neon-text">${t('players.add_title')}</span></h3>
             <div class="input-group">
-                <input type="text" id="newPlayer" placeholder="Имя игрока..." class="cyber-input" onkeypress="if(event.key==='Enter')addPlayer()">
+                <input type="text" id="newPlayer" placeholder="${t('players.placeholder')}" class="cyber-input" onkeypress="if(event.key==='Enter')addPlayer()">
                 <select id="playerColor" class="cyber-select">
-                    ${Object.entries(playerColors).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
+                    ${Object.entries(playerColors).map(([k,v])=>`<option value="${k}">${t('color.' + k) || v.label}</option>`).join('')}
                 </select>
-                <button onclick="addPlayer()" class="cyber-btn add-btn">+ Добавить</button>
+                <button onclick="addPlayer()" class="cyber-btn add-btn">${t('common.add')}</button>
             </div>
         </div>
         <div class="panel-section">
             <h3 class="section-title">
-                <span class="neon-text">👥 СПИСОК ИГРОКОВ</span>
-                <span class="section-badge">${players.length} чел.</span>
+                <span class="neon-text">${t('players.list_title')}</span>
+                <span class="section-badge">${t('players.count_badge', {n: players.length})}</span>
             </h3>
             <div class="players-grid">
-                ${players.length === 0 ? '<p class="empty-text">Нет игроков. Добавьте первого!</p>' :
+                ${players.length === 0 ? `<p class="empty-text">${t('players.empty')}</p>` :
                     players.map((p,i) => {
                         const cd = playerColors[p.color] || playerColors.indigo;
                         return `<div class="player-card" style="border-color:${esc(cd.name)}">
                             <div class="player-avatar" style="background:${esc(cd.gradient)}">${esc(p.name[0].toUpperCase())}</div>
                             <div class="player-info">
                                 <span class="player-name" style="color:${esc(cd.name)}">${esc(p.name)}</span>
-                                <span class="player-color">${esc(cd.label)}</span>
-                                <span class="player-stats-mini">🎮 ${p.stats?.gamesPlayed||0} игр · ✅ ${p.stats?.tasksCompleted||0} зад.</span>
+                                <span class="player-color">${t('color.' + p.color) || esc(cd.label)}</span>
+                                <span class="player-stats-mini">${t('players.stats_mini', {g: p.stats?.gamesPlayed||0, t: p.stats?.tasksCompleted||0})}</span>
                             </div>
-                            <button onclick="deletePlayer(${i})" class="delete-btn" title="Удалить">🗑️</button>
+                            <button onclick="deletePlayer(${i})" class="delete-btn" title="${t('common.delete')}">🗑️</button>
                         </div>`;
                     }).join('')}
             </div>
         </div>
         <div class="panel-actions">
-            <button onclick="clearAllPlayers()" class="cyber-btn danger-btn" ${!players.length?'disabled':''}>🗑️ Очистить список</button>
-            <button onclick="resetAllStats()" class="cyber-btn outline-btn" ${!players.length?'disabled':''}>📊 Сбросить статистику</button>
+            <button onclick="clearAllPlayers()" class="cyber-btn danger-btn" ${!players.length?'disabled':''}>${t('players.clear_all')}</button>
+            <button onclick="resetAllStats()" class="cyber-btn outline-btn" ${!players.length?'disabled':''}>${t('players.reset_stats')}</button>
         </div>
     </div>`;
 }
@@ -1422,29 +1422,29 @@ function addPlayer() {
     const ni = document.getElementById('newPlayer'), cs = document.getElementById('playerColor');
     if (!ni || !cs) return;
     const name = ni.value.trim(), color = cs.value;
-    if (!name) return showNotification('Введите имя игрока', 'error');
-    if (players.some(p => p.name === name)) return showNotification('Игрок уже существует', 'warning');
+    if (!name) return showNotification(t('players.no_name'), 'error');
+    if (players.some(p => p.name === name)) return showNotification(t('players.exists'), 'warning');
     players.push({ name, color, stats: { gamesPlayed:0, tasksCompleted:0 } }); saveAll(); switchTab('players');
-    showNotification(`👤 Игрок "${name}" добавлен`, 'success');
+    showNotification(t('players.added', {name}), 'success');
 }
 function deletePlayer(i) {
-    const name = players[i]?.name || 'Неизвестный';
-    showConfirmModal('🗑️ Удаление игрока', `Удалить игрока "${name}"?`, 'УДАЛИТЬ', 'ОТМЕНА', () => {
+    const name = players[i]?.name || '?';
+    showConfirmModal(t('games.delete_game_title'), t('players.delete_confirm', {name}), t('players.delete_btn'), t('common.cancel'), () => {
         players.splice(i, 1); saveAll(); switchTab('players');
-        showNotification(`Игрок "${name}" удалён`, 'warning');
+        showNotification(t('players.deleted', {name}), 'warning');
     });
 }
 function clearAllPlayers() {
     if (!players.length) return;
-    showConfirmModal('🗑️ Очистка', `Удалить ВСЕХ игроков (${players.length} чел.)?`, 'ОЧИСТИТЬ', 'ОТМЕНА', () => {
+    showConfirmModal(t('players.clear_all'), t('players.clear_confirm', {n: players.length}), t('players.clear_btn'), t('common.cancel'), () => {
         players = []; saveAll(); switchTab('players');
-        showNotification('Список очищен', 'warning');
+        showNotification(t('players.cleared'), 'warning');
     });
 }
 function resetAllStats() {
-    showConfirmModal('📊 Сброс статистики', 'Сбросить статистику всех игроков?', 'СБРОСИТЬ', 'ОТМЕНА', () => {
+    showConfirmModal(t('players.reset_stats'), t('players.reset_confirm'), t('common.reset'), t('common.cancel'), () => {
         players.forEach(p => { p.stats = { gamesPlayed:0, tasksCompleted:0 } }); saveAll(); switchTab('players');
-        showNotification('Статистика сброшена', 'info');
+        showNotification(t('players.stats_reset'), 'info');
     });
 }
 
@@ -1452,49 +1452,48 @@ function resetAllStats() {
 function renderRouletteTab() {
     const avail = Object.entries(games).filter(([,t]) => t.length > 0);
     const gCount = Object.keys(games).length;
-    const tCount = Object.values(games).reduce((s,t) => s+t.length, 0);
-    let modeInfo = '', canSpin = true, spinTxt = '🎰 ЗАПУСТИТЬ РУЛЕТКУ', wheelHidden = false;
+    const tCount = Object.values(games).reduce((s,tasks) => s+tasks.length, 0);
+    let modeInfo = '', canSpin = true, wheelHidden = false;
+    let spinTxt = t('roulette.spin_btn');
 
     if (gameFirstState.active && gameFirstState.selectedGame) {
         const curP      = players[gameFirstState.currentPlayerIndex];
         const remaining = getRemainingTasksForGame(gameFirstState.selectedGame);
         const assigned  = Object.keys(gameFirstState.assignedTasks).length;
         const total     = players.length;
-        // done = все игроки получили задания ИЛИ задания закончились
         const done = total > 0 && (assigned >= total || remaining.length === 0);
         const pct  = total > 0 ? Math.round((assigned / total) * 100) : 0;
         if (done) {
             canSpin = false;
-            spinTxt = '✅ ВСЕ ЗАДАНИЯ РАСПРЕДЕЛЕНЫ';
-            wheelHidden = true;           // скрываем только когда всё готово
+            spinTxt = t('roulette.all_done_btn');
+            wheelHidden = true;
         } else if (curP) {
-            spinTxt = `🎰 КРУТИТЬ ДЛЯ: ${curP.name.toUpperCase()}`;
-            // колесо показываем — wheelHidden остаётся false
+            spinTxt = t('roulette.spinning_for', {name: curP.name.toUpperCase()});
         }
 
         modeInfo = `<div class="game-first-status">
             <div class="progress-container">
                 <div class="progress-header">
-                    <span class="progress-label">Прогресс</span>
+                    <span class="progress-label">${t('roulette.progress_label')}</span>
                     <span class="progress-value">${assigned}/${total} (${pct}%)</span>
                 </div>
                 <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
             </div>
             <div class="status-card selected-game-card">
                 <div class="status-card-icon">🎮</div>
-                <div class="status-card-content"><span class="status-card-label">Выбранная игра</span><span class="status-card-value">${esc(gameFirstState.selectedGame)}</span></div>
+                <div class="status-card-content"><span class="status-card-label">${t('roulette.selected_game')}</span><span class="status-card-value">${esc(gameFirstState.selectedGame)}</span></div>
             </div>
             ${curP && !done ? `<div class="status-card current-player-card">
                 <div class="status-card-icon">👤</div>
-                <div class="status-card-content"><span class="status-card-label">Сейчас крутит</span><span class="status-card-value" style="color:${esc(playerColors[curP.color]?.name||'#818cf8')}">${esc(curP.name)}</span></div>
+                <div class="status-card-content"><span class="status-card-label">${t('roulette.now_spinning')}</span><span class="status-card-value" style="color:${esc(playerColors[curP.color]?.name||'#818cf8')}">${esc(curP.name)}</span></div>
             </div>` : ''}
             <div class="stats-row">
-                <div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">Осталось: <strong>${remaining.length}</strong></span></div>
-                <div class="stat-mini"><span class="stat-mini-icon">✅</span><span class="stat-mini-text">Назначено: <strong>${assigned}</strong></span></div>
+                <div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">${t('roulette.remaining', {n: remaining.length})}</span></div>
+                <div class="stat-mini"><span class="stat-mini-icon">✅</span><span class="stat-mini-text">${t('roulette.assigned', {n: assigned})}</span></div>
             </div>
             ${assigned > 0 ? `<div class="assigned-tasks-section">
                 <div class="section-subtitle" onclick="toggleAssignedTasks()">
-                    <span class="dropdown-arrow" id="assignedArrow">▶</span><span>Назначено (${assigned})</span>
+                    <span class="dropdown-arrow" id="assignedArrow">▶</span><span>${t('roulette.assigned_count', {n: assigned})}</span>
                 </div>
                 <div class="assigned-tasks-list hidden" id="assignedTasksList">
                     ${Object.entries(gameFirstState.assignedTasks).map(([pn,pt],idx)=>{
@@ -1511,141 +1510,133 @@ function renderRouletteTab() {
             </div>` : ''}
             ${done ? `<div class="completion-notice">
                 <div class="completion-icon">🎉</div>
-                <p class="completion-text">Все задания розданы!</p>
-                <p class="completion-subtext">${assigned} из ${total} игроков</p>
+                <p class="completion-text">${t('roulette.done_notice')}</p>
+                <p class="completion-subtext">${t('roulette.done_players', {assigned, total})}</p>
                 <div class="completion-actions">
-                    <button onclick="showFinalResults()" class="cyber-btn add-btn">📋 Результаты</button>
-                    <button onclick="resetGameFirstMode()" class="cyber-btn danger-btn">🔄 Заново</button>
+                    <button onclick="showFinalResults()" class="cyber-btn add-btn">${t('roulette.btn_results')}</button>
+                    <button onclick="resetGameFirstMode()" class="cyber-btn danger-btn">${t('roulette.btn_reset')}</button>
                 </div>
             </div>` : ''}
         </div>`;
     }
 
     if (rouletteMode === 'task-only') {
-        const gamesWithTasks = Object.entries(games).filter(([,t]) => t.length > 0);
+        const gamesWithTasks = Object.entries(games).filter(([,tasks]) => tasks.length > 0);
         if (gamesWithTasks.length === 0) {
             canSpin = false;
-            spinTxt = '⚠️ НЕТ ИГР С ЗАДАНИЯМИ';
+            spinTxt = t('roulette.no_games');
         } else if (!taskOnlyState.selectedGame) {
             canSpin = false;
-            spinTxt = '📋 ВЫБЕРИТЕ ИГРУ';
+            spinTxt = t('roulette.select_game_btn');
         } else {
-            const selectedTasks = games[taskOnlyState.selectedGame] || [];
-            spinTxt = `🎰 КРУТИТЬ ЗАДАНИЯ: ${taskOnlyState.selectedGame.toUpperCase()}`;
+            spinTxt = t('roulette.spinning_for', {name: taskOnlyState.selectedGame.toUpperCase()});
         }
-        
+
         modeInfo = `<div class="task-only-status">
             <div class="game-selector-section">
                 <div class="section-subtitle">
                     <span class="section-icon">🎮</span>
-                    <span>Выбор игры для заданий</span>
+                    <span>${t('roulette.select_game_lbl')}</span>
                 </div>
                 <div class="game-selector-grid">
                     ${gamesWithTasks.map(([gameName, tasks]) => `
-                        <button onclick="selectGameForTaskOnly(this.dataset.gameName)" 
+                        <button onclick="selectGameForTaskOnly(this.dataset.gameName)"
                                 data-game-name="${esc(gameName)}"
                                 class="game-selector-btn ${taskOnlyState.selectedGame === gameName ? 'selected' : ''}">
                             <div class="game-selector-name">${esc(gameName)}</div>
-                            <div class="game-selector-tasks">${tasks.length} заданий</div>
+                            <div class="game-selector-tasks">${t('games.tasks_count', {n: tasks.length})}</div>
                         </button>
                     `).join('')}
                 </div>
             </div>
-            
             <div class="player-selector-section">
                 <div class="section-subtitle">
                     <span class="section-icon">👤</span>
-                    <span>Выбор игрока</span>
+                    <span>${t('roulette.select_player_lbl')}</span>
                 </div>
                 <div class="player-selector-grid">
-                    <button onclick="selectPlayerForTaskOnly(this.dataset.playerName || null)" 
+                    <button onclick="selectPlayerForTaskOnly(this.dataset.playerName || null)"
                             data-player-name=""
                             class="player-selector-btn ${taskOnlyState.selectedPlayer === null ? 'selected' : ''}">
-                        <div class="player-selector-name">🎲 Случайный</div>
-                        <div class="player-selector-desc">Любой игрок</div>
+                        <div class="player-selector-name">🎲 ${t('roulette.any_player')}</div>
+                        <div class="player-selector-desc">${t('roulette.any_player_desc')}</div>
                     </button>
                     ${players.map(player => `
-                        <button onclick="selectPlayerForTaskOnly(this.dataset.playerName)" 
+                        <button onclick="selectPlayerForTaskOnly(this.dataset.playerName)"
                                 data-player-name="${esc(player.name)}"
                                 class="player-selector-btn ${taskOnlyState.selectedPlayer === player.name ? 'selected' : ''}">
-                            <div class="player-selector-name" style="color: ${esc(playerColors[player.color]?.name || '#818cf8')}">${esc(player.name)}</div>
-                            <div class="player-selector-desc">Конкретный игрок</div>
+                            <div class="player-selector-name" style="color:${esc(playerColors[player.color]?.name||'#818cf8')}">${esc(player.name)}</div>
+                            <div class="player-selector-desc">${t('roulette.specific_player')}</div>
                         </button>
                     `).join('')}
                 </div>
             </div>
-            
             ${taskOnlyState.selectedGame || taskOnlyState.selectedPlayer !== null ? `
                 <div class="selection-summary">
                     ${taskOnlyState.selectedGame ? `
                         <div class="status-card selected-game-card">
                             <div class="status-card-icon">🎮</div>
                             <div class="status-card-content">
-                                <span class="status-card-label">Выбранная игра</span>
+                                <span class="status-card-label">${t('roulette.selected_game')}</span>
                                 <span class="status-card-value">${esc(taskOnlyState.selectedGame)}</span>
                             </div>
-                        </div>
-                    ` : ''}
+                        </div>` : ''}
                     ${taskOnlyState.selectedPlayer !== null ? `
                         <div class="status-card selected-player-card">
                             <div class="status-card-icon">👤</div>
                             <div class="status-card-content">
-                                <span class="status-card-label">Выбранный игрок</span>
-                                <span class="status-card-value" style="color: ${esc(taskOnlyState.selectedPlayer ? (playerColors[players.find(p => p.name === taskOnlyState.selectedPlayer)?.color]?.name || '#818cf8') : '#818cf8')}">${esc(taskOnlyState.selectedPlayer || 'Случайный')}</span>
+                                <span class="status-card-label">${t('roulette.now_spinning')}</span>
+                                <span class="status-card-value" style="color:${esc(taskOnlyState.selectedPlayer?(playerColors[players.find(p=>p.name===taskOnlyState.selectedPlayer)?.color]?.name||'#818cf8'):'#818cf8')}">${esc(taskOnlyState.selectedPlayer||t('roulette.any_player'))}</span>
                             </div>
-                        </div>
-                    ` : ''}
+                        </div>` : ''}
                     <div class="stats-row">
-                        ${taskOnlyState.selectedGame ? `
-                            <div class="stat-mini">
-                                <span class="stat-mini-icon">📋</span>
-                                <span class="stat-mini-text">Заданий: <strong>${games[taskOnlyState.selectedGame]?.length || 0}</strong></span>
-                            </div>
-                        ` : ''}
-                        <div class="stat-mini">
-                            <span class="stat-mini-icon">👥</span>
-                            <span class="stat-mini-text">Игроков: <strong>${players.length}</strong></span>
-                        </div>
+                        ${taskOnlyState.selectedGame?`<div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">${t('roulette.assigned', {n: games[taskOnlyState.selectedGame]?.length||0})}</span></div>`:''}
+                        <div class="stat-mini"><span class="stat-mini-icon">👥</span><span class="stat-mini-text">${t('roulette.assigned', {n: players.length}).replace(/\d+/, players.length)}</span></div>
                     </div>
-                </div>
-            ` : ''}
+                </div>` : ''}
         </div>`;
+    }
+
+    if (!gameFirstState.active && rouletteMode !== 'task-only') {
+        if (rouletteMode === 'player-only' && players.length === 0) {
+            canSpin = false; spinTxt = t('roulette.no_players_btn');
+        }
     }
 
     const wsz = rouletteSettings.wheelSize;
     return `<div class="roulette-panel">
         <div class="roulette-info">
             <div class="mode-selector">
-                <p class="roulette-mode">🎲 <span class="neon-text">РЕЖИМ РУЛЕТКИ</span></p>
+                <p class="roulette-mode">🎲 <span class="neon-text">${t('roulette.mode_label')}</span></p>
                 <div class="mode-buttons">
                     <button onclick="setRouletteMode('full')" class="mode-btn ${rouletteMode==='full'?'active':''}">
                         <span class="mode-btn-icon">🎰</span>
-                        <span class="mode-btn-text">Полный рандом</span>
-                        <span class="mode-btn-desc">Игра+задание+игрок</span>
+                        <span class="mode-btn-text">${t('roulette.mode_full')}</span>
+                        <span class="mode-btn-desc">${t('roulette.mode_full_desc')}</span>
                     </button>
                     <button onclick="setRouletteMode('game-first')" class="mode-btn ${rouletteMode==='game-first'?'active':''}">
                         <span class="mode-btn-icon">🎯</span>
-                        <span class="mode-btn-text">Сначала игра</span>
-                        <span class="mode-btn-desc">Задания для всех</span>
+                        <span class="mode-btn-text">${t('roulette.mode_game_first')}</span>
+                        <span class="mode-btn-desc">${t('roulette.mode_game_first_desc')}</span>
                     </button>
                     <button onclick="setRouletteMode('player-only')" class="mode-btn ${rouletteMode==='player-only'?'active':''}">
                         <span class="mode-btn-icon">👤</span>
-                        <span class="mode-btn-text">Только игрок</span>
-                        <span class="mode-btn-desc">Выбор участника</span>
+                        <span class="mode-btn-text">${t('roulette.mode_player_only')}</span>
+                        <span class="mode-btn-desc">${t('roulette.mode_player_only_desc')}</span>
                     </button>
                     <button onclick="setRouletteMode('task-only')" class="mode-btn ${rouletteMode==='task-only'?'active':''}">
                         <span class="mode-btn-icon">📋</span>
-                        <span class="mode-btn-text">Только задание</span>
-                        <span class="mode-btn-desc">Игра + игрок + задание</span>
+                        <span class="mode-btn-text">${t('roulette.mode_task_only')}</span>
+                        <span class="mode-btn-desc">${t('roulette.mode_task_only_desc')}</span>
                     </button>
                 </div>
             </div>
             <p class="roulette-hint">${getModeHint()}</p>
             ${modeInfo}
             ${!gameFirstState.active ? `<div class="pre-spin-stats">
-                <div class="pre-stat-item"><span class="pre-stat-icon">🎮</span><span class="pre-stat-text">Игр: <strong>${gCount}</strong></span></div>
-                <div class="pre-stat-item"><span class="pre-stat-icon">📋</span><span class="pre-stat-text">Заданий: <strong>${tCount}</strong></span></div>
-                <div class="pre-stat-item"><span class="pre-stat-icon">👥</span><span class="pre-stat-text">Игроков: <strong>${players.length}</strong></span></div>
+                <div class="pre-stat-item"><span class="pre-stat-icon">🎮</span><span class="pre-stat-text">${t('tab.games')}: <strong>${gCount}</strong></span></div>
+                <div class="pre-stat-item"><span class="pre-stat-icon">📋</span><span class="pre-stat-text">${t('roulette.result_task')}: <strong>${tCount}</strong></span></div>
+                <div class="pre-stat-item"><span class="pre-stat-icon">👥</span><span class="pre-stat-text">${t('tab.players')}: <strong>${players.length}</strong></span></div>
             </div>` : ''}
         </div>
         <div class="wheel-and-controls">
@@ -1655,11 +1646,11 @@ function renderRouletteTab() {
             </div>
             <div class="roulette-controls">
                 <button onclick="startSpin()" class="cyber-btn spin-btn" ${spinning||!canSpin?'disabled':''}>${spinTxt}</button>
-                ${gameFirstState.active && canSpin ? '<br><button onclick="resetGameFirstMode()" class="cyber-btn danger-btn outline-btn" style="margin-top:8px">🔄 Сбросить режим</button>' : ''}
-                <p class="spin-hint">${avail.length===0?'⚠️ Добавьте игры с заданиями':'✅ Готово: '+gCount+' игр, '+tCount+' зад., '+players.length+' игр.'}</p>
+                ${gameFirstState.active && canSpin ? `<br><button onclick="resetGameFirstMode()" class="cyber-btn danger-btn outline-btn" style="margin-top:8px">${t('roulette.reset_mode')}</button>` : ''}
+                <p class="spin-hint">${avail.length===0 ? t('roulette.no_games') : t('roulette.ready', {g: gCount, t: tCount, p: players.length})}</p>
             </div>
             <div id="spinResult" class="spin-result hidden">
-                <div class="result-card"><h3>🎯 Результат:</h3><div id="resultContent"></div><div id="resultActions"></div></div>
+                <div class="result-card"><h3>🎯 ${t('roulette.result_task')}:</h3><div id="resultContent"></div><div id="resultActions"></div></div>
             </div>
         </div>
     </div>`;
@@ -1667,10 +1658,10 @@ function renderRouletteTab() {
 
 function getModeHint() {
     const hints = {
-        'full':        'Случайная игра + случайное задание + случайный игрок',
-        'game-first':  'Сначала выбирается игра, затем задания для каждого игрока',
-        'player-only': 'Колесо выбирает только случайного игрока из списка',
-        'task-only':   'Выбирается задание для выбранной игры и игрока',
+        'full':        t('roulette.hint_full'),
+        'game-first':  t('roulette.hint_game_first'),
+        'player-only': t('roulette.hint_player_only'),
+        'task-only':   t('roulette.hint_task_only'),
     };
     return hints[rouletteMode] || '';
 }
@@ -1693,8 +1684,8 @@ function updateWheelSegments() {
     segmentScales = []; // сброс масштабов при обновлении сегментов
     if (rouletteMode === 'player-only') {
         wheelSegments = players.length > 0
-            ? players.map((p,i) => ({ label: p.name, task: p.name, game: 'Игрок', color: playerColors[p.color]?.border || getSegmentColor(i, players.length) }))
-            : [{ label: 'Нет игроков', task: 'Добавьте игроков', game: '', color: '#484f58' }];
+            ? players.map((p,i) => ({ label: p.name, task: p.name, game: t('wheel.player_pick'), color: playerColors[p.color]?.border || getSegmentColor(i, players.length) }))
+            : [{ label: t('wheel.no_players'), task: t('wheel.add_players'), game: '', color: '#484f58' }];
         return;
     }
     if (rouletteMode === 'task-only') {
@@ -1705,7 +1696,7 @@ function updateWheelSegments() {
                 selectedTasks = selectedTasks.filter(t => !spent.includes(t));
             }
             if (!selectedTasks.length) {
-                wheelSegments = [{ label: '✅ Все', task: 'Все задания выпали! Сбросьте список.', game: taskOnlyState.selectedGame, color: '#484f58' }];
+                wheelSegments = [{ label: t('wheel.all_done'), task: t('wheel.all_done_desc'), game: taskOnlyState.selectedGame, color: '#484f58' }];
             } else {
                 wheelSegments = selectedTasks.map((t,i) => ({ 
                     label: `#${i+1}`, 
@@ -1715,7 +1706,7 @@ function updateWheelSegments() {
                 }));
             }
         } else {
-            wheelSegments = [{ label: 'Выберите игру', task: 'Выберите игру из списка', game: '', color: '#484f58' }];
+            wheelSegments = [{ label: t('wheel.select_game'), task: t('wheel.select_game_desc'), game: '', color: '#484f58' }];
         }
         return;
     }
@@ -1735,7 +1726,7 @@ function updateWheelSegments() {
     });
 
     if (!allTasks.length) {
-        wheelSegments = [{ label: 'Нет заданий', task: 'Добавьте задания', game: '', color: '#484f58' }];
+        wheelSegments = [{ label: t('wheel.no_tasks'), task: t('wheel.add_tasks'), game: '', color: '#484f58' }];
         return;
     }
 
@@ -1775,7 +1766,7 @@ function updateWheelSegmentsForGame(gameName) {
     segmentScales = []; // сброс масштабов при обновлении сегментов
     const remaining = getRemainingTasksForGame(gameName);
     if (!remaining.length) {
-        wheelSegments = [{ label: 'Всё', task: 'Все задания розданы', game: gameName, color: '#484f58' }];
+        wheelSegments = [{ label: t('wheel.all_done'), task: t('wheel.all_done_desc'), game: gameName, color: '#484f58' }];
         return;
     }
     wheelSegments = remaining.map((t, i) => {
@@ -1842,7 +1833,7 @@ function checkAllTasksSpent(gameName) {
     const total = (games[gameName] || []).length;
     const spent = (spentTasks[gameName] || []).length;
     if (total > 0 && spent >= total) {
-        showNotification(`✅ Все задания «${gameName}» выпали! Нажмите «Сброс заданий».`, 'warning');
+        showNotification(t('notif.all_tasks_spent', {game: gameName}), 'warning');
     }
 }
 
@@ -1921,7 +1912,7 @@ function renderWheel() {
         if (seg.isGroup) {
             ctx.font = `${fs-2}px Inter,system-ui,sans-serif`;
             ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.fillText(`${seg.items?.length||0} зад.`, textR, fs+2);
+            ctx.fillText(`${seg.items?.length||0} ${t('wheel.group_tasks', {n:''}).replace(/{n}/, '')}`, textR, fs+2);
         }
         ctx.restore(); // ← восстанавливаем после лейбла
 
@@ -1961,10 +1952,10 @@ function setRouletteMode(mode) {
         taskOnlyState.selectedGame = null;
         taskOnlyState.selectedPlayer = null;
     }
-    saveAll(); // Сохраняем все изменения включая новый режим
+    saveAll();
     updateWheelSegments();
     switchTab('roulette');
-    showNotification(`🎲 Режим: ${getModeHint().split(' ')[0]} ${getModeHint().split(' ')[1]||''}`, 'info');
+    showNotification(`🎲 ${getModeHint()}`, 'info');
 }
 
 function resetGameFirstMode() {
@@ -1972,23 +1963,23 @@ function resetGameFirstMode() {
     updateWheelSegments();
     const rd = document.getElementById('spinResult'); if (rd) rd.classList.add('hidden');
     switchTab('roulette');
-    showNotification('Режим сброшен', 'info');
+    showNotification(t('roulette.mode_reset'), 'info');
 }
 
 function confirmResetSpentTasks() {
     const total = countSpentTasks();
     showConfirmModal(
-        '🗑️ Сброс потраченных заданий',
-        `Вернуть ${total} выпавших заданий обратно в рулетку? Они снова будут участвовать в прокрутках.`,
-        'СБРОСИТЬ',
-        'ОТМЕНА',
+        '🗑️ ' + t('settings.spent_reset', {n: total}).replace(/🔄 /, ''),
+        t('roulette.spent_reset_btn', {n: total}),
+        t('common.reset'),
+        t('common.cancel'),
         () => {
             spentTasks = {};
             localStorage.setItem('spentTasks', JSON.stringify(spentTasks));
             updateWheelSegments();
             renderWheel();
             refreshRouletteControls();
-            showNotification(`🔄 Потраченные задания сброшены (${total} шт.)`, 'success');
+            showNotification(t('notif.spent_reset', {n: total}), 'success');
         }
     );
 }
@@ -1996,32 +1987,19 @@ function confirmResetSpentTasks() {
 function selectGameForTaskOnly(gameName) {
     taskOnlyState.selectedGame = gameName;
     saveAll();
-    
-    // Сразу обновляем стили кнопок игр
     const gameButtons = document.querySelectorAll('.game-selector-btn');
     gameButtons.forEach(btn => {
-        if (btn.dataset.gameName === gameName) {
-            btn.classList.add('selected');
-        } else {
-            btn.classList.remove('selected');
-        }
+        btn.classList.toggle('selected', btn.dataset.gameName === gameName);
     });
-    
-    // Обновляем информацию о выбранной игре в summary блоке
     updateGameSummary(gameName);
-    
-    // Обновляем сегменты колеса и перерисовываем его
     updateWheelSegments();
     renderWheel();
-
-    // Активируем кнопку спина без перерендера всей вкладки
     const spinBtn = document.querySelector('.spin-btn');
     if (spinBtn && !spinning) {
         spinBtn.disabled = false;
-        spinBtn.textContent = `🎰 КРУТИТЬ ЗАДАНИЯ: ${gameName.toUpperCase()}`;
+        spinBtn.textContent = `🎰 ${t('roulette.spinning_for', {name: gameName.toUpperCase()})}`;
     }
-
-    showNotification(`🎮 Выбрана игра: ${gameName}`, 'info');
+    showNotification(t('notif.game_selected', {name: gameName}), 'info');
 }
 
 function updateGameSummary(gameName) {
@@ -2073,7 +2051,7 @@ function selectPlayerForTaskOnly(playerName) {
     });
 
     updatePlayerSummary(playerName);
-    showNotification(`👤 Выбран игрок: ${playerName || 'Случайный'}`, 'info');
+    showNotification(t('notif.player_selected', {name: playerName || t('roulette.any_player')}), 'info');
 }
 
 function updatePlayerSummary(playerName) {
@@ -2121,7 +2099,7 @@ function startSpin() {
     if (spinning) return;
     // Gamer: bonus round check
     if (rouletteSettings.bonusRoundEnabled && Math.random()*100 < rouletteSettings.bonusRoundChance) {
-        showNotification('🎉 БОНУС РАУНД! Двойная рулетка!', 'success');
+        showNotification(t('roulette.bonus_round'), 'success');
         setTimeout(() => { executeSpin(); setTimeout(executeSpin, rouletteSettings.spinDuration + 2000) }, 200);
         return;
     }
@@ -2131,21 +2109,21 @@ function startSpin() {
 function executeSpin() {
     if (spinning) return;
     // Validations
-    if (rouletteMode === 'player-only' && players.length < 1) return showNotification('Добавьте игроков', 'error');
+    if (rouletteMode === 'player-only' && players.length < 1) return showNotification(t('roulette.add_players'), 'error');
     if (rouletteMode === 'task-only') {
-        if (!taskOnlyState.selectedGame) return showNotification('Выберите игру из списка', 'error');
+        if (!taskOnlyState.selectedGame) return showNotification(t('roulette.select_game'), 'error');
         const selectedTasks = games[taskOnlyState.selectedGame];
-        if (!selectedTasks || !selectedTasks.length) return showNotification('В выбранной игре нет заданий', 'error');
+        if (!selectedTasks || !selectedTasks.length) return showNotification(t('roulette.no_tasks_game'), 'error');
     }
     if (rouletteMode !== 'player-only' && rouletteMode !== 'task-only') {
-        if (players.length < 1) return showNotification('Добавьте хотя бы одного игрока', 'error');
+        if (players.length < 1) return showNotification(t('roulette.add_players'), 'error');
         const allTasks = Object.values(games).flat();
-        if (!allTasks.length) return showNotification('Добавьте задания', 'error');
+        if (!allTasks.length) return showNotification(t('roulette.add_tasks'), 'error');
     }
     if (rouletteMode === 'game-first' && gameFirstState.active) {
         const rem = getRemainingTasksForGame(gameFirstState.selectedGame);
         if (!rem.length || Object.keys(gameFirstState.assignedTasks).length >= players.length) {
-            return showNotification('Все задания распределены!', 'warning');
+            return showNotification(t('roulette.all_assigned'), 'warning');
         }
     }
 
@@ -2165,8 +2143,8 @@ function executeSpin() {
 }
 
 function startFullRandomMode() {
-    const gamesWithTasks = Object.entries(games).filter(([,t]) => t.length > 0);
-    if (!gamesWithTasks.length) { showNotification('Нет игр с заданиями', 'error'); finishSpin(); return }
+    const gamesWithTasks = Object.entries(games).filter(([,ts]) => ts.length > 0);
+    if (!gamesWithTasks.length) { showNotification(t('roulette.no_tasks_avail'), 'error'); finishSpin(); return }
 
     updateWheelSegments();
 
@@ -2218,7 +2196,7 @@ function spinPlayerOnly() {
             showPopupResult('👤 Выбор игрока', p, p.name);
             if (rouletteSettings.resultDisplay !== 'popup') showResult('Выбор игрока', p, `${p.name} выбран!`);
             // Транслируем результат в overlay
-            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: '👤 Выбор игрока', player: p?.name || '?', task: `${p?.name || '?'} выбран!`, duration: 10000 })); } catch(e) {}
+            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: '👤 ' + t('wheel.player_pick'), player: p?.name || '?', task: `${p?.name || '?'} ${t('results.player_picked', {name: ''}).trim()}`, duration: 10000 })); } catch(e) {}
             playWinSound(); finishSpin();
         }, rouletteSettings.announceDelay || 0);
     });
@@ -2294,8 +2272,8 @@ function startGameFirstInitial() {
             // пересоздаём вкладку чтобы показать статус, но колесо уже стоит
             switchTab('roulette');
         }
-        showNotification(`🎮 Выбрана игра: ${selGame}!`, 'success');
-        if (players[0]) setTimeout(() => showNotification(`👤 ${players[0].name} крутит первым`, 'info'), 1500);
+        showNotification(`🎮 ${t('roulette.selected_game')}: ${selGame}!`, 'success');
+        if (players[0]) setTimeout(() => showNotification(`👤 ${players[0].name}`, 'info'), 1500);
         finishSpin();
     });
 }
@@ -2324,7 +2302,7 @@ function startGameFirstSpin() {
                     const nextP = players[gameFirstState.currentPlayerIndex];
                     const stillRem = getRemainingTasksForGame(gameFirstState.selectedGame);
                     if (!nextP || !stillRem.length) { hideWheelSmoothly(); setTimeout(showFinalResults, 700) }
-                    else { switchTab('roulette'); updateWheelSegmentsForGame(gameFirstState.selectedGame); renderWheel(); showNotification(`👤 Очередь: ${nextP.name}`, 'info') }
+                    else { switchTab('roulette'); updateWheelSegmentsForGame(gameFirstState.selectedGame); renderWheel(); showNotification(`👤 ${t('roulette.now_spinning')}: ${nextP.name}`, 'info') }
                     finishSpin();
                 });
             } else {
@@ -2333,7 +2311,7 @@ function startGameFirstSpin() {
                 const nextP = players[gameFirstState.currentPlayerIndex];
                 const stillRem = getRemainingTasksForGame(gameFirstState.selectedGame);
                 if (!nextP || !stillRem.length) { hideWheelSmoothly(); setTimeout(showFinalResults, 700) }
-                else { switchTab('roulette'); updateWheelSegmentsForGame(gameFirstState.selectedGame); renderWheel(); showNotification(`👤 Очередь: ${nextP.name}`, 'info') }
+                else { switchTab('roulette'); updateWheelSegmentsForGame(gameFirstState.selectedGame); renderWheel(); showNotification(`👤 ${t('roulette.now_spinning')}: ${nextP.name}`, 'info') }
                 finishSpin();
             }
         }, rouletteSettings.announceDelay || 0);
@@ -2539,7 +2517,7 @@ function showPopupResult(game, player, task) {
     if (!popup.querySelector('.popup-close-hint')) {
         const hint = document.createElement('div');
         hint.className = 'popup-close-hint';
-        hint.textContent = '× нажмите чтобы закрыть';
+        hint.textContent = t('results.popup_close_hint');
         hint.onclick = () => closePopup(popup);
         popup.appendChild(hint);
     }
@@ -2580,9 +2558,9 @@ function showResult(game, player, task) {
     if (!rd || !rc) return;
     const cd = playerColors[player?.color] || playerColors.indigo;
     rc.innerHTML = `<div class="result-grid">
-        <div class="result-card-item"><div class="result-card-icon">🎮</div><div class="result-card-label">Игра</div><div class="result-card-value">${esc(game)}</div></div>
-        <div class="result-card-item"><div class="result-card-icon">👤</div><div class="result-card-label">Игрок</div><div class="result-card-value" style="color:${esc(cd.name)}">${esc(player?.name||'?')}</div></div>
-        <div class="result-card-item"><div class="result-card-icon">⚡</div><div class="result-card-label">Задание</div><div class="result-card-value task-highlight">${esc(task)}</div></div>
+        <div class="result-card-item"><div class="result-card-icon">🎮</div><div class="result-card-label">${t('roulette.result_game')}</div><div class="result-card-value">${esc(game)}</div></div>
+        <div class="result-card-item"><div class="result-card-icon">👤</div><div class="result-card-label">${t('roulette.result_player')}</div><div class="result-card-value" style="color:${esc(cd.name)}">${esc(player?.name||'?')}</div></div>
+        <div class="result-card-item"><div class="result-card-icon">⚡</div><div class="result-card-label">${t('roulette.result_task')}</div><div class="result-card-value task-highlight">${esc(task)}</div></div>
     </div>`;
     if (ra) {
         // Используем только безопасные статичные кнопки без пользовательских данных в обработчиках
@@ -2593,15 +2571,15 @@ function showResult(game, player, task) {
                 const btn = document.createElement('button');
                 btn.className = 'cyber-btn add-btn';
                 btn.style.marginTop = '8px';
-                btn.textContent = `🔄 СЛЕДУЮЩИЙ: ${nextP.name}`;
+                btn.textContent = t('roulette.next_player', {name: nextP.name});
                 btn.onclick = startSpin;
                 ra.innerHTML = '<br>';
                 ra.appendChild(btn);
             } else {
-                ra.innerHTML = '<br><button onclick="showFinalResults()" class="cyber-btn add-btn">📋 ВСЕ РЕЗУЛЬТАТЫ</button>';
+                ra.innerHTML = `<br><button onclick="showFinalResults()" class="cyber-btn add-btn">${t('roulette.all_results')}</button>`;
             }
         } else {
-            ra.innerHTML = '<br><button onclick="startSpin()" class="cyber-btn add-btn">🔄 КРУТИТЬ ЕЩЁ</button>';
+            ra.innerHTML = `<br><button onclick="startSpin()" class="cyber-btn add-btn">${t('roulette.spin_again')}</button>`;
         }
     }
     rd.classList.remove('hidden'); rd.style.animation='none'; void rd.offsetHeight; rd.style.animation='fadeInUp 0.5s ease';
@@ -2633,7 +2611,7 @@ function showFinalResults() {
         </div>
         ${unassigned.length ? `<div class="unassigned-warning"><p class="unassigned-warning-title">⚠️ Без заданий</p><div class="unassigned-players-list">${unassigned.map(p=>`<span class="unassigned-player-tag" style="border-color:${esc(playerColors[p.color]?.name||'#818cf8')};color:${esc(playerColors[p.color]?.name||'#818cf8')}">${esc(p.name)}</span>`).join('')}</div></div>` : ''}
     `;
-    if (ra) ra.innerHTML = `<br><button onclick="resetGameFirstMode()" class="cyber-btn add-btn">🔄 НАЧАТЬ ЗАНОВО</button><button onclick="exportResults()" class="cyber-btn export-btn">📤 Экспорт</button>`;
+    if (ra) ra.innerHTML = `<br><button onclick="resetGameFirstMode()" class="cyber-btn add-btn">${t('results.start_over')}</button><button onclick="exportResults()" class="cyber-btn export-btn">${t('results.export')}</button>`;
     rd.classList.remove('hidden'); rd.style.animation='none'; void rd.offsetHeight; rd.style.animation='fadeInUp 0.5s ease';
     switchTab('roulette');
 }
@@ -2668,8 +2646,8 @@ function renderStreamerTab() {
     return `<div class="streamer-panel">
         <div class="streamer-hero">
             <span class="streamer-hero-icon">📡</span>
-            <h2>СТРИМЕР-РЕЖИМ</h2>
-            <p>Продвинутые инструменты для трансляций: OBS overlay, голосование чатом, таймер, быстрые команды и подписчики</p>
+            <h2>${t('streamer.hero_title')}</h2>
+            <p>${t('streamer.hero_desc')}</p>
         </div>
         <div class="streamer-tools-grid">
 
@@ -2677,20 +2655,20 @@ function renderStreamerTab() {
             <div class="streamer-tool-card">
                 <div class="streamer-tool-header">
                     <span class="streamer-tool-icon">🖥️</span>
-                    <div><div class="streamer-tool-title">OBS OVERLAY</div><div class="streamer-tool-desc">Добавьте рулетку в OBS как Browser Source</div></div>
+                    <div><div class="streamer-tool-title">${t('streamer.obs_title')}</div><div class="streamer-tool-desc">${t('streamer.obs_desc')}</div></div>
                 </div>
                 <div class="overlay-url-box">
                     <input type="text" id="overlayUrlInput" readonly value="${getOverlayUrl()}" style="font-size:10px;min-width:0">
-                    <button onclick="copyOverlayUrl()" class="cyber-btn primary-btn" style="padding:5px 10px;font-size:11px">📋 Копировать</button>
+                    <button onclick="copyOverlayUrl()" class="cyber-btn primary-btn" style="padding:5px 10px;font-size:11px">📋 ${t('common.export')}</button>
                 </div>
-                <div class="overlay-status"><span class="overlay-dot"></span> Overlay готов к использованию</div>
+                <div class="overlay-status"><span class="overlay-dot"></span> ${t('streamer.obs_ready')}</div>
                 <div class="streamer-tool-actions">
-                    <button onclick="openOverlayWindow()" class="cyber-btn add-btn">🖥️ Открыть Overlay</button>
-                    <button onclick="toggleChromaKey()" class="cyber-btn ${rouletteSettings.chromaKey?'primary-btn':''}">🟢 Chroma Key</button>
-                    <button onclick="showOverlaySettings()" class="cyber-btn">⚙️ Настройки</button>
+                    <button onclick="openOverlayWindow()" class="cyber-btn add-btn">${t('streamer.obs_open')}</button>
+                    <button onclick="toggleChromaKey()" class="cyber-btn ${rouletteSettings.chromaKey?'primary-btn':''}">${t('streamer.obs_chroma')}</button>
+                    <button onclick="showOverlaySettings()" class="cyber-btn">${t('streamer.obs_settings')}</button>
                 </div>
                 <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">
-                    В OBS: Sources → Browser → URL выше → 400×400px
+                    ${t('streamer.obs_hint')}
                 </div>
             </div>
 
@@ -2698,43 +2676,43 @@ function renderStreamerTab() {
             <div class="streamer-tool-card">
                 <div class="streamer-tool-header">
                     <span class="streamer-tool-icon">🗳️</span>
-                    <div><div class="streamer-tool-title">ГОЛОСОВАНИЕ ЧАТОМ</div><div class="streamer-tool-desc">Зрители выбирают задание через чат</div></div>
+                    <div><div class="streamer-tool-title">${t('streamer.vote_title')}</div><div class="streamer-tool-desc">${t('streamer.vote_desc')}</div></div>
                 </div>
                 <div class="channel-input-group">
-                    <input type="text" id="channelNameInput" placeholder="Ник канала на Twitch..." value="${esc(streamerState.channelName)}" oninput="updateChannelName(this.value)" onkeypress="if(event.key==='Enter')twitchToggleConnect()">
+                    <input type="text" id="channelNameInput" placeholder="${t('streamer.channel_placeholder')}" value="${esc(streamerState.channelName)}" oninput="updateChannelName(this.value)" onkeypress="if(event.key==='Enter')twitchToggleConnect()">
                     <button onclick="twitchToggleConnect()" class="cyber-btn ${streamerState.connected?'danger-btn':'add-btn'} channel-connect-btn" id="chatConnectBtn">
-                        ${streamerState.twitchStatus==='connected'   ? '✅ Отключиться'
-                        : streamerState.twitchStatus==='connecting'  ? '⏳ Подключение...'
-                        : streamerState.twitchStatus==='error'       ? '❌ Retry'
-                        :                                               '🔌 Подключить'}
+                        ${streamerState.twitchStatus==='connected'   ? t('streamer.disconnect_btn')
+                        : streamerState.twitchStatus==='connecting'  ? t('streamer.connecting_btn')
+                        : streamerState.twitchStatus==='error'       ? t('streamer.error_btn')
+                        :                                               t('streamer.connect_btn')}
                     </button>
                 </div>
                 <div class="channel-input-group" style="margin-bottom:8px">
-                    <!-- Авторизация удалена, доступно только чтение чата -->
+                    <!-- Auth removed, read-only -->
                 </div>
                 <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">
-                    📖 Только чтение чата (без отправки сообщений)
+                    ${t('streamer.readonly_hint')}
                 </div>
                 <div id="twitchStatusBar" style="font-size:11px;margin:6px 0 10px;color:${
                     streamerState.twitchStatus==='connected' ? 'var(--accent-success)'
                     : streamerState.twitchStatus==='error'   ? 'var(--accent-danger)'
                     : 'var(--text-muted)'}">
                     ${streamerState.twitchStatus==='connected'
-                        ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> Читаем чат #${esc(streamerState.channelName)} (только чтение)</span>`
-                        : streamerState.twitchStatus==='connecting' ? '⏳ Подключение к Twitch IRC...'
-                        : streamerState.twitchStatus==='error'      ? '❌ Не удалось подключиться'
-                        : 'Введите ник канала и нажмите Подключить'}
+                        ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> ${t('streamer.status_reading', {ch: esc(streamerState.channelName)})}</span>`
+                        : streamerState.twitchStatus==='connecting' ? t('streamer.status_connecting')
+                        : streamerState.twitchStatus==='error'      ? t('streamer.status_error')
+                        : t('streamer.status_idle')}
                 </div>
                 <div id="voteArea">
                     ${renderVoteArea()}
                 </div>
                 <div style="margin-top:12px;font-size:11px;color:var(--text-muted);padding:8px;background:var(--bg-tertiary);border-radius:var(--radius-sm)">
-                    💡 <strong>Команды для модераторов:</strong><br>
-                    !spin - запустить рулетку<br>
-                    !vote - начать голосование<br>
-                    !timer N - установить таймер на N минут<br>
-                    <br><strong>Команды для зрителей:</strong><br>
-                    !join или !addme - добавиться в колесо подписчиков
+                    💡 <strong>${t('streamer.cmd_hint_title')}</strong><br>
+                    ${t('streamer.cmd_spin')}<br>
+                    ${t('streamer.cmd_vote')}<br>
+                    ${t('streamer.cmd_timer')}<br>
+                    <br><strong>${t('streamer.cmd_viewer_title')}</strong><br>
+                    ${t('streamer.cmd_join')}
                 </div>
             </div>
 
@@ -2742,22 +2720,22 @@ function renderStreamerTab() {
             <div class="streamer-tool-card">
                 <div class="streamer-tool-header">
                     <span class="streamer-tool-icon">⏱️</span>
-                    <div><div class="streamer-tool-title">ТАЙМЕР СТРИМЕРА</div><div class="streamer-tool-desc">Обратный отсчёт для испытаний (команда: !timer N)</div></div>
+                    <div><div class="streamer-tool-title">${t('streamer.timer_title')}</div><div class="streamer-tool-desc">${t('streamer.timer_desc')}</div></div>
                 </div>
                 <div class="timer-display" id="timerDisplay">${formatTime(streamerState.timerSeconds||0)}</div>
                 <div class="input-group" style="margin-bottom:10px">
-                    <input type="number" id="timerMinutes" placeholder="Мин" min="0" max="99" value="5" style="max-width:80px">
-                    <input type="number" id="timerSeconds2" placeholder="Сек" min="0" max="59" value="0" style="max-width:80px">
-                    <button onclick="setTimer()" class="cyber-btn primary-btn">⏱ Установить</button>
+                    <input type="number" id="timerMinutes" placeholder="${t('streamer.timer_min')}" min="0" max="99" value="5" style="max-width:80px">
+                    <input type="number" id="timerSeconds2" placeholder="${t('streamer.timer_sec')}" min="0" max="59" value="0" style="max-width:80px">
+                    <button onclick="setTimer()" class="cyber-btn primary-btn">${t('streamer.timer_set_btn')}</button>
                 </div>
                 <div class="timer-controls">
-                    <button onclick="startTimer()"  class="cyber-btn add-btn"    id="timerStartBtn">${streamerState.timerRunning?'⏸️ Пауза':'▶️ Старт'}</button>
-                    <button onclick="resetTimer()"  class="cyber-btn danger-btn">🔄 Сброс</button>
-                    <button onclick="addTime(30)"   class="cyber-btn">+30с</button>
-                    <button onclick="addTime(60)"   class="cyber-btn">+1м</button>
+                    <button onclick="startTimer()"  class="cyber-btn add-btn"    id="timerStartBtn">${streamerState.timerRunning ? t('streamer.timer_pause') : t('streamer.timer_start')}</button>
+                    <button onclick="resetTimer()"  class="cyber-btn danger-btn">${t('streamer.timer_reset')}</button>
+                    <button onclick="addTime(30)"   class="cyber-btn">${t('streamer.timer_add30')}</button>
+                    <button onclick="addTime(60)"   class="cyber-btn">${t('streamer.timer_add1m')}</button>
                 </div>
                 <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">
-                    Статистика: ${streamerState.chatStats.totalMessages} сообщений, ${streamerState.chatStats.uniqueViewers} уникальных зрителей
+                    ${t('streamer.stats_messages')} ${streamerState.chatStats.totalMessages}, ${t('streamer.stats_unique').replace(':','')} ${streamerState.chatStats.uniqueViewers}
                 </div>
             </div>
 
@@ -2765,21 +2743,21 @@ function renderStreamerTab() {
             <div class="streamer-tool-card">
                 <div class="streamer-tool-header">
                     <span class="streamer-tool-icon">💜</span>
-                    <div><div class="streamer-tool-title">КОЛЕСО ПОДПИСЧИКОВ</div><div class="streamer-tool-desc">Рулетка из зрителей (команды: !join, !addchatters)</div></div>
+                    <div><div class="streamer-tool-title">${t('streamer.subwheel_title')}</div><div class="streamer-tool-desc">${t('streamer.subwheel_desc')}</div></div>
                 </div>
                 <div class="sub-wheel-section">
                     <div class="input-group" style="margin-bottom:8px">
-                        <input type="text" id="subNameInput" placeholder="Ник зрителя..." onkeypress="if(event.key==='Enter')addSubToWheel()">
-                        <button onclick="addSubToWheel()" class="cyber-btn add-btn">+ Добавить</button>
+                        <input type="text" id="subNameInput" placeholder="${t('streamer.sub_placeholder')}" onkeypress="if(event.key==='Enter')addSubToWheel()">
+                        <button onclick="addSubToWheel()" class="cyber-btn add-btn">${t('streamer.sub_add_btn')}</button>
                     </div>
                     <div class="sub-list" id="subList">${renderSubList()}</div>
                 </div>
                 <div class="streamer-tool-actions">
-                    <button onclick="spinSubWheel()" class="cyber-btn spin-btn" style="width:100%;font-size:12px;letter-spacing:1px;padding:12px" ${!streamerState.subWheelList.length?'disabled':''}>🎰 Крутить колесо</button>
+                    <button onclick="spinSubWheel()" class="cyber-btn spin-btn" style="width:100%;font-size:12px;letter-spacing:1px;padding:12px" ${!streamerState.subWheelList.length?'disabled':''}>${t('streamer.sub_spin_btn')}</button>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-                    <button onclick="addAllChattersToWheel()" class="cyber-btn primary-btn" style="flex:1;font-size:11px" ${streamerState.twitchStatus!=='connected'?'disabled':''}>👥 Все из чата</button>
-                    ${streamerState.subWheelList.length ? `<button onclick="clearSubWheel()" class="cyber-btn danger-btn" style="flex:1;font-size:11px">🗑️ Очистить</button>` : ''}
+                    <button onclick="addAllChattersToWheel()" class="cyber-btn primary-btn" style="flex:1;font-size:11px" ${streamerState.twitchStatus!=='connected'?'disabled':''}>${t('streamer.sub_all_chat')}</button>
+                    ${streamerState.subWheelList.length ? `<button onclick="clearSubWheel()" class="cyber-btn danger-btn" style="flex:1;font-size:11px">${t('streamer.sub_clear')}</button>` : ''}
                 </div>
             </div>
 
@@ -2787,17 +2765,17 @@ function renderStreamerTab() {
             <div class="streamer-tool-card">
                 <div class="streamer-tool-header">
                     <span class="streamer-tool-icon">⚡</span>
-                    <div><div class="streamer-tool-title">БЫСТРЫЕ ДЕЙСТВИЯ</div><div class="streamer-tool-desc">Горячие команды для стрима</div></div>
+                    <div><div class="streamer-tool-title">${t('streamer.quick_title')}</div><div class="streamer-tool-desc">${t('streamer.quick_desc')}</div></div>
                 </div>
                 <div class="quick-commands">
-                    <button onclick="quickSpin()" class="quick-cmd-btn"><span class="cmd-icon">🎰</span><span class="cmd-label">Крутить!</span></button>
-                    <button onclick="quickCopyResult()" class="quick-cmd-btn"><span class="cmd-icon">📋</span><span class="cmd-label">Скоп. результат</span></button>
-                    <button onclick="quickShareResult()" class="quick-cmd-btn"><span class="cmd-icon">📤</span><span class="cmd-label">Экспорт</span></button>
-                    <button onclick="switchTab('roulette')" class="quick-cmd-btn"><span class="cmd-icon">🎡</span><span class="cmd-label">К рулетке</span></button>
-                    <button onclick="quickAddFromChat()" class="quick-cmd-btn"><span class="cmd-icon">💬</span><span class="cmd-label">Задание из чата</span></button>
-                    <button onclick="openOverlayWindow()" class="quick-cmd-btn"><span class="cmd-icon">🖥️</span><span class="cmd-label">OBS Overlay</span></button>
-                    <button onclick="startVote()" class="quick-cmd-btn"><span class="cmd-icon">🗳️</span><span class="cmd-label">Голосование</span></button>
-                    <button onclick="quickResetSession()" class="quick-cmd-btn"><span class="cmd-icon">🔄</span><span class="cmd-label">Новая сессия</span></button>
+                    <button onclick="quickSpin()" class="quick-cmd-btn"><span class="cmd-icon">🎰</span><span class="cmd-label">${t('streamer.quick_spin')}</span></button>
+                    <button onclick="quickCopyResult()" class="quick-cmd-btn"><span class="cmd-icon">📋</span><span class="cmd-label">${t('streamer.quick_copy')}</span></button>
+                    <button onclick="quickShareResult()" class="quick-cmd-btn"><span class="cmd-icon">📤</span><span class="cmd-label">${t('streamer.quick_export')}</span></button>
+                    <button onclick="switchTab('roulette')" class="quick-cmd-btn"><span class="cmd-icon">🎡</span><span class="cmd-label">${t('streamer.quick_roulette')}</span></button>
+                    <button onclick="quickAddFromChat()" class="quick-cmd-btn"><span class="cmd-icon">💬</span><span class="cmd-label">${t('streamer.quick_chat')}</span></button>
+                    <button onclick="openOverlayWindow()" class="quick-cmd-btn"><span class="cmd-icon">🖥️</span><span class="cmd-label">${t('streamer.quick_overlay')}</span></button>
+                    <button onclick="startVote()" class="quick-cmd-btn"><span class="cmd-icon">🗳️</span><span class="cmd-label">${t('streamer.quick_vote')}</span></button>
+                    <button onclick="quickResetSession()" class="quick-cmd-btn"><span class="cmd-icon">🔄</span><span class="cmd-label">${t('streamer.quick_reset')}</span></button>
                 </div>
             </div>
 
@@ -2806,41 +2784,40 @@ function renderStreamerTab() {
                 <div class="streamer-tool-header">
                     <span class="streamer-tool-icon">💬</span>
                     <div>
-                        <div class="streamer-tool-title">TWITCH ЧАТ</div>
-                        <div class="streamer-tool-desc">${streamerState.twitchStatus === 'connected' ? `🟢 #${streamerState.channelName} — онлайн` : 'Реальный Twitch IRC'}</div>
+                        <div class="streamer-tool-title">${t('streamer.chat_title')}</div>
+                        <div class="streamer-tool-desc">${streamerState.twitchStatus === 'connected' ? t('streamer.chat_online', {ch: streamerState.channelName}) : t('streamer.chat_real_irc')}</div>
                     </div>
                 </div>
                 <div class="chat-box" id="chatBox">${renderChatMessages()}</div>
-                <!-- Отправка сообщений недоступна без авторизации -->
                 <div class="streamer-tool-actions" style="margin-top:8px">
-                    <button onclick="sendCommandsList()" class="cyber-btn primary-btn" ${!streamerState.twitchToken || streamerState.twitchStatus!=='connected'?'disabled':''}>📝 Команды</button>
-                    <button onclick="clearChat()" class="cyber-btn danger-btn">🗑️ Очистить чат</button>
+                    <button onclick="sendCommandsList()" class="cyber-btn primary-btn" ${!streamerState.twitchToken || streamerState.twitchStatus!=='connected'?'disabled':''}>${t('streamer.chat_commands')}</button>
+                    <button onclick="clearChat()" class="cyber-btn danger-btn">${t('streamer.chat_clear')}</button>
                 </div>
-                ${streamerState.chatStats.mostActiveUser ? `<div style="margin-top:8px;font-size:10px;color:var(--text-muted)">Самый активный: ${streamerState.chatStats.mostActiveUser}</div>` : ''}
+                ${streamerState.chatStats.mostActiveUser ? `<div style="margin-top:8px;font-size:10px;color:var(--text-muted)">${t('streamer.chat_most_active', {name: streamerState.chatStats.mostActiveUser})}</div>` : ''}
             </div>
 
             <!-- Stream Tools -->
             <div class="streamer-tool-card">
                 <div class="streamer-tool-header">
                     <span class="streamer-tool-icon">🔧</span>
-                    <div><div class="streamer-tool-title">ИНСТРУМЕНТЫ СТРИМА</div><div class="streamer-tool-desc">Дополнительные функции для трансляции</div></div>
+                    <div><div class="streamer-tool-title">${t('streamer.tools_title')}</div><div class="streamer-tool-desc">${t('streamer.tools_desc')}</div></div>
                 </div>
                 <div style="display:grid;gap:8px;margin-bottom:12px">
                     <div style="display:flex;gap:8px;align-items:center">
-                        <label style="font-size:12px;min-width:80px">Звук чата:</label>
+                        <label style="font-size:12px;min-width:80px">${t('streamer.sounds_label')}</label>
                         <label class="toggle-switch"><input type="checkbox" ${streamerState.chatSounds||false?'checked':''} onchange="toggleChatSounds(this.checked)"><span class="toggle-slider"></span></label>
-                        <span style="font-size:11px;color:var(--text-muted)">Уведомления о сообщениях</span>
+                        <span style="font-size:11px;color:var(--text-muted)">${t('streamer.sounds_hint')}</span>
                     </div>
                     <div style="display:flex;gap:8px;align-items:center">
-                        <label style="font-size:12px;min-width:80px">Авто-спин:</label>
+                        <label style="font-size:12px;min-width:80px">${t('streamer.autospin_label')}</label>
                         <label class="toggle-switch"><input type="checkbox" ${streamerState.autoSpin||false?'checked':''} onchange="toggleAutoSpin(this.checked)"><span class="toggle-slider"></span></label>
-                        <span style="font-size:11px;color:var(--text-muted)">Автоматический спин при !spin</span>
+                        <span style="font-size:11px;color:var(--text-muted)">${t('streamer.autospin_hint')}</span>
                     </div>
                 </div>
                 <div class="streamer-tool-actions">
-                    <button onclick="showStreamStats()" class="cyber-btn">📊 Статистика</button>
-                    <button onclick="exportStreamData()" class="cyber-btn export-btn">📤 Экспорт данных</button>
-                    <button onclick="resetStreamSession()" class="cyber-btn danger-btn">🔄 Новая сессия</button>
+                    <button onclick="showStreamStats()" class="cyber-btn">${t('streamer.stats_btn')}</button>
+                    <button onclick="exportStreamData()" class="cyber-btn export-btn">${t('streamer.export_btn')}</button>
+                    <button onclick="resetStreamSession()" class="cyber-btn danger-btn">${t('streamer.reset_btn')}</button>
                 </div>
             </div>
 
@@ -2855,11 +2832,11 @@ function renderVoteArea() {
         return `
             <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">
                 ${isReal
-                    ? `✅ Чат подключён — зрители пишут <b>1–4</b> для голосования`
-                    : `⚠️ Подключите Twitch чат для голосования зрителями`}
+                    ? `✅ ${t('streamer.status_reading', {ch: esc(streamerState.channelName)}).replace('Читаем чат', 'Чат подключён —')} зрители пишут <b>1–4</b> для голосования`
+                    : `⚠️ ${t('streamer.connect_first_vote')}`}
             </div>
             <div style="margin-bottom:10px">
-                <input type="text" id="voteTitle" placeholder="Тема голосования (необязательно)…"
+                <input type="text" id="voteTitle" placeholder="${t('streamer.vote_topic')}"
                     value="${esc(streamerState.voteTitle||'')}"
                     oninput="streamerState.voteTitle=this.value"
                     style="width:100%;font-size:12px;padding:8px 12px;border-radius:var(--radius-md);
@@ -2869,8 +2846,8 @@ function renderVoteArea() {
                     onblur="this.style.borderColor='var(--border-light)'">
             </div>
             <div class="input-group" style="margin-bottom:10px">
-                <input type="number" id="voteDuration" placeholder="Сек" min="10" max="300" value="${streamerState.voteDuration}" style="max-width:80px" oninput="streamerState.voteDuration=parseInt(this.value)||30">
-                <label style="font-size:12px;color:var(--text-secondary);min-width:auto">сек голосования</label>
+                <input type="number" id="voteDuration" placeholder="sec" min="10" max="300" value="${streamerState.voteDuration}" style="max-width:80px" oninput="streamerState.voteDuration=parseInt(this.value)||30">
+                <label style="font-size:12px;color:var(--text-secondary);min-width:auto">${t('streamer.vote_sec_label')}</label>
             </div>
             <div class="vote-options" style="margin-bottom:12px">
                 ${gameOptions.map((g,i) => `
@@ -2878,10 +2855,10 @@ function renderVoteArea() {
                         <span class="vote-option-key">${i+1}</span>
                         <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g)}</span>
                     </div>`).join('')}
-                ${!gameOptions.length ? '<div style="font-size:12px;color:var(--text-muted)">Добавьте игры для голосования</div>' : ''}
+                ${!gameOptions.length ? `<div style="font-size:12px;color:var(--text-muted)">${t('streamer.no_games_vote')}</div>` : ''}
             </div>
             <button onclick="startVote()" class="cyber-btn add-btn" style="width:100%" ${!gameOptions.length || !isReal ? 'disabled' : ''}>
-                ${isReal ? '▶️ Начать голосование' : '🔌 Сначала подключите чат'}
+                ${isReal ? t('streamer.vote_start_btn') : t('streamer.vote_connect_first')}
             </button>`;
     }
 
@@ -2901,9 +2878,9 @@ function renderVoteArea() {
     return `
         ${titleHtml}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div class="vote-timer ${streamerState.voteTimer<=5?'urgent':''}" id="voteCountdown" style="font-size:24px;margin:0">${streamerState.voteTimer}с</div>
+            <div class="vote-timer ${streamerState.voteTimer<=5?'urgent':''}" id="voteCountdown" style="font-size:24px;margin:0">${t('overlay.vote_sec', {n: streamerState.voteTimer})}</div>
             <div style="font-size:11px;color:var(--text-secondary);text-align:right">
-                👥 Проголосовало: <b>${voterCount}</b>
+                👥 ${t('streamer.vote_voters', {n: voterCount})}
             </div>
         </div>
         <div class="vote-options">
@@ -2922,13 +2899,13 @@ function renderVoteArea() {
                 </div>`;
             }).join('')}
         </div>
-        <button onclick="stopVote()" class="cyber-btn danger-btn" style="width:100%;margin-top:10px">⏹️ Завершить</button>`;
+        <button onclick="stopVote()" class="cyber-btn danger-btn" style="width:100%;margin-top:10px">${t('streamer.vote_stop_btn')}</button>`;
 }
 
 function startVote() {
     const gameOptions = Object.keys(games).slice(0, 4);
-    if (!gameOptions.length) return showNotification('Добавьте игры для голосования', 'error');
-    if (!streamerState.connected) return showNotification('Сначала подключитесь к Twitch-каналу', 'warning');
+    if (!gameOptions.length) return showNotification(t('streamer.no_games_vote'), 'error');
+    if (!streamerState.connected) return showNotification(t('streamer.connect_first_vote'), 'warning');
 
     // Сохраняем тему из поля ввода если оно ещё в DOM
     const titleInput = document.getElementById('voteTitle');
@@ -2942,7 +2919,7 @@ function startVote() {
     gameOptions.forEach((_,i) => { streamerState.voteVotes[i+1] = { option: gameOptions[i], count: 0 } });
 
     const titleMsg = streamerState.voteTitle ? ` "${streamerState.voteTitle}"` : '';
-    showNotification(`🗳️ Голосование${titleMsg} началось! Зрители пишут 1–${gameOptions.length} в чате`, 'success');
+    showNotification(t('streamer.vote_started', {topic: titleMsg, n: gameOptions.length}), 'success');
 
     // Передаём данные голосования в overlay через localStorage
     try {
@@ -2959,7 +2936,7 @@ function startVote() {
         
         // Обновляем таймер
         const cd = document.getElementById('voteCountdown');
-        if (cd) { cd.textContent = streamerState.voteTimer + 'с'; cd.className = `vote-timer${streamerState.voteTimer <= 5 ? ' urgent' : ''}` }
+        if (cd) { cd.textContent = t('overlay.vote_sec', {n: streamerState.voteTimer}); cd.className = `vote-timer${streamerState.voteTimer <= 5 ? ' urgent' : ''}` }
         // Перерисовываем только бары голосов без полного ре-рендера
         _refreshVoteBars();
         if (streamerState.voteTimer <= 0) stopVote();
@@ -2995,19 +2972,16 @@ function stopVote() {
     const va = document.getElementById('voteArea');
     if (va) va.innerHTML = renderVoteArea();
     if (winner && maxVotes > 0) {
-        const message = `🏆 Победитель: ${winner} с ${maxVotes} голос${maxVotes===1?'':'ов'} от ${voterCount} зрителей`;
-        showNotification(message, 'success');
-
-        // Передаём победителя в overlay
+        showNotification(t('streamer.vote_winner', {name: winner, votes: maxVotes, viewers: voterCount}), 'success');
         try {
             localStorage.setItem('overlayState', JSON.stringify({
                 type: 'winner',
                 name: winner,
-                from: `из голосования · ${voterCount} зрит. · ${streamerState.voteTitle||''}`
+                from: t('streamer.vote_from', {n: voterCount}) + (streamerState.voteTitle ? ` · ${streamerState.voteTitle}` : '')
             }));
         } catch(e) {}
     } else {
-        showNotification('Голосование завершено без голосов', 'info');
+        showNotification(t('streamer.vote_no_votes'), 'info');
         try {
             localStorage.setItem('overlayState', JSON.stringify({ type: 'idle' }));
         } catch(e) {}
@@ -3026,22 +3000,22 @@ function startTimer() {
     if (streamerState.timerRunning) {
         clearInterval(streamerState.timerInterval); streamerState.timerInterval = null;
         streamerState.timerRunning = false;
-        const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = '▶️ Старт';
+        const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = t('streamer.timer_start');
         updateTimerDisplay(); // транслируем pause в overlay
         return;
     }
-    if (streamerState.timerSeconds <= 0) return showNotification('Установите время', 'warning');
+    if (streamerState.timerSeconds <= 0) return showNotification(t('streamer.timer_set_first'), 'warning');
     streamerState.timerRunning = true;
-    const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = '⏸️ Пауза';
-    updateTimerDisplay(); // транслируем start в overlay
+    const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = t('streamer.timer_pause');
+    updateTimerDisplay();
     streamerState.timerInterval = setInterval(() => {
         if (streamerState.timerSeconds > 0) { streamerState.timerSeconds--; updateTimerDisplay() }
         else {
             clearInterval(streamerState.timerInterval); streamerState.timerInterval = null;
             streamerState.timerRunning = false;
-            const b = document.getElementById('timerStartBtn'); if (b) b.textContent = '▶️ Старт';
-            updateTimerDisplay(); // транслируем end в overlay
-            playWinSound(); showNotification('⏱️ Время вышло!', 'warning');
+            const b = document.getElementById('timerStartBtn'); if (b) b.textContent = t('streamer.timer_start');
+            updateTimerDisplay();
+            playWinSound(); showNotification(t('streamer.timer_done'), 'warning');
         }
     }, 1000);
 }
@@ -3049,13 +3023,13 @@ function resetTimer() {
     if (streamerState.timerInterval) { clearInterval(streamerState.timerInterval); streamerState.timerInterval = null }
     streamerState.timerRunning = false;
     streamerState.timerSeconds = streamerState.timerInitial || 0;
-    const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = '▶️ Старт';
+    const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = t('streamer.timer_start');
     updateTimerDisplay();
 }
 function addTime(secs) {
     streamerState.timerSeconds += secs;
     updateTimerDisplay();
-    showNotification(`+${secs}с добавлено`, 'info');
+    showNotification(t('streamer.timer_added', {n: secs}), 'info');
 }
 function updateTimerDisplay() {
     const d = document.getElementById('timerDisplay'); if (!d) return;
@@ -3081,17 +3055,15 @@ function formatTime(s) {
 function renderSubList() {
     const chatParticipants = getChatParticipants(1);
     const activeCount = chatParticipants.length;
-    
     if (!streamerState.subWheelList.length) {
         return `
-            <span style="font-size:11px;color:var(--text-muted)">Добавьте зрителей...</span>
-            ${activeCount > 0 ? `<div style="margin-top:6px;font-size:10px;color:var(--text-secondary)">💬 ${activeCount} активных в чате</div>` : ''}
+            <span style="font-size:11px;color:var(--text-muted)">${t('streamer.sub_empty')}</span>
+            ${activeCount > 0 ? `<div style="margin-top:6px;font-size:10px;color:var(--text-secondary)">${t('streamer.sub_active_count', {n: activeCount})}</div>` : ''}
         `;
     }
-    
     return `
-        ${streamerState.subWheelList.map((n,i)=>`<span class="sub-tag" data-idx="${i}" onclick="removeSubFromWheel(+this.dataset.idx)" title="Удалить">${esc(n)} ×</span>`).join('')}
-        ${activeCount > 0 ? `<div style="margin-top:8px;font-size:10px;color:var(--text-secondary)">💬 ${activeCount} активных участников в чате доступно</div>` : ''}
+        ${streamerState.subWheelList.map((n,i)=>`<span class="sub-tag" data-idx="${i}" onclick="removeSubFromWheel(+this.dataset.idx)" title="${t('common.delete')}">${esc(n)} ×</span>`).join('')}
+        ${activeCount > 0 ? `<div style="margin-top:8px;font-size:10px;color:var(--text-secondary)">${t('streamer.sub_active_count', {n: activeCount})}</div>` : ''}
     `;
 }
 function addSubToWheel() {
@@ -3099,9 +3071,8 @@ function addSubToWheel() {
     const name = inp.value.trim(); if (!name) return;
     streamerState.subWheelList.push(name); inp.value = '';
     const sl = document.getElementById('subList'); if (sl) sl.innerHTML = renderSubList();
-    const spinBtn = document.querySelector('.spin-btn[disabled]'); // enable if any
-    switchTab('streamer'); // refresh
-    showNotification(`💜 ${name} добавлен в колесо`, 'info');
+    switchTab('streamer');
+    showNotification(t('streamer.sub_added', {name}), 'info');
 }
 function removeSubFromWheel(i) {
     streamerState.subWheelList.splice(i, 1);
@@ -3109,20 +3080,19 @@ function removeSubFromWheel(i) {
 }
 function clearSubWheel() {
     streamerState.subWheelList = []; switchTab('streamer');
-    showNotification('Список подписчиков очищен', 'info');
+    showNotification(t('streamer.sub_cleared'), 'info');
 }
 function spinSubWheel() {
-    if (!streamerState.subWheelList.length) return showNotification('Добавьте зрителей', 'error');
+    if (!streamerState.subWheelList.length) return showNotification(t('streamer.sub_no_viewers'), 'error');
     const winner = streamerState.subWheelList[Math.floor(Math.random()*streamerState.subWheelList.length)];
     playWinSound();
     if (rouletteSettings.particleEffect) createParticles();
-    showNotification(`🎉 Победитель: ${winner}!`, 'success');
-    // Create a quick result display
+    showNotification(t('streamer.sub_winner', {name: winner}), 'success');
     const modal = document.getElementById('confirmModal');
     if (modal) {
-        document.getElementById('modalTitle').textContent = '🎉 Победитель определён!';
-        document.getElementById('modalMessage').innerHTML = `<div style="text-align:center;padding:20px"><div style="font-size:48px;margin-bottom:16px">🏆</div><div style="font-size:24px;font-weight:700;color:var(--accent-primary)">${esc(winner)}</div><div style="font-size:13px;color:var(--text-muted);margin-top:8px">из ${streamerState.subWheelList.length} зрителей</div></div>`;
-        document.getElementById('modalConfirm').textContent = 'ОК';
+        document.getElementById('modalTitle').textContent = t('streamer.sub_winner_title');
+        document.getElementById('modalMessage').innerHTML = `<div style="text-align:center;padding:20px"><div style="font-size:48px;margin-bottom:16px">🏆</div><div style="font-size:24px;font-weight:700;color:var(--accent-primary)">${esc(winner)}</div><div style="font-size:13px;color:var(--text-muted);margin-top:8px">${t('streamer.sub_from', {n: streamerState.subWheelList.length})}</div></div>`;
+        document.getElementById('modalConfirm').textContent = t('common.close');
         document.getElementById('modalConfirm').onclick = closeModal;
         const cb = modal.querySelector('.cancel-btn'); if (cb) cb.style.display='none';
         modal.classList.remove('hidden');
@@ -3135,7 +3105,7 @@ function renderChatMessages() {
     const msgs   = streamerState.chatMessages;
     if (!msgs.length) {
         return `<div style="color:var(--text-muted);font-size:11px;padding:8px;text-align:center">
-            ${isReal ? '⏳ Ожидание сообщений из чата...' : '💬 Подключите чат чтобы видеть сообщения'}
+            ${isReal ? t('streamer.chat_waiting') : t('streamer.chat_connect_first')}
         </div>`;
     }
     return msgs.slice(-50).map(m => _renderOneChatMsg(m)).join('');
@@ -3202,7 +3172,7 @@ function sendCommandsList() {
         cb.scrollTop = cb.scrollHeight;
     }
 
-    showNotification('📝 Список команд добавлен в локальный чат', 'info');
+    showNotification('📝 ' + t('streamer.chat_commands') + ' added', 'info');
 }
 
 function clearChat() {
@@ -3214,7 +3184,7 @@ function clearChat() {
     
     const cb = document.getElementById('chatBox'); 
     if (cb) cb.innerHTML = renderChatMessages();
-    showNotification('Чат очищен', 'info');
+    showNotification(t('streamer.chat_cleared'), 'info');
 }
 function twitchToggleConnect() {
     const inp = document.getElementById('channelNameInput');
@@ -3227,39 +3197,33 @@ function twitchToggleConnect() {
 }
 
 // Quick commands
-function quickSpin() { 
+function quickSpin() {
     if (streamerState.autoSpin) {
-        // Автоматический спин без перехода на вкладку
-        if (spinning) return showNotification('Рулетка уже крутится', 'warning');
+        if (spinning) return showNotification(t('streamer.spinning_already'), 'warning');
         startSpin();
-        // Отправка в чат недоступна без авторизации
     } else {
-        // Обычный переход на вкладку рулетки
-        switchTab('roulette'); 
-        setTimeout(() => {
-            startSpin();
-            // Отправка в чат недоступна без авторизации
-        }, 400);
+        switchTab('roulette');
+        setTimeout(() => { startSpin(); }, 400);
     }
 }
 function quickCopyResult() {
     const rc = document.getElementById('resultContent');
-    if (!rc || !rc.textContent.trim()) return showNotification('Нет результата для копирования', 'warning');
-    navigator.clipboard.writeText(rc.innerText).then(()=>showNotification('📋 Скопировано!','success')).catch(()=>showNotification('Ошибка копирования','error'));
+    if (!rc || !rc.textContent.trim()) return showNotification(t('notif.no_result_copy'), 'warning');
+    navigator.clipboard.writeText(rc.innerText).then(()=>showNotification(t('notif.copied'),'success')).catch(()=>showNotification(t('notif.copy_error'),'error'));
 }
 function quickShareResult() { exportResults() }
 function quickAddFromChat() {
     const game = Object.keys(games)[0];
-    if (!game) return showNotification('Сначала добавьте игру', 'warning');
-    const chatTasks = ['Играй одной рукой','Без звука 5 минут','Поменяй управление','Игра вслепую 2 минуты'];
+    if (!game) return showNotification(t('games.no_game_selected'), 'warning');
+    const chatTasks = ['Play one-handed','No sound for 5 min','Swap controls','Blindfolded for 2 min'];
     const task = chatTasks[Math.floor(Math.random()*chatTasks.length)];
     games[game].push(task); saveAll();
-    showNotification(`✅ Задание "${task}" добавлено в ${game}`, 'success');
+    showNotification(t('notif.task_added_to', {task, game}), 'success');
 }
 function quickResetSession() {
-    showConfirmModal('🔄 Новая сессия', 'Сбросить текущую сессию игры?','СБРОСИТЬ','ОТМЕНА',()=>{
+    showConfirmModal(t('streamer.reset_confirm'), t('streamer.reset_msg'), t('streamer.reset_btn2'), t('common.cancel'), () => {
         resetGameFirstMode();
-        showNotification('🔄 Сессия сброшена, можно начинать заново!','success');
+        showNotification(t('streamer.session_reset'), 'success');
     });
 }
 
@@ -3271,28 +3235,27 @@ function getOverlayUrl() {
 }
 function copyOverlayUrl() {
     navigator.clipboard.writeText(getOverlayUrl())
-        .then(()=>showNotification('📋 URL скопирован! Вставьте в OBS Browser Source','success'))
-        .catch(()=>showNotification('Ошибка копирования','error'));
+        .then(()=>showNotification(t('streamer.url_copied'),'success'))
+        .catch(()=>showNotification(t('streamer.url_copy_error'),'error'));
 }
 function openOverlayWindow() {
     const url = getOverlayUrl();
     const w = window.open(url, 'obs-overlay');
     if (!w) {
-        // Если браузер заблокировал popup — показываем инструкцию
-        showNotification('🚫 Popup заблокирован. Скопируйте URL и откройте вручную или в OBS.', 'warning');
+        showNotification(t('streamer.overlay_blocked'), 'warning');
     } else {
-        showNotification('🖥️ Overlay открыт. Добавьте URL в OBS Browser Source.', 'info');
+        showNotification(t('streamer.overlay_opened'), 'info');
     }
 }
 function toggleChromaKey() {
     rouletteSettings.chromaKey = !rouletteSettings.chromaKey; saveSettings();
-    showNotification(rouletteSettings.chromaKey?'🟢 Chroma Key включён':'Chroma Key выключен','info');
+    showNotification(rouletteSettings.chromaKey ? t('streamer.chroma_on') : t('streamer.chroma_off'), 'info');
     switchTab('streamer');
 }
 function showOverlaySettings() {
-    showConfirmModal('🖥️ OBS Overlay',
-        'Откройте overlay.html как Browser Source в OBS. Рекомендуемый размер: 400×400px. Включите Chroma Key если нужен прозрачный фон.',
-        'ОТКРЫТЬ','ОТМЕНА', openOverlayWindow);
+    showConfirmModal(t('streamer.obs_title'),
+        t('streamer.obs_hint'),
+        t('streamer.obs_open'), t('common.cancel'), openOverlayWindow);
 }
 
 // ── STATS TAB ─────────────────────────────────────────────
@@ -3317,31 +3280,29 @@ function renderStatsTab() {
 
         <!-- Счётчики -->
         <div class="stats-grid">
-            <div class="stat-card"><div class="stat-value">${gTotal}</div><div class="stat-label">Игр</div></div>
-            <div class="stat-card"><div class="stat-value">${tTotal}</div><div class="stat-label">Заданий</div></div>
-            <div class="stat-card"><div class="stat-value">${pTotal}</div><div class="stat-label">Игроков</div></div>
-            <div class="stat-card"><div class="stat-value">${totalSpins}</div><div class="stat-label">Кручений</div></div>
+            <div class="stat-card"><div class="stat-value">${gTotal}</div><div class="stat-label">${t('stats.games')}</div></div>
+            <div class="stat-card"><div class="stat-value">${tTotal}</div><div class="stat-label">${t('stats.tasks')}</div></div>
+            <div class="stat-card"><div class="stat-value">${pTotal}</div><div class="stat-label">${t('stats.players')}</div></div>
+            <div class="stat-card"><div class="stat-value">${totalSpins}</div><div class="stat-label">${t('stats.spins')}</div></div>
         </div>
 
-        <!-- Топ игрок и топ игра -->
         ${topPlayer ? `<div class="top-player">
-            <h3>👑 Самый активный игрок</h3>
+            <h3>${t('stats.top_player_title')}</h3>
             <div class="player-highlight">
                 <span class="highlight-name">${esc(topPlayer.name)}</span> —
-                <span class="highlight-stats">${topPlayer.stats?.gamesPlayed||0} кручений</span>
+                <span class="highlight-stats">${t('stats.top_spins', {n: topPlayer.stats?.gamesPlayed||0})}</span>
             </div>
         </div>` : ''}
         ${bigGame ? `<div class="top-player" style="border-color:var(--accent-success)">
-            <h3>🎮 Самая большая игра</h3>
+            <h3>${t('stats.top_game_title')}</h3>
             <div class="player-highlight">
                 <span class="highlight-name">${esc(bigGame[0])}</span> —
-                <span class="highlight-stats">${bigGame[1].length} заданий</span>
+                <span class="highlight-stats">${t('stats.top_tasks', {n: bigGame[1].length})}</span>
             </div>
         </div>` : ''}
 
-        <!-- ── СОВЕТЫ ДНЯ ── -->
         <div class="top-player" style="border-color:var(--accent-primary);margin-bottom:0">
-            <h3>💡 Советы и факты — обновляются каждый день</h3>
+            <h3>${t('stats.tips_title')}</h3>
         </div>
         <div class="tips-grid">
             ${featuredTips.map(tip => `
@@ -3357,11 +3318,11 @@ function renderStatsTab() {
 
         <!-- Кнопки фильтра советов -->
         <div class="tips-filter" id="tipsFilter">
-            <button class="tips-filter-btn active" onclick="filterTips('all',this)">Все</button>
-            <button class="tips-filter-btn" onclick="filterTips('coop',this)">🤝 Кооп</button>
-            <button class="tips-filter-btn" onclick="filterTips('comp',this)">🏆 Соревн.</button>
-            <button class="tips-filter-btn" onclick="filterTips('online',this)">🌐 Онлайн</button>
-            <button class="tips-filter-btn" onclick="filterTips('fact',this)">🧠 Факты</button>
+            <button class="tips-filter-btn active" onclick="filterTips('all',this)">${t('stats.filter_all')}</button>
+            <button class="tips-filter-btn" onclick="filterTips('coop',this)">${t('stats.filter_coop')}</button>
+            <button class="tips-filter-btn" onclick="filterTips('comp',this)">${t('stats.filter_comp')}</button>
+            <button class="tips-filter-btn" onclick="filterTips('online',this)">${t('stats.filter_online')}</button>
+            <button class="tips-filter-btn" onclick="filterTips('fact',this)">${t('stats.filter_fact')}</button>
         </div>
         <div class="tips-list" id="tipsList">
             ${renderTipsList('all')}
@@ -3369,8 +3330,8 @@ function renderStatsTab() {
 
         <!-- Статистика игроков -->
         <div class="players-stats">
-            <h3>📊 Статистика игроков</h3>
-            ${pTotal === 0 ? '<p class="empty-text">Нет данных</p>' : players.map(p => {
+            <h3>${t('stats.players_stats')}</h3>
+            ${pTotal === 0 ? `<p class="empty-text">${t('stats.no_data')}</p>` : players.map(p => {
                 const plays = p.stats?.gamesPlayed || 0;
                 const maxP  = Math.max(...players.map(x => x.stats?.gamesPlayed||0), 1);
                 const pct   = Math.min(Math.round((plays / maxP) * 100), 100);
@@ -3378,24 +3339,24 @@ function renderStatsTab() {
                 return `<div class="player-stats-row">
                     <span class="player-stats-name" style="color:${esc(cd.name)}">${esc(p.name)}</span>
                     <div class="stats-bar"><div class="stats-fill" style="width:${pct}%;background:${esc(cd.gradient)}"></div></div>
-                    <span class="player-stats-count">${plays} игр</span>
+                    <span class="player-stats-count">${t('stats.n_games', {n: plays})}</span>
                 </div>`;
             }).join('')}
         </div>
 
         <!-- Игры по заданиям -->
         <div class="players-stats">
-            <h3>🎮 Игры по количеству заданий</h3>
-            ${gTotal === 0 ? '<p class="empty-text">Нет игр</p>' : Object.entries(games)
+            <h3>${t('stats.games_stats')}</h3>
+            ${gTotal === 0 ? `<p class="empty-text">${t('stats.no_data')}</p>` : Object.entries(games)
                 .sort(([,a],[,b]) => b.length - a.length)
-                .map(([g,t], i) => {
+                .map(([g,tasks], i) => {
                     const maxT = Math.max(...Object.values(games).map(x => x.length), 1);
-                    const pct  = Math.round((t.length / maxT) * 100);
+                    const pct  = Math.round((tasks.length / maxT) * 100);
                     const col  = COLOR_SCHEMES.default[i % COLOR_SCHEMES.default.length];
                     return `<div class="player-stats-row">
                         <span class="player-stats-name">${esc(g)}</span>
                         <div class="stats-bar"><div class="stats-fill" style="width:${pct}%;background:${esc(col)}"></div></div>
-                        <span class="player-stats-count">${t.length} зад.</span>
+                        <span class="player-stats-count">${t('stats.n_tasks_g', {n: tasks.length})}</span>
                     </div>`;
                 }).join('')}
         </div>
@@ -3427,22 +3388,22 @@ function filterTips(category, btn) {
 // ── SETTINGS TAB ──────────────────────────────────────────
 function renderSettingsTab() {
     return `<div class="settings-panel">
-        <div class="settings-header"><h2>⚙️ Продвинутые настройки</h2><p>Полная кастомизация рулетки под любой стиль игры</p></div>
+        <div class="settings-header"><h2>${t('settings.title')}</h2><p>${t('settings.subtitle')}</p></div>
         <div class="settings-subtabs">
-            <button onclick="switchSettingsTab('speed')"    class="settings-subtab ${settingsSubTab==='speed'?'active':''}">🎯 Скорость</button>
-            <button onclick="switchSettingsTab('sound')"    class="settings-subtab ${settingsSubTab==='sound'?'active':''}">🔊 Звук</button>
-            <button onclick="switchSettingsTab('wheel')"    class="settings-subtab ${settingsSubTab==='wheel'?'active':''}">🎡 Колесо</button>
-            <button onclick="switchSettingsTab('effects')"  class="settings-subtab ${settingsSubTab==='effects'?'active':''}">✨ Эффекты</button>
-            <button onclick="switchSettingsTab('gamer')"    class="settings-subtab ${settingsSubTab==='gamer'?'active':''}">🎮 Геймер</button>
-            <button onclick="switchSettingsTab('streamer')" class="settings-subtab ${settingsSubTab==='streamer'?'active':''}">📡 Стример</button>
-            <button onclick="switchSettingsTab('theme')"    class="settings-subtab ${settingsSubTab==='theme'?'active':''}">🎨 Темы</button>
+            <button onclick="switchSettingsTab('speed')"    class="settings-subtab ${settingsSubTab==='speed'?'active':''}">${t('settings.tab_speed')}</button>
+            <button onclick="switchSettingsTab('sound')"    class="settings-subtab ${settingsSubTab==='sound'?'active':''}">${t('settings.tab_sound')}</button>
+            <button onclick="switchSettingsTab('wheel')"    class="settings-subtab ${settingsSubTab==='wheel'?'active':''}">${t('settings.tab_wheel')}</button>
+            <button onclick="switchSettingsTab('effects')"  class="settings-subtab ${settingsSubTab==='effects'?'active':''}">${t('settings.tab_effects')}</button>
+            <button onclick="switchSettingsTab('gamer')"    class="settings-subtab ${settingsSubTab==='gamer'?'active':''}">${t('settings.tab_gamer')}</button>
+            <button onclick="switchSettingsTab('streamer')" class="settings-subtab ${settingsSubTab==='streamer'?'active':''}">${t('settings.tab_streamer')}</button>
+            <button onclick="switchSettingsTab('theme')"    class="settings-subtab ${settingsSubTab==='theme'?'active':''}">${t('settings.tab_theme')}</button>
         </div>
         <div id="settingsContent">${renderSettingsContent()}</div>
         <div class="settings-actions">
-            <button onclick="resetSettings()" class="cyber-btn danger-btn">🔄 Сбросить всё</button>
-            <button onclick="applySettings()"  class="cyber-btn add-btn">✅ Применить</button>
-            <button onclick="exportSettings()" class="cyber-btn export-btn">📤 Экспорт настроек</button>
-            <button onclick="importSettings()" class="cyber-btn import-btn">📥 Импорт настроек</button>
+            <button onclick="resetSettings()" class="cyber-btn danger-btn">${t('settings.reset_all')}</button>
+            <button onclick="applySettings()"  class="cyber-btn add-btn">${t('settings.apply_btn')}</button>
+            <button onclick="exportSettings()" class="cyber-btn export-btn">${t('settings.export_btn')}</button>
+            <button onclick="importSettings()" class="cyber-btn import-btn">${t('settings.import_btn')}</button>
         </div>
     </div>`;
 }
@@ -3472,39 +3433,39 @@ function renderSettingsContent() {
 
 function renderSpeedSettings() {
     return `<div class="panel-section">
-        <h3 class="section-title"><span class="neon-text">🎯 СКОРОСТЬ И ФИЗИКА</span></h3>
+        <h3 class="section-title"><span class="neon-text">${t('settings.speed_title')}</span></h3>
         <div class="settings-group">
-            ${rangeItem('spinDuration','Длительность кручения',rouletteSettings.spinDuration,2000,15000,500,'spinDuration',v=>v/1000+'с')}
-            ${rangeItem('minSpins','Минимум оборотов',rouletteSettings.minSpins,1,15,1,'minSpins')}
-            ${rangeItem('maxSpins','Максимум оборотов',rouletteSettings.maxSpins,5,30,1,'maxSpins')}
+            ${rangeItem('spinDuration',t('settings.spin_duration'),rouletteSettings.spinDuration,2000,15000,500,'spinDuration',v=>v/1000+'s')}
+            ${rangeItem('minSpins',t('settings.min_spins'),rouletteSettings.minSpins,1,15,1,'minSpins')}
+            ${rangeItem('maxSpins',t('settings.max_spins'),rouletteSettings.maxSpins,5,30,1,'maxSpins')}
             <div class="setting-item">
-                <label>Анимация вращения</label>
+                <label>${t('settings.animation')}</label>
                 <select onchange="updateSetting('wheelAnimation',this.value)" style="flex:1;max-width:200px">
-                    <option value="ease"    ${rouletteSettings.wheelAnimation==='ease'?'selected':''}>Плавная (ease)</option>
-                    <option value="bounce"  ${rouletteSettings.wheelAnimation==='bounce'?'selected':''}>Упругая (bounce)</option>
-                    <option value="elastic" ${rouletteSettings.wheelAnimation==='elastic'?'selected':''}>Пружинная (elastic)</option>
-                    <option value="linear"  ${rouletteSettings.wheelAnimation==='linear'?'selected':''}>Линейная</option>
+                    <option value="ease"    ${rouletteSettings.wheelAnimation==='ease'?'selected':''}>${t('settings.anim_ease')}</option>
+                    <option value="bounce"  ${rouletteSettings.wheelAnimation==='bounce'?'selected':''}>${t('settings.anim_bounce')}</option>
+                    <option value="elastic" ${rouletteSettings.wheelAnimation==='elastic'?'selected':''}>${t('settings.anim_elastic')}</option>
+                    <option value="linear"  ${rouletteSettings.wheelAnimation==='linear'?'selected':''}>${t('settings.anim_linear')}</option>
                 </select>
             </div>
-            ${rangeItem('announceDelay','Задержка результата (мс)',rouletteSettings.announceDelay,0,3000,100,'announceDelay',v=>v+'мс')}
+            ${rangeItem('announceDelay',t('settings.announce_delay'),rouletteSettings.announceDelay,0,3000,100,'announceDelay',v=>v+'ms')}
         </div>
     </div>`;
 }
 
 function renderSoundSettings() {
     return `<div class="panel-section">
-        <h3 class="section-title"><span class="neon-text">🔊 ЗВУК И АУДИО</span></h3>
+        <h3 class="section-title"><span class="neon-text">${t('settings.sound_title')}</span></h3>
         <div class="settings-group">
-            ${toggleItem('soundEnabled','Включить звук',rouletteSettings.soundEnabled)}
-            ${rangeItem('soundVolume','Громкость',Math.round(rouletteSettings.soundVolume*100),0,100,5,'soundVolume',v=>v+'%')}
-            ${toggleItem('tickSoundEnabled','Тик при сегменте',rouletteSettings.tickSoundEnabled)}
-            ${toggleItem('winSoundEnabled','Звук победы',rouletteSettings.winSoundEnabled)}
+            ${toggleItem('soundEnabled',t('settings.sound_enable'),rouletteSettings.soundEnabled)}
+            ${rangeItem('soundVolume',t('settings.sound_volume'),Math.round(rouletteSettings.soundVolume*100),0,100,5,'soundVolume',v=>v+'%')}
+            ${toggleItem('tickSoundEnabled',t('settings.tick_sound'),rouletteSettings.tickSoundEnabled)}
+            ${toggleItem('winSoundEnabled',t('settings.win_sound'),rouletteSettings.winSoundEnabled)}
             <div class="setting-item">
-                <label>Тип звука кручения</label>
+                <label>${t('settings.spin_sound_type')}</label>
                 <select onchange="updateSetting('spinSoundType',this.value)" style="flex:1;max-width:200px">
-                    <option value="whoosh" ${rouletteSettings.spinSoundType==='whoosh'?'selected':''}>Вращение (whoosh)</option>
-                    <option value="drum"   ${rouletteSettings.spinSoundType==='drum'?'selected':''}>Барабан</option>
-                    <option value="casino" ${rouletteSettings.spinSoundType==='casino'?'selected':''}>Казино</option>
+                    <option value="whoosh" ${rouletteSettings.spinSoundType==='whoosh'?'selected':''}>${t('settings.sound_whoosh')}</option>
+                    <option value="drum"   ${rouletteSettings.spinSoundType==='drum'?'selected':''}>${t('settings.sound_drum')}</option>
+                    <option value="casino" ${rouletteSettings.spinSoundType==='casino'?'selected':''}>${t('settings.sound_casino')}</option>
                 </select>
             </div>
         </div>
@@ -3514,33 +3475,33 @@ function renderSoundSettings() {
 function renderWheelSettings() {
     const schemes = Object.keys(COLOR_SCHEMES);
     return `<div class="panel-section">
-        <h3 class="section-title"><span class="neon-text">🎡 ВНЕШНИЙ ВИД КОЛЕСА</span></h3>
+        <h3 class="section-title"><span class="neon-text">${t('settings.wheel_title')}</span></h3>
         <div class="settings-group">
-            ${rangeItem('wheelSize','Размер колеса',rouletteSettings.wheelSize,280,620,20,'wheelSize',v=>v+'px')}
-            ${rangeItem('fontSize','Размер текста',rouletteSettings.fontSize,8,18,1,'fontSize',v=>v+'px')}
-            ${rangeItem('maxSegments','Макс. сегментов',rouletteSettings.maxSegments,4,32,2,'maxSegments')}
-            ${toggleItem('groupSegments','Группировать сегменты',rouletteSettings.groupSegments)}
+            ${rangeItem('wheelSize',t('settings.wheel_size'),rouletteSettings.wheelSize,280,620,20,'wheelSize',v=>v+'px')}
+            ${rangeItem('fontSize',t('settings.font_size'),rouletteSettings.fontSize,8,18,1,'fontSize',v=>v+'px')}
+            ${rangeItem('maxSegments',t('settings.max_segments'),rouletteSettings.maxSegments,4,32,2,'maxSegments')}
+            ${toggleItem('groupSegments',t('settings.group_segs'),rouletteSettings.groupSegments)}
             <div class="setting-item">
-                <label>Иконка центра</label>
+                <label>${t('settings.center_icon')}</label>
                 <input type="text" id="centerIconInput" value="${rouletteSettings.centerIcon||'🎲'}" maxlength="2" oninput="updateSetting('centerIcon',this.value);renderWheel()" style="max-width:80px;text-align:center;font-size:20px">
             </div>
             <div class="setting-item">
-                <label>Стиль границы</label>
+                <label>${t('settings.border_style')}</label>
                 <select onchange="updateSetting('borderStyle',this.value);renderWheel()" style="flex:1;max-width:200px">
-                    <option value="glow"   ${rouletteSettings.borderStyle==='glow'?'selected':''}>Свечение</option>
-                    <option value="solid"  ${rouletteSettings.borderStyle==='solid'?'selected':''}>Сплошная</option>
-                    <option value="dashed" ${rouletteSettings.borderStyle==='dashed'?'selected':''}>Пунктир</option>
-                    <option value="neon"   ${rouletteSettings.borderStyle==='neon'?'selected':''}>Неон</option>
+                    <option value="glow"   ${rouletteSettings.borderStyle==='glow'?'selected':''}>${t('settings.border_glow')}</option>
+                    <option value="solid"  ${rouletteSettings.borderStyle==='solid'?'selected':''}>${t('settings.border_solid')}</option>
+                    <option value="dashed" ${rouletteSettings.borderStyle==='dashed'?'selected':''}>${t('settings.border_dashed')}</option>
+                    <option value="neon"   ${rouletteSettings.borderStyle==='neon'?'selected':''}>${t('settings.border_neon')}</option>
                 </select>
             </div>
             <div class="setting-item">
-                <label>Стиль указателя</label>
+                <label>${t('settings.pointer_style')}</label>
                 <div class="pointer-styles">
                     ${['arrow','triangle','diamond','star','pin'].map(s=>`<button onclick="updateSetting('pointerStyle','${s}');document.getElementById('wheelPointer').textContent=getPointerSymbol()" class="pointer-style-btn ${rouletteSettings.pointerStyle===s?'active':''}"><span class="pointer-style-symbol">${{arrow:'▼',triangle:'▽',diamond:'◆',star:'★',pin:'📍'}[s]}</span><span class="pointer-style-label">${s}</span></button>`).join('')}
                 </div>
             </div>
         </div>
-        <h3 class="section-title" style="margin-top:16px"><span class="neon-text">🎨 ЦВЕТОВЫЕ СХЕМЫ</span></h3>
+        <h3 class="section-title" style="margin-top:16px"><span class="neon-text">${t('settings.color_schemes')}</span></h3>
         <div class="color-schemes">
             ${schemes.map(k=>{
                 const dots = (COLOR_SCHEMES[k]||[]).slice(0,5);
@@ -3555,32 +3516,32 @@ function renderWheelSettings() {
 
 function renderEffectsSettings() {
     return `<div class="panel-section">
-        <h3 class="section-title"><span class="neon-text">✨ ВИЗУАЛЬНЫЕ ЭФФЕКТЫ</span></h3>
+        <h3 class="section-title"><span class="neon-text">${t('settings.effects_title')}</span></h3>
         <div class="settings-group">
-            ${toggleItem('visualEffects','Визуальные эффекты',rouletteSettings.visualEffects)}
-            ${toggleItem('highlightWinner','Подсветка победителя',rouletteSettings.highlightWinner)}
-            ${toggleItem('shakeEffect','Тряска при остановке',rouletteSettings.shakeEffect)}
-            ${toggleItem('glowEffect','Свечение колеса',rouletteSettings.glowEffect)}
-            ${toggleItem('particleEffect','Частицы победы',rouletteSettings.particleEffect)}
-            ${rangeItem('particleCount','Количество частиц',rouletteSettings.particleCount,10,80,5,'particleCount')}
+            ${toggleItem('visualEffects',t('settings.visual_effects'),rouletteSettings.visualEffects)}
+            ${toggleItem('highlightWinner',t('settings.highlight_win'),rouletteSettings.highlightWinner)}
+            ${toggleItem('shakeEffect',t('settings.shake_effect'),rouletteSettings.shakeEffect)}
+            ${toggleItem('glowEffect',t('settings.glow_effect'),rouletteSettings.glowEffect)}
+            ${toggleItem('particleEffect',t('settings.particle_effect'),rouletteSettings.particleEffect)}
+            ${rangeItem('particleCount',t('settings.particle_count'),rouletteSettings.particleCount,10,80,5,'particleCount')}
             <div class="setting-item">
-                <label>Стиль частиц</label>
+                <label>${t('settings.particle_style')}</label>
                 <select onchange="updateSetting('particleStyle',this.value)" style="flex:1;max-width:200px">
-                    <option value="circle"   ${rouletteSettings.particleStyle==='circle'?'selected':''}>Кружки</option>
-                    <option value="star"     ${rouletteSettings.particleStyle==='star'?'selected':''}>Звёзды</option>
-                    <option value="confetti" ${rouletteSettings.particleStyle==='confetti'?'selected':''}>Конфетти</option>
+                    <option value="circle"   ${rouletteSettings.particleStyle==='circle'?'selected':''}>${t('settings.particle_circle')}</option>
+                    <option value="star"     ${rouletteSettings.particleStyle==='star'?'selected':''}>${t('settings.particle_star')}</option>
+                    <option value="confetti" ${rouletteSettings.particleStyle==='confetti'?'selected':''}>${t('settings.particle_confetti')}</option>
                 </select>
             </div>
             <div class="setting-item">
-                <label>Показ результата</label>
+                <label>${t('settings.result_display')}</label>
                 <select onchange="updateSetting('resultDisplay',this.value)" style="flex:1;max-width:200px">
-                    <option value="both"  ${rouletteSettings.resultDisplay==='both'?'selected':''}>Popup + Карточка</option>
-                    <option value="popup" ${rouletteSettings.resultDisplay==='popup'?'selected':''}>Только Popup</option>
-                    <option value="card"  ${rouletteSettings.resultDisplay==='card'?'selected':''}>Только Карточка</option>
+                    <option value="both"  ${rouletteSettings.resultDisplay==='both'?'selected':''}>${t('settings.result_both')}</option>
+                    <option value="popup" ${rouletteSettings.resultDisplay==='popup'?'selected':''}>${t('settings.result_popup')}</option>
+                    <option value="card"  ${rouletteSettings.resultDisplay==='card'?'selected':''}>${t('settings.result_card')}</option>
                 </select>
             </div>
-            ${toggleItem('autoClosePopup','Автозакрытие popup',rouletteSettings.autoClosePopup)}
-            ${rangeItem('popupDuration','Время показа popup',rouletteSettings.popupDuration,2000,15000,500,'popupDuration',v=>v/1000+'с')}
+            ${toggleItem('autoClosePopup',t('settings.auto_close'),rouletteSettings.autoClosePopup)}
+            ${rangeItem('popupDuration',t('settings.popup_duration'),rouletteSettings.popupDuration,2000,15000,500,'popupDuration',v=>v/1000+'s')}
         </div>
     </div>`;
 }
@@ -3588,24 +3549,24 @@ function renderEffectsSettings() {
 function renderGamerSettings() {
     const spentCount = Object.values(spentTasks).reduce((s,arr) => s + arr.length, 0);
     return `<div class="panel-section">
-        <h3 class="section-title"><span class="neon-text">🎮 НАСТРОЙКИ ГЕЙМЕРА</span><span class="section-badge">PRO</span></h3>
+        <h3 class="section-title"><span class="neon-text">${t('settings.gamer_title')}</span><span class="section-badge">PRO</span></h3>
         <div class="settings-group">
-            ${toggleItem('bonusRoundEnabled','🎉 Бонус-раунд (двойная рулетка)',rouletteSettings.bonusRoundEnabled)}
-            ${rangeItem('bonusRoundChance','Шанс бонус-раунда',rouletteSettings.bonusRoundChance,1,50,1,'bonusRoundChance',v=>v+'%')}
-            ${toggleItem('weightedSegments','⚖️ Взвешенные сегменты',rouletteSettings.weightedSegments)}
-            ${toggleItem('removeAfterSpin','🗑️ Убирать задание после прокрутки',rouletteSettings.removeAfterSpin)}
+            ${toggleItem('bonusRoundEnabled',t('settings.bonus_round'),rouletteSettings.bonusRoundEnabled)}
+            ${rangeItem('bonusRoundChance',t('settings.bonus_chance'),rouletteSettings.bonusRoundChance,1,50,1,'bonusRoundChance',v=>v+'%')}
+            ${toggleItem('weightedSegments',t('settings.weighted_segs'),rouletteSettings.weightedSegments)}
+            ${toggleItem('removeAfterSpin',t('settings.remove_after'),rouletteSettings.removeAfterSpin)}
             <div class="setting-item" style="flex-direction:column;align-items:flex-start;gap:6px">
-                <label style="font-size:11px;color:var(--text-muted)">Задания, которые уже выпали, не будут участвовать в следующих прокрутках. Работает во всех режимах кроме «Только игрок».</label>
-                ${spentCount > 0 ? `<button onclick="confirmResetSpentTasks()" class="cyber-btn danger-btn" style="padding:5px 14px;font-size:12px">🔄 Сбросить потраченные (${spentCount} зад.)</button>` : `<span style="font-size:11px;color:var(--text-muted)">Потраченных заданий нет.</span>`}
+                <label style="font-size:11px;color:var(--text-muted)">${t('settings.remove_hint')}</label>
+                ${spentCount > 0 ? `<button onclick="confirmResetSpentTasks()" class="cyber-btn danger-btn" style="padding:5px 14px;font-size:12px">${t('settings.spent_reset', {n: spentCount})}</button>` : `<span style="font-size:11px;color:var(--text-muted)">${t('settings.no_spent')}</span>`}
             </div>
-            ${toggleItem('blacklistEnabled','🚫 Чёрный список заданий',rouletteSettings.blacklistEnabled)}
+            ${toggleItem('blacklistEnabled',t('settings.blacklist'),rouletteSettings.blacklistEnabled)}
             <div class="setting-item">
-                <label style="min-width:140px">Чёрный список (по строкам)</label>
-                <textarea id="blacklistInput" placeholder="Задание 1&#10;Задание 2" rows="4" style="flex:1">${(rouletteSettings.blacklistTasks||[]).join('\n')}</textarea>
+                <label style="min-width:140px">${t('settings.blacklist')} (lines)</label>
+                <textarea id="blacklistInput" placeholder="${t('settings.blacklist_input')}" rows="4" style="flex:1">${(rouletteSettings.blacklistTasks||[]).join('\n')}</textarea>
             </div>
             <div class="setting-item">
                 <label></label>
-                <button onclick="saveBlacklist()" class="cyber-btn add-btn">💾 Сохранить чёрный список</button>
+                <button onclick="saveBlacklist()" class="cyber-btn add-btn">${t('settings.blacklist_save')}</button>
             </div>
         </div>
     </div>`;
@@ -3613,18 +3574,18 @@ function renderGamerSettings() {
 
 function renderStreamerSettings() {
     return `<div class="panel-section">
-        <h3 class="section-title"><span class="neon-text">📡 НАСТРОЙКИ СТРИМЕРА</span><span class="section-badge">LIVE</span></h3>
+        <h3 class="section-title"><span class="neon-text">${t('settings.streamer_title')}</span><span class="section-badge">LIVE</span></h3>
         <div class="settings-group">
-            ${toggleItem('showPlayerOnWheel','Имена игроков на колесе',rouletteSettings.showPlayerOnWheel)}
-            ${toggleItem('chromaKey','🟢 Chroma Key для overlay',rouletteSettings.chromaKey)}
+            ${toggleItem('showPlayerOnWheel',t('settings.player_on_wheel'),rouletteSettings.showPlayerOnWheel)}
+            ${toggleItem('chromaKey',t('settings.chroma_key'),rouletteSettings.chromaKey)}
             <div class="setting-item">
-                <label>Позиция overlay</label>
+                <label>${t('settings.overlay_pos')}</label>
                 <select onchange="updateSetting('overlayPosition',this.value)" style="flex:1;max-width:220px">
-                    <option value="top-left"     ${rouletteSettings.overlayPosition==='top-left'?'selected':''}>Верх-лево</option>
-                    <option value="top-right"    ${rouletteSettings.overlayPosition==='top-right'?'selected':''}>Верх-право</option>
-                    <option value="bottom-left"  ${rouletteSettings.overlayPosition==='bottom-left'?'selected':''}>Низ-лево</option>
-                    <option value="bottom-right" ${rouletteSettings.overlayPosition==='bottom-right'?'selected':''}>Низ-право</option>
-                    <option value="center"       ${rouletteSettings.overlayPosition==='center'?'selected':''}>По центру</option>
+                    <option value="top-left"     ${rouletteSettings.overlayPosition==='top-left'?'selected':''}>${t('settings.pos_top_left')}</option>
+                    <option value="top-right"    ${rouletteSettings.overlayPosition==='top-right'?'selected':''}>${t('settings.pos_top_right')}</option>
+                    <option value="bottom-left"  ${rouletteSettings.overlayPosition==='bottom-left'?'selected':''}>${t('settings.pos_bot_left')}</option>
+                    <option value="bottom-right" ${rouletteSettings.overlayPosition==='bottom-right'?'selected':''}>${t('settings.pos_bot_right')}</option>
+                    <option value="center"       ${rouletteSettings.overlayPosition==='center'?'selected':''}>${t('settings.pos_center')}</option>
                 </select>
             </div>
         </div>
@@ -3633,21 +3594,21 @@ function renderStreamerSettings() {
 
 function renderThemeSettings() {
     const themes = [
-        { id:'dark',     icon:'🌑', name:'Тёмная'     },
-        { id:'neon',     icon:'💜', name:'Неон'        },
-        { id:'cyber',    icon:'🔵', name:'Кибер'       },
-        { id:'streamer', icon:'📡', name:'Стример'     },
-        { id:'pastel',   icon:'🌸', name:'Пастель'     },
+        { id:'dark',     icon:'🌑', nameKey:'settings.theme_dark'     },
+        { id:'neon',     icon:'💜', nameKey:'settings.theme_neon'     },
+        { id:'cyber',    icon:'🔵', nameKey:'settings.theme_cyber'    },
+        { id:'streamer', icon:'📡', nameKey:'settings.theme_streamer' },
+        { id:'pastel',   icon:'🌸', nameKey:'settings.theme_pastel'   },
     ];
     return `<div class="panel-section">
-        <h3 class="section-title"><span class="neon-text">🎨 ТЕМЫ ОФОРМЛЕНИЯ</span></h3>
+        <h3 class="section-title"><span class="neon-text">${t('settings.theme_title')}</span></h3>
         <div class="color-schemes">
-            ${themes.map(t=>`<div class="color-scheme-card ${currentTheme===t.id?'active':''}" onclick="applyTheme('${t.id}');document.querySelectorAll('.color-scheme-card').forEach(c=>c.classList.remove('active'));this.classList.add('active')">
-                <div style="font-size:28px;margin-bottom:6px">${t.icon}</div>
-                <div class="color-scheme-name">${t.name}</div>
+            ${themes.map(th=>`<div class="color-scheme-card ${currentTheme===th.id?'active':''}" onclick="applyTheme('${th.id}');document.querySelectorAll('.color-scheme-card').forEach(c=>c.classList.remove('active'));this.classList.add('active')">
+                <div style="font-size:28px;margin-bottom:6px">${th.icon}</div>
+                <div class="color-scheme-name">${t(th.nameKey)}</div>
             </div>`).join('')}
         </div>
-        <p style="font-size:11px;color:var(--text-muted);margin-top:12px">Тема применяется сразу и сохраняется при перезагрузке страницы</p>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:12px">${t('settings.theme_hint')}</p>
     </div>`;
 }
 
@@ -3696,20 +3657,20 @@ function updateSetting(key, value) {
 function saveBlacklist() {
     const inp = document.getElementById('blacklistInput');
     if (!inp) return;
-    rouletteSettings.blacklistTasks = inp.value.split('\n').map(t=>t.trim()).filter(t=>t);
-    saveSettings(); showNotification(`🚫 Чёрный список сохранён (${rouletteSettings.blacklistTasks.length} зад.)`, 'success');
+    rouletteSettings.blacklistTasks = inp.value.split('\n').map(tk=>tk.trim()).filter(tk=>tk);
+    saveSettings(); showNotification(t('settings.blacklist_saved', {n: rouletteSettings.blacklistTasks.length}), 'success');
 }
-function applySettings() { saveSettings(); updateWheelSegments(); renderWheel(); showNotification('✅ Настройки применены!', 'success') }
+function applySettings() { saveSettings(); updateWheelSegments(); renderWheel(); showNotification(t('settings.applied'), 'success') }
 function resetSettings() {
-    showConfirmModal('🔄 Сброс настроек','Сбросить все настройки к стандартным?','СБРОСИТЬ','ОТМЕНА',()=>{
+    showConfirmModal(t('settings.reset_confirm'), t('settings.reset_msg'), t('common.reset'), t('common.cancel'), () => {
         rouletteSettings = { spinDuration:5000,minSpins:5,maxSpins:10,soundEnabled:true,soundVolume:0.5,tickSoundEnabled:true,winSoundEnabled:true,spinSoundType:'whoosh',visualEffects:true,highlightWinner:true,shakeEffect:true,glowEffect:true,particleEffect:true,particleCount:30,particleStyle:'circle',wheelSize:420,fontSize:12,groupSegments:true,maxSegments:14,colorScheme:'default',borderStyle:'glow',centerIcon:'🎲',pointerStyle:'arrow',wheelAnimation:'ease',resultDisplay:'both',autoClosePopup:true,popupDuration:6000,showPlayerOnWheel:false,announceDelay:0,overlayPosition:'top-left',chromaKey:false,bonusRoundEnabled:false,bonusRoundChance:10,weightedSegments:false,blacklistEnabled:false,blacklistTasks:[],removeAfterSpin:false };
-        saveSettings(); switchTab('settings'); showNotification('Настройки сброшены', 'success');
+        saveSettings(); switchTab('settings'); showNotification(t('settings.reset_done'), 'success');
     });
 }
 function exportSettings() {
     const blob = new Blob([JSON.stringify(rouletteSettings,null,2)],{type:'application/json'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='roulette-settings.json'; a.click();
-    showNotification('📤 Настройки экспортированы', 'success');
+    showNotification(t('settings.exported'), 'success');
 }
 function importSettings() {
     const inp = document.createElement('input'); inp.type='file'; inp.accept='.json';
@@ -3721,8 +3682,8 @@ function importSettings() {
                 const d = JSON.parse(ev.target.result);
                 rouletteSettings = {...rouletteSettings, ...d};
                 saveSettings(); switchTab('settings');
-                showNotification('📥 Настройки импортированы', 'success');
-            } catch { showNotification('Ошибка импорта', 'error') }
+                showNotification(t('settings.imported'), 'success');
+            } catch { showNotification(t('settings.import_error'), 'error') }
         };
         r.readAsText(f);
     };
@@ -3817,7 +3778,7 @@ function exportData() {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
     a.download = `challenge-hub-v3-${Date.now()}.json`; a.click();
-    showNotification('📤 Данные экспортированы', 'success');
+    showNotification('📤 ' + t('common.export'), 'success');
 }
 function importData() {
     const inp = document.createElement('input'); inp.type='file'; inp.accept='.json';
@@ -3827,16 +3788,14 @@ function importData() {
         r.onload = ev => {
             try {
                 const d = JSON.parse(ev.target.result);
-                // Защита от прототипного загрязнения и невалидных структур
                 if (!d || typeof d !== 'object' || Array.isArray(d)) {
-                    return showNotification('Неверный формат файла', 'error');
+                    return showNotification(t('common.error'), 'error');
                 }
                 if (!d.players || !d.games ||
                     !Array.isArray(d.players) ||
                     typeof d.games !== 'object' || Array.isArray(d.games)) {
-                    return showNotification('Неверный формат файла', 'error');
+                    return showNotification(t('common.error'), 'error');
                 }
-                // Нормализуем игроков — только допустимые поля
                 const safeColors = Object.keys(playerColors);
                 players = d.players
                     .filter(p => p && typeof p.name === 'string' && p.name.trim())
@@ -3848,17 +3807,15 @@ function importData() {
                             tasksCompleted: Number(p.stats?.tasksCompleted) || 0,
                         }
                     }));
-                // Нормализуем игры — только строковые задания, без __proto__
                 games = {};
                 Object.entries(d.games).forEach(([gameName, tasks]) => {
                     if (typeof gameName !== 'string' || !gameName.trim()) return;
                     if (gameName === '__proto__' || gameName === 'constructor') return;
                     if (!Array.isArray(tasks)) return;
-                    // Убираем дубликаты при импорте
                     games[gameName.trim().slice(0, 200)] = [...new Set(
                         tasks
-                            .filter(t => typeof t === 'string' && t.trim())
-                            .map(t => String(t).trim().slice(0, 500))
+                            .filter(tk => typeof tk === 'string' && tk.trim())
+                            .map(tk => String(tk).trim().slice(0, 500))
                     )];
                 });
                 // Режим и тема — только допустимые значения
@@ -3874,22 +3831,22 @@ function importData() {
                     applyTheme(d.currentTheme);
                 }
                 saveAll(); saveSettings(); switchTab(currentTab);
-                showNotification(`📥 Импортировано: ${players.length} игроков, ${Object.keys(games).length} игр`, 'success');
-            } catch { showNotification('Ошибка чтения файла', 'error') }
+                showNotification(t('settings.imported'), 'success');
+            } catch { showNotification(t('settings.import_error'), 'error') }
         };
         r.readAsText(f);
     };
     inp.click();
 }
 function exportResults() {
-    if (!gameFirstState.selectedGame) { showNotification('Нет результатов для экспорта', 'warning'); return }
-    let text = `🎮 RANDOM CHALLENGE HUB v3.0\n${'─'.repeat(40)}\nИгра: ${gameFirstState.selectedGame}\nДата: ${new Date().toLocaleString()}\n${'─'.repeat(40)}\n📋 ЗАДАНИЯ:\n`;
-    Object.entries(gameFirstState.assignedTasks).forEach(([p,t],i) => { text += `${i+1}. ${p} → ${t}\n` });
-    text += `${'─'.repeat(40)}\nИтого: ${Object.keys(gameFirstState.assignedTasks).length} из ${players.length} игроков\n`;
+    if (!gameFirstState.selectedGame) { showNotification(t('notif.results_none'), 'warning'); return }
+    let text = `🎮 RANDOM CHALLENGE HUB v3.0\n${'─'.repeat(40)}\n${t('roulette.selected_game')}: ${gameFirstState.selectedGame}\n${new Date().toLocaleString()}\n${'─'.repeat(40)}\n📋 ${t('roulette.result_task').toUpperCase()}:\n`;
+    Object.entries(gameFirstState.assignedTasks).forEach(([p,task],i) => { text += `${i+1}. ${p} → ${task}\n` });
+    text += `${'─'.repeat(40)}\n${Object.keys(gameFirstState.assignedTasks).length} / ${players.length}\n`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));
     a.download = `results-${gameFirstState.selectedGame}-${Date.now()}.txt`; a.click();
-    showNotification('📤 Результаты экспортированы', 'success');
+    showNotification(t('notif.export_results'), 'success');
 }
 
 // ── SCROLL HELPER ─────────────────────────────────────────
@@ -3900,53 +3857,27 @@ function scrollToTabs() {
 // ── DEFAULT GAMES DATA ────────────────────────────────────
 
 // ── GAMING TIPS & FACTS ───────────────────────────────────
-const GAMING_TIPS = [
-    // ── Кооперативные игры ────────────────────────────────
-    { cat: 'coop',    icon: '🤝', tag: 'Коопе­рация',      text: 'В кооп-играх назначьте роли заранее: кто танкует, кто хилит, кто наносит урон. Хаос без ролей убивает команду быстрее врагов.' },
-    { cat: 'coop',    icon: '🗣️', tag: 'Коопе­рация',      text: 'Сообщайте о перезарядке и кулдаунах вслух. Тиммейт не видит ваши иконки так же хорошо, как вы.' },
-    { cat: 'coop',    icon: '🔋', tag: 'Коопе­рация',      text: 'Никогда не уходите в соло-рейд без предупреждения. Один игрок на краю карты — это ресурс, которого нет у команды в нужный момент.' },
-    { cat: 'coop',    icon: '🛡️', tag: 'Коопе­рация',      text: 'В кооп-шутерах покрывайте перезарядку союзника: пока он в уязвимом состоянии — ваша задача закрыть углы.' },
-    { cat: 'coop',    icon: '📍', tag: 'Коопе­рация',      text: 'Маркируйте цели единообразно. Договоритесь об одном сигнале «атакуем это» — разнобой меток убивает фокус.' },
-    { cat: 'coop',    icon: '🏥', tag: 'Коопе­рация',      text: 'Хилер — не обслуживающий персонал. Он должен двигаться, уклоняться и выживать. Мёртвый хилер лечит никого.' },
-    { cat: 'coop',    icon: '🎯', tag: 'Коопе­рация',      text: 'Фокусируйте одну цель. Два игрока, убивающих разных врагов — это два полумёртвых врага вместо одного мёртвого.' },
-    { cat: 'coop',    icon: '🔄', tag: 'Коопе­рация',      text: 'После вайпа разберите ошибку за 30 секунд, а не молча повторяйте попытку. «Попробуем снова» без разбора — путь к 20-му вайпу.' },
-    { cat: 'coop',    icon: '🚪', tag: 'Коопе­рация',      text: 'В выживалках разделите зоны ответственности по карте. Двое в одной клетке — это двое вне другой.' },
-    { cat: 'coop',    icon: '💬', tag: 'Коопе­рация',      text: 'Краткий позитивный фидбек («хороший хил», «отличный отвлёк») повышает мотивацию команды сильнее, чем любая тактика.' },
-
-    // ── Соревновательные игры ─────────────────────────────
-    { cat: 'comp',    icon: '🧠', tag: 'Соревно­вание',    text: 'Усталость принятия решений реальна. После 3–4 часов игры качество решений падает на ~15–20%. Делайте перерывы.' },
-    { cat: 'comp',    icon: '📈', tag: 'Соревно­вание',    text: 'Записывайте и пересматривайте свои матчи. Вы видите 60% своих ошибок только со стороны — не изнутри боя.' },
-    { cat: 'comp',    icon: '🎮', tag: 'Соревно­вание',    text: 'Мастерство одного героя/персонажа ценнее посредственного владения пятью. Глубина > ширина на старте.' },
-    { cat: 'comp',    icon: '🔥', tag: 'Соревно­вание',    text: 'Тильт — главный враг рейтинга. Если вы проиграли 2 матча подряд с эмоциями — сделайте 15-минутный перерыв. Это не слабость, это математика.' },
-    { cat: 'comp',    icon: '⚡', tag: 'Соревно­вание',    text: 'Изучайте мету, но не становитесь её рабом. Понимание «почему мета работает» важнее слепого копирования топ-билдов.' },
-    { cat: 'comp',    icon: '🎯', tag: 'Соревно­вание',    text: 'Ставьте цель на сессию: «улучшить позиционирование», а не «поднять ранг». Процессные цели растят скилл быстрее результативных.' },
-    { cat: 'comp',    icon: '👁️', tag: 'Соревно­вание',    text: 'Смотрите мини-карту каждые 3–5 секунд. Игроки Challenger/Grandmaster делают это рефлекторно — отработайте привычку.' },
-    { cat: 'comp',    icon: '🧘', tag: 'Соревно­вание',    text: 'Физическое состояние влияет на рефлексы: сон, еда, температура в комнате — всё это миллисекунды реакции.' },
-    { cat: 'comp',    icon: '📊', tag: 'Соревно­вание',    text: 'Анализируйте смерти, а не убийства. «Почему меня убили» — более ценный вопрос, чем «как я убил».' },
-    { cat: 'comp',    icon: '🏆', tag: 'Соревно­вание',    text: 'Проигрыш у хорошего игрока — это данные. Проигрыш у слабого — это эмоции. Выбирайте первое отношение.' },
-
-    // ── Онлайн-игры ───────────────────────────────────────
-    { cat: 'online',  icon: '🌐', tag: 'Онлайн',           text: 'Пинг важнее FPS в сетевых играх. 60fps при 80ms пинге хуже, чем 144fps при 20ms для реакции и попаданий.' },
-    { cat: 'online',  icon: '🔒', tag: 'Онлайн',           text: 'Используйте уникальный пароль для игрового аккаунта. Утечка одного сервиса не должна компрометировать вашу библиотеку игр.' },
-    { cat: 'online',  icon: '🎙️', tag: 'Онлайн',           text: 'Включайте push-to-talk в рейтинговых матчах. Фоновый шум и случайные звуки отвлекают команду сильнее, чем молчание.' },
-    { cat: 'online',  icon: '⏱️', tag: 'Онлайн',           text: 'Используйте проводное подключение к роутеру вместо Wi-Fi. Разница в джиттере (колебание пинга) может быть в 3–5 раз.' },
-    { cat: 'online',  icon: '🗺️', tag: 'Онлайн',           text: 'Изучайте callouts — стандартные названия позиций на картах. Это сократит время коммуникации с 5 слов до 1.' },
-    { cat: 'online',  icon: '🛑', tag: 'Онлайн',           text: 'Токсичность снижает вашу собственную производительность на 10–20% из-за активации стресс-реакции. Mute — не трусость.' },
-    { cat: 'online',  icon: '📅', tag: 'Онлайн',           text: 'Играйте в одно время суток. Игровые серверы и качество соперников варьируются по времени — найдите свой «прайм-тайм».' },
-    { cat: 'online',  icon: '💾', tag: 'Онлайн',           text: 'Регулярно проверяйте настройки конфиденциальности аккаунта. Публичная история активности — лёгкая цель для социальной инженерии.' },
-    { cat: 'online',  icon: '🎲', tag: 'Онлайн',           text: 'Lobby-рулетки и случайные задания лучше всего работают когда все игроки понимают правила заранее — объясните формат до старта.' },
-    { cat: 'online',  icon: '🤖', tag: 'Онлайн',           text: 'Включите двухфакторную аутентификацию на всех игровых платформах. Steam, Epic, Battle.net — все три поддерживают 2FA.' },
-
-    // ── Общие игровые факты ───────────────────────────────
-    { cat: 'fact',    icon: '🧬', tag: 'Факт',             text: 'Среднее время реакции человека — 250мс. Профессиональные киберспортсмены тренируют его до 150–180мс через специфические упражнения.' },
-    { cat: 'fact',    icon: '🎵', tag: 'Факт',             text: 'Музыка с темпом 120–140 BPM статистически повышает концентрацию в экшн-играх. Именно поэтому большинство игровых саундтреков в этом диапазоне.' },
-    { cat: 'fact',    icon: '💡', tag: 'Факт',             text: 'Правило 20-20-20: каждые 20 минут смотрите на объект в 6 метрах от вас в течение 20 секунд. Снижает усталость глаз на 25%.' },
-    { cat: 'fact',    icon: '🧩', tag: 'Факт',             text: 'Мозг обрабатывает случайное вознаграждение (лутбоксы, рандомные задания) через тот же дофаминовый контур, что и слот-машины.' },
-    { cat: 'fact',    icon: '🕹️', tag: 'Факт',             text: 'Феномен «одного матча» — средний игрок переоценивает время следующей сессии примерно на 40%. Ставьте таймер.' },
-    { cat: 'fact',    icon: '🌡️', tag: 'Факт',             text: 'Оптимальная температура для игровой сессии — 19–21°C. При 25°C+ скорость обработки информации падает на 8–10%.' },
-    { cat: 'fact',    icon: '🖱️', tag: 'Факт',             text: 'DPI мыши выше 1600 не улучшает точность в шутерах для большинства игроков — мелкие тремуры становятся заметнее. 400–800 DPI + высокая чувствительность в игре дают больший контроль.' },
-    { cat: 'fact',    icon: '🏋️', tag: 'Факт',             text: '30-минутная аэробная нагрузка перед игрой улучшает когнитивные функции на 2–4 часа — задокументировано в исследованиях киберспортивной медицины.' },
-];
+// Tips are stored in translation files under the 'tips' key.
+// This getter merges them at runtime so switching language updates tips immediately.
+function getGamingTips() {
+    const raw = (typeof t === 'function') ? t('tips') : null;
+    if (Array.isArray(raw) && raw.length) return raw;
+    // Fallback: return empty array — renderTipsList handles empty gracefully
+    return [];
+}
+// Proxy so existing code using GAMING_TIPS still works
+const GAMING_TIPS = new Proxy([], {
+    get(_, prop) {
+        const tips = getGamingTips();
+        if (prop === 'length') return tips.length;
+        if (prop === 'filter') return fn => tips.filter(fn);
+        if (prop === 'map')    return fn => tips.map(fn);
+        if (prop === 'forEach')return fn => tips.forEach(fn);
+        if (prop === Symbol.iterator) return () => tips[Symbol.iterator]();
+        const idx = Number(prop);
+        return isNaN(idx) ? tips[prop] : tips[idx];
+    }
+});
 
 // Возвращает совет дня (детерминированно по дате) или случайный
 function getDailyTip(category) {

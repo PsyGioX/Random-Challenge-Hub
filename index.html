@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<html lang="ru" data-theme="dark" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -76,6 +76,12 @@
     <link rel="preload" href="script.js" as="script">
     <link rel="stylesheet" href="style.css">
 
+    <!-- i18n: load translation files BEFORE i18n.js -->
+    <script src="i18n/en.js"></script>
+    <script src="i18n/ru.js"></script>
+    <!-- Community translations: add <script src="i18n/xx.js"></script> here -->
+    <script src="i18n/i18n.js"></script>
+
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -133,11 +139,11 @@
             </div>
             <div class="logo-container">
                 <span class="logo-icon">🎲</span>
-                <h1>RANDOM CHALLENGE <span>HUB</span></h1>
+                <h1 data-i18n-html="header.title">RANDOM CHALLENGE <span>HUB</span></h1>
             </div>
-            <p class="tagline">Создавай • Играй • Стримь • Побеждай</p>
+            <p class="tagline" data-i18n="header.tagline">Создавай • Играй • Стримь • Побеждай</p>
             <div>
-                <span class="live-badge"><span class="live-dot"></span> LIVE READY</span>
+                <span class="live-badge"><span class="live-dot"></span> <span data-i18n="header.live_badge">LIVE READY</span></span>
             </div>
         </header>
 
@@ -145,21 +151,21 @@
         <div class="about-project" id="aboutProject">
             <div class="about-card">
                 <span class="about-icon">🎯</span>
-                <h2>Random Challenge Hub v3</h2>
-                <p class="about-description">
+                <h2 data-i18n="about.title">Random Challenge Hub v3</h2>
+                <p class="about-description" data-i18n="about.description">
                     Профессиональная платформа для создания случайных игровых заданий и челленджей.
                     Идеально для стримеров с OBS overlay, геймеров с бонус-раундами и компаний друзей.
                     Всё работает прямо в браузере — никаких серверов, полная конфиденциальность.
                 </p>
                 <div class="features-grid">
-                    <div class="feature-item"><span class="feature-icon">🎡</span><span class="feature-text">4 режима рулетки с улучшенной физикой</span></div>
-                    <div class="feature-item"><span class="feature-icon">🖥️</span><span class="feature-text">OBS Browser Source overlay</span></div>
-                    <div class="feature-item"><span class="feature-icon">🗳️</span><span class="feature-text">Голосование чатом и колесо зрителей</span></div>
-                    <div class="feature-item"><span class="feature-icon">🎨</span><span class="feature-text">5 тем и 10 цветовых схем</span></div>
-                    <div class="feature-item"><span class="feature-icon">⏱️</span><span class="feature-text">Таймер стримера с обратным отсчётом</span></div>
-                    <div class="feature-item"><span class="feature-icon">🎮</span><span class="feature-text">Бонус-раунды и чёрный список заданий</span></div>
+                    <div class="feature-item"><span class="feature-icon">🎡</span><span class="feature-text" data-i18n="feat.roulette_modes">4 режима рулетки с улучшенной физикой</span></div>
+                    <div class="feature-item"><span class="feature-icon">🖥️</span><span class="feature-text" data-i18n="feat.obs_overlay">OBS Browser Source overlay</span></div>
+                    <div class="feature-item"><span class="feature-icon">🗳️</span><span class="feature-text" data-i18n="feat.chat_vote">Голосование чатом и колесо зрителей</span></div>
+                    <div class="feature-item"><span class="feature-icon">🎨</span><span class="feature-text" data-i18n="feat.themes">5 тем и 10 цветовых схем</span></div>
+                    <div class="feature-item"><span class="feature-icon">⏱️</span><span class="feature-text" data-i18n="feat.timer">Таймер стримера с обратным отсчётом</span></div>
+                    <div class="feature-item"><span class="feature-icon">🎮</span><span class="feature-text" data-i18n="feat.bonus">Бонус-раунды и чёрный список заданий</span></div>
                 </div>
-                <button onclick="scrollToTabs()" class="cyber-btn start-exploring">
+                <button onclick="scrollToTabs()" class="cyber-btn start-exploring" data-i18n="about.start_btn">
                     НАЧАТЬ ИСПОЛЬЗОВАТЬ ✨
                 </button>
             </div>
@@ -169,49 +175,49 @@
         <div class="panel" id="mainPanel">
             <div class="loading-screen">
                 <div class="loading-spinner"></div>
-                <p class="loading-text">Загрузка инструментов...</p>
+                <p class="loading-text" data-i18n="common.loading">Загрузка инструментов...</p>
             </div>
         </div>
 
         <!-- ИНФОРМАЦИОННЫЕ КАРТОЧКИ -->
         <div class="info-section" id="infoSection">
             <div class="info-card">
-                <h3>💡 Как использовать?</h3>
+                <h3 data-i18n="info.how_title">💡 Как использовать?</h3>
                 <div class="steps-list">
-                    <div class="step"><span class="step-number">1</span><p>Добавьте игры и задания для них во вкладке «Игры»</p></div>
-                    <div class="step"><span class="step-number">2</span><p>Создайте список участников во вкладке «Игроки»</p></div>
-                    <div class="step"><span class="step-number">3</span><p>Выберите режим и запустите рулетку!</p></div>
-                    <div class="step"><span class="step-number">4</span><p>Для стримов подключите OBS Overlay через вкладку «Стример»</p></div>
+                    <div class="step"><span class="step-number">1</span><p data-i18n="info.step1">Добавьте игры и задания для них во вкладке «Игры»</p></div>
+                    <div class="step"><span class="step-number">2</span><p data-i18n="info.step2">Создайте список участников во вкладке «Игроки»</p></div>
+                    <div class="step"><span class="step-number">3</span><p data-i18n="info.step3">Выберите режим и запустите рулетку!</p></div>
+                    <div class="step"><span class="step-number">4</span><p data-i18n="info.step4">Для стримов подключите OBS Overlay через вкладку «Стример»</p></div>
                 </div>
             </div>
 
             <div class="info-card">
-                <h3>🎮 Режимы рулетки</h3>
+                <h3 data-i18n="info.modes_title">🎮 Режимы рулетки</h3>
                 <ul class="goals-list">
-                    <li><strong>Полный рандом</strong> — игра + задание + игрок</li>
-                    <li><strong>Сначала игра</strong> — выбор игры, затем задания для всех</li>
-                    <li><strong>Только игрок</strong> — выбор случайного участника</li>
-                    <li><strong>Только задание</strong> — случайное задание из игры</li>
+                    <li data-i18n-html="info.mode_full"><strong>Полный рандом</strong> — игра + задание + игрок</li>
+                    <li data-i18n-html="info.mode_game_first"><strong>Сначала игра</strong> — выбор игры, затем задания для всех</li>
+                    <li data-i18n-html="info.mode_player_only"><strong>Только игрок</strong> — выбор случайного участника</li>
+                    <li data-i18n-html="info.mode_task_only"><strong>Только задание</strong> — случайное задание из игры</li>
                 </ul>
             </div>
 
             <div class="info-card">
-                <h3>📡 Для стримеров</h3>
+                <h3 data-i18n="info.streamer_title">📡 Для стримеров</h3>
                 <div class="audience-grid">
                     <div class="audience-item">
                         <span class="audience-icon">🖥️</span>
-                        <strong>OBS Overlay</strong>
-                        <p>Browser Source прямо в стрим</p>
+                        <strong data-i18n="info.obs_label">OBS Overlay</strong>
+                        <p data-i18n="info.obs_desc">Browser Source прямо в стрим</p>
                     </div>
                     <div class="audience-item">
                         <span class="audience-icon">🗳️</span>
-                        <strong>Голосование</strong>
-                        <p>Зрители выбирают задание</p>
+                        <strong data-i18n="info.vote_label">Голосование</strong>
+                        <p data-i18n="info.vote_desc">Зрители выбирают задание</p>
                     </div>
                     <div class="audience-item">
                         <span class="audience-icon">💜</span>
-                        <strong>Колесо сабов</strong>
-                        <p>Выбор из подписчиков</p>
+                        <strong data-i18n="info.subs_label">Колесо сабов</strong>
+                        <p data-i18n="info.subs_desc">Выбор из подписчиков</p>
                     </div>
                 </div>
             </div>
@@ -224,11 +230,11 @@
     <!-- МОДАЛЬНОЕ ОКНО -->
     <div class="modal hidden" id="confirmModal">
         <div class="modal-content">
-            <h3 id="modalTitle">Подтверждение</h3>
-            <p id="modalMessage">Вы уверены?</p>
+            <h3 id="modalTitle" data-i18n="modal.confirm_default">Подтверждение</h3>
+            <p id="modalMessage" data-i18n="modal.are_you_sure">Вы уверены?</p>
             <div class="modal-actions">
-                <button class="cyber-btn cancel-btn" onclick="closeModal()">ОТМЕНА</button>
-                <button class="cyber-btn confirm-btn" id="modalConfirm">ПОДТВЕРДИТЬ</button>
+                <button class="cyber-btn cancel-btn" onclick="closeModal()" data-i18n="common.cancel">ОТМЕНА</button>
+                <button class="cyber-btn confirm-btn" id="modalConfirm" data-i18n="common.confirm">ПОДТВЕРДИТЬ</button>
             </div>
         </div>
     </div>
@@ -250,16 +256,18 @@
                 <span class="footer-version">v3.0</span>
             </div>
             <div class="footer-section">
-                <a href="legal/privacy_policy.html">Конфиденциальность</a>
+                <a href="legal/privacy_policy.html" data-i18n="footer.privacy">Конфиденциальность</a>
                 <span class="footer-divider">|</span>
-                <a href="legal/terms_of_service.html">Условия</a>
+                <a href="legal/terms_of_service.html" data-i18n="footer.terms">Условия</a>
                 <span class="footer-divider">|</span>
-                <a href="legal/disclaimer.html">Дисклеймер</a>
+                <a href="legal/disclaimer.html" data-i18n="footer.disclaimer">Дисклеймер</a>
                 <span class="footer-divider">|</span>
-                <a href="legal/about.html">О проекте</a>
+                <a href="legal/about.html" data-i18n="footer.about">О проекте</a>
+                <span class="footer-divider">|</span>
+                <a href="i18n/progress.html" data-i18n="footer.lang_progress">🌐 Прогресс переводов</a>
             </div>
             <div class="footer-section">
-                <span class="footer-text">🔒 Все данные хранятся локально в браузере</span>
+                <span class="footer-text" data-i18n="footer.local_storage">🔒 Все данные хранятся локально в браузере</span>
             </div>
         </div>
     </footer>
@@ -267,6 +275,19 @@
     <script src="script.js"></script>
 
     <script>
+        // Re-render active tab when language changes
+        window.addEventListener('rch:langchange', function () {
+            if (typeof switchTab === 'function' && typeof currentTab !== 'undefined') {
+                switchTab(currentTab);
+            }
+            // Re-apply theme button titles
+            if (typeof currentTheme !== 'undefined') {
+                document.querySelectorAll('.theme-btn').forEach(function (b) {
+                    var key = 'settings.theme_' + b.dataset.theme;
+                    if (typeof t === 'function') b.title = t(key);
+                });
+            }
+        });
         // Декоративный фон
         (function createBg() {
             const c = document.getElementById('bgDecoration');

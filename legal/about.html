@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,23 +19,27 @@
     <link rel="shortcut icon" href="../favicon/favicon.png">
     <link rel="canonical" href="https://random-challenge-hub.vercel.app/legal/about.html">
     <link rel="stylesheet" href="../style.css">
+    <!-- i18n -->
+    <script src="../i18n/en.js"></script>
+    <script src="../i18n/ru.js"></script>
+    <script src="../i18n/i18n.js"></script>
 </head>
 <body>
 
      <div class="legal-page">
         <!-- Кнопка назад -->
-        <a href="../ " class="back-to-app">← Вернуться в приложение</a>
+        <a href="../index.html" class="back-to-app" data-i18n="common.back_to_app">← Вернуться в приложение</a>
 
         <!-- Навигация -->
         <nav class="legal-nav">
-            <a href="privacy_policy.html">Политика конфиденциальности</a>
-            <a href="terms_of_service.html">Условия использования</a>
-            <a href="disclaimer.html">Отказ от ответственности</a>
-            <a href="license.html">Лицензия</a>
-            <a href="about.html" class="active">О проекте</a>
+            <a href="privacy_policy.html" data-i18n="legal.nav_privacy">Политика конфиденциальности</a>
+            <a href="terms_of_service.html" data-i18n="legal.nav_terms">Условия использования</a>
+            <a href="disclaimer.html" data-i18n="legal.nav_disclaimer">Отказ от ответственности</a>
+            <a href="license.html" data-i18n="legal.nav_license">Лицензия</a>
+            <a href="about.html" class="active" data-i18n="legal.nav_about">О проекте</a>
         </nav>
 
-    <h1>О проекте Random Challenge Hub</h1>
+    <h1 data-i18n="legal.about_title">О проекте Random Challenge Hub</h1>
 
     <h2>История создания</h2>
     <p>Random Challenge Hub был создан для решения проблемы "во что поиграть и как разнообразить игровой процесс". Идея возникла из потребности стримеров и геймеров в честном случайном выборе заданий.</p>

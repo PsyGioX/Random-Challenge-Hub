@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Translation Progress | Random Challenge Hub</title>
+  <meta name="description" content="Translation progress for Random Challenge Hub. See how complete each language is and how to contribute a new translation.">
+  <meta name="robots" content="index, follow">
+  <link rel="icon" type="image/png" href="../favicon/favicon.png">
+  <link rel="canonical" href="https://random-challenge-hub.vercel.app/i18n/progress.html">
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    .progress-page { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+    .progress-hero {
+      text-align: center; margin-bottom: 40px;
+    }
+    .progress-hero h1 {
+      font-size: clamp(22px, 4vw, 34px); font-weight: 900;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 8px;
+    }
+    .progress-hero p { color: var(--text-secondary); font-size: 14px; }
+
+    /* ── LANGUAGE GRID ── */
+    .lang-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+    .lang-card {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-light);
+      border-radius: var(--radius-lg, 16px);
+      padding: 20px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .lang-card:hover { border-color: var(--accent-primary); transform: translateY(-2px); }
+    .lang-card.complete { border-color: #10b981; }
+    .lang-card-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    }
+    .lang-flag { font-size: 28px; line-height: 1; flex-shrink: 0; }
+    .lang-info { flex: 1; min-width: 0; }
+    .lang-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+    .lang-native { font-size: 12px; color: var(--text-muted); }
+    .lang-badge {
+      font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px;
+      background: rgba(99,102,241,0.15); color: var(--accent-primary);
+      border: 1px solid rgba(99,102,241,0.3); white-space: nowrap;
+    }
+    .lang-badge.base { background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.3); }
+
+    /* progress bar */
+    .lang-progress-wrap { margin-bottom: 10px; }
+    .lang-progress-header {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text-secondary); margin-bottom: 5px;
+    }
+    .lang-progress-bar {
+      height: 7px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;
+    }
+    .lang-progress-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .lang-progress-fill.full { background: linear-gradient(90deg, #10b981, #34d399); }
+    .lang-progress-fill.med  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .lang-progress-fill.low  { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+    .lang-meta {
+      display: flex; gap: 12px; flex-wrap: wrap;
+      font-size: 11px; color: var(--text-muted); margin-top: 6px;
+    }
+    .lang-meta span { display: flex; align-items: center; gap: 4px; }
+
+    /* ── HOW TO CONTRIBUTE ── */
+    .contribute-section {
+      background: var(--bg-secondary);
+      border: 2px solid rgba(99,102,241,0.3);
+      border-radius: var(--radius-lg, 16px);
+      padding: 28px;
+      margin-bottom: 40px;
+    }
+    .contribute-section h2 {
+      font-size: 18px; font-weight: 800; color: var(--accent-primary);
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .steps-ol { list-style: none; counter-reset: steps; display: flex; flex-direction: column; gap: 12px; }
+    .steps-ol li {
+      counter-increment: steps; display: flex; gap: 12px; align-items: flex-start;
+      font-size: 13px; color: var(--text-secondary); line-height: 1.55;
+    }
+    .steps-ol li::before {
+      content: counter(steps);
+      flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+      background: rgba(99,102,241,0.18); color: var(--accent-primary);
+      font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+    .steps-ol li code {
+      font-family: 'Courier New', monospace; font-size: 11px;
+      background: rgba(99,102,241,0.12); padding: 2px 6px; border-radius: 4px;
+      color: #818cf8; white-space: nowrap;
+    }
+    .steps-ol li strong { color: var(--text-primary); }
+
+    .template-box {
+      background: rgba(0,0,0,0.35); border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 10px; padding: 16px; margin-top: 18px;
+      font-family: 'Courier New', monospace; font-size: 11px;
+      color: #a5b4fc; overflow-x: auto; white-space: pre;
+      line-height: 1.7;
+    }
+    .copy-template-btn {
+      margin-top: 10px; padding: 7px 18px; font-size: 12px;
+      background: rgba(99,102,241,0.18); border: 1px solid rgba(99,102,241,0.4);
+      border-radius: 8px; color: #818cf8; cursor: pointer; transition: all 0.2s;
+    }
+    .copy-template-btn:hover { background: rgba(99,102,241,0.35); color: #fff; }
+
+    /* ── KEY STATS ── */
+    .key-stats {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 40px;
+    }
+    .key-stat {
+      flex: 1; min-width: 120px;
+      background: var(--bg-secondary); border: 1px solid var(--border-light);
+      border-radius: var(--radius-md, 12px); padding: 16px; text-align: center;
+    }
+    .key-stat-value { font-size: 28px; font-weight: 900; color: var(--accent-primary); line-height: 1; }
+    .key-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--text-secondary); font-size: 13px; text-decoration: none;
+      margin-bottom: 28px; transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--accent-primary); }
+
+    #langGrid { /* populated by JS */ }
+  </style>
+</head>
+<body>
+<div class="progress-page">
+
+  <a href="../index.html" class="back-link">← Back to app</a>
+
+  <div class="progress-hero">
+    <h1>🌐 Translation Progress</h1>
+    <p>Status of all community translations for Random Challenge Hub</p>
+  </div>
+
+  <!-- Key numbers -->
+  <div class="key-stats" id="keyStats">
+    <div class="key-stat"><div class="key-stat-value" id="statLangs">—</div><div class="key-stat-label">Languages</div></div>
+    <div class="key-stat"><div class="key-stat-value" id="statKeys">—</div><div class="key-stat-label">Translation Keys</div></div>
+    <div class="key-stat"><div class="key-stat-value" id="statFull">—</div><div class="key-stat-label">100% Complete</div></div>
+    <div class="key-stat"><div class="key-stat-value" id="statAvg">—</div><div class="key-stat-label">Avg Completion</div></div>
+  </div>
+
+  <!-- Language cards -->
+  <div class="lang-grid" id="langGrid">
+    <div style="color:var(--text-muted);font-size:13px;padding:20px">Loading translations…</div>
+  </div>
+
+  <!-- How to contribute -->
+  <div class="contribute-section">
+    <h2>🤝 How to Add a New Language</h2>
+    <ol class="steps-ol">
+      <li>
+        <span>Copy <code>i18n/en.js</code> and rename it to <code>i18n/xx.js</code>
+        (where <code>xx</code> is the <strong>ISO 639-1</strong> two-letter language code,
+        e.g. <code>de</code> for German, <code>fr</code> for French, <code>ja</code> for Japanese).</span>
+      </li>
+      <li>
+        <span>Update the <code>_meta</code> block at the top of the file:
+        set <code>code</code>, <code>name</code> (in English), <code>nameNative</code>
+        (name in your language), <code>flag</code> (emoji), <code>author</code> and <code>version</code>.
+        Set <code>completion</code> to the actual percentage of translated keys.</span>
+      </li>
+      <li>
+        <span>Translate every <strong>value string</strong> on the right-hand side.
+        <strong>Do not rename keys</strong> — the engine maps them by key name.
+        Variables like <code>{name}</code> or <code>{n}</code> inside strings must be kept as-is.</span>
+      </li>
+      <li>
+        <span>Load your file in <code>index.html</code>, <code>overlay.html</code>, and all
+        <code>legal/*.html</code> pages by adding a <code>&lt;script&gt;</code> tag
+        <strong>before</strong> <code>i18n/i18n.js</code>:
+        <br><code>&lt;script src="i18n/xx.js"&gt;&lt;/script&gt;</code></span>
+      </li>
+      <li>
+        <span>Test the translation by opening the app and clicking your language flag
+        in the bottom-right language switcher. Fix any untranslated strings (shown with the key name).</span>
+      </li>
+      <li>
+        <span>Open a <strong>Pull Request</strong> on GitHub with the title
+        <code>i18n: add [Language Name] translation</code>.
+        See <code>README.md § Translation System</code> for full guidelines.</span>
+      </li>
+    </ol>
+
+    <div style="margin-top:18px;font-size:13px;color:var(--text-secondary)">
+      <strong>Template to start with</strong> — copy the file header:
+    </div>
+    <div class="template-box" id="templateBox">window.RCH_TRANSLATIONS = window.RCH_TRANSLATIONS || {};
+window.RCH_TRANSLATIONS['xx'] = {
+  _meta: {
+    code:        'xx',          // ISO 639-1 code (2 letters)
+    name:        'MyLanguage',  // Name in English
+    nameNative:  'МойЯзык',    // Name in your language
+    flag:        '🏳️',         // Flag emoji
+    author:      'Your Name / GitHub @handle',
+    version:     '1.0.0',
+    completion:  0,             // 0–100 — update when done
+    rtl:         false,         // true for Arabic, Hebrew, etc.
+  },
+
+  // ── Paste ALL keys from en.js below and translate values ──
+  'common.app_name': 'Random Challenge Hub',
+  // ... (keep all keys from en.js)
+};</div>
+    <button class="copy-template-btn" onclick="copyTemplate()">📋 Copy Template</button>
+  </div>
+
+  <!-- Footer nav -->
+  <div style="text-align:center; font-size:12px; color:var(--text-muted)">
+    <a href="../legal/about.html" style="color:var(--text-secondary)">About</a> ·
+    <a href="../legal/license.html" style="color:var(--text-secondary)">License (MIT)</a> ·
+    <a href="https://github.com/PsyGioX/Random-Challenge-Hub" target="_blank" rel="noopener" style="color:var(--text-secondary)">GitHub</a>
+  </div>
+</div>
+
+<!-- Load translation files -->
+<script src="en.js"></script>
+<script src="ru.js"></script>
+<!-- Community translations are loaded here automatically if present -->
+<script src="i18n.js"></script>
+
+<script>
+(function () {
+  function pctColor(pct) {
+    if (pct >= 100) return 'full';
+    if (pct >= 60)  return '';
+    if (pct >= 30)  return 'med';
+    return 'low';
+  }
+
+  function render() {
+    const summary = RCH_I18N.progressSummary();
+    const grid    = document.getElementById('langGrid');
+    const enKeys  = Object.keys((window.RCH_TRANSLATIONS || {})['en'] || {}).filter(k => k !== '_meta').length;
+
+    // Key stats
+    document.getElementById('statLangs').textContent = summary.length;
+    document.getElementById('statKeys').textContent  = enKeys;
+    const fullCount = summary.filter(l => l.completion >= 100).length;
+    document.getElementById('statFull').textContent  = fullCount;
+    const avg = summary.length
+      ? Math.round(summary.reduce((s, l) => s + l.completion, 0) / summary.length)
+      : 0;
+    document.getElementById('statAvg').textContent   = avg + '%';
+
+    // Cards
+    const isBase = code => code === 'en' || code === 'ru';
+    grid.innerHTML = summary
+      .sort((a, b) => b.completion - a.completion)
+      .map(lang => {
+        const pct   = lang.completion;
+        const color = pctColor(pct);
+        return `
+          <div class="lang-card ${pct >= 100 ? 'complete' : ''}">
+            <div class="lang-card-header">
+              <span class="lang-flag">${lang.flag || '🌐'}</span>
+              <div class="lang-info">
+                <div class="lang-name">${lang.name}</div>
+                <div class="lang-native">${lang.nameNative !== lang.name ? lang.nameNative : ''}</div>
+              </div>
+              <span class="lang-badge ${isBase(lang.code) ? 'base' : ''}">
+                ${isBase(lang.code) ? 'BASE' : lang.code.toUpperCase()}
+              </span>
+            </div>
+            <div class="lang-progress-wrap">
+              <div class="lang-progress-header">
+                <span>Completion</span>
+                <span><strong>${pct}%</strong></span>
+              </div>
+              <div class="lang-progress-bar">
+                <div class="lang-progress-fill ${color}" style="width:${pct}%"></div>
+              </div>
+            </div>
+            <div class="lang-meta">
+              <span>✍️ ${lang.author}</span>
+              <span>🏷️ v${lang.version}</span>
+            </div>
+          </div>`;
+      }).join('');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', render);
+  } else {
+    render();
+  }
+  window.addEventListener('rch:langchange', render);
+
+  window.copyTemplate = function () {
+    const text = document.getElementById('templateBox').textContent;
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        const btn = document.querySelector('.copy-template-btn');
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => { btn.textContent = '📋 Copy Template'; }, 2000);
+      })
+      .catch(() => alert('Copy failed — please select and copy manually.'));
+  };
+}());
+</script>
+</body>
+</html>
