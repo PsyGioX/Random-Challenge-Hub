@@ -243,6 +243,314 @@
     </div>
 </footer>
 
+     <!-- Скрипт блокировки мобильных устройств -->
+    <script>
+        (function () {
+            function isMobileDevice() {
+                const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+                const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+                const hasTouchScreen = (
+                    'ontouchstart' in window ||
+                    navigator.maxTouchPoints > 0 ||
+                    navigator.msMaxTouchPoints > 0
+                );
+                const isSmallScreen = window.innerWidth <= 768;
+                return (mobileRegex.test(userAgent) && hasTouchScreen) ||
+                    (hasTouchScreen && isSmallScreen);
+            }
+
+            function createMobileBlockScreen() {
+                document.body.innerHTML = '';
+
+                const blockContainer = document.createElement('div');
+                blockContainer.id = 'mobile-block-screen';
+                blockContainer.innerHTML = `
+                    <div class="mobile-block-wrapper">
+                        <div class="mobile-block-icon">🖥️</div>
+                        <h1 class="mobile-block-title">Random Challenge Hub</h1>
+                        <div class="mobile-block-divider"></div>
+                        <h2 class="mobile-block-subtitle">Требуется компьютер</h2>
+                        <p class="mobile-block-description">
+                            Это приложение оптимизировано для <strong>компьютеров и ноутбуков</strong>.
+                            Оно предназначено для использования во время игровых сессий,
+                            стримов и киберспортивных мероприятий на ПК.
+                        </p>
+                        
+                        <div class="mobile-block-reasons">
+                            <h3>Почему только ПК?</h3>
+                            <ul>
+                                <li>
+                                    <span class="reason-icon">🎮</span>
+                                    <span>Приложение создано для использования параллельно с играми на ПК</span>
+                                </li>
+                                <li>
+                                    <span class="reason-icon">🖥️</span>
+                                    <span>Интерфейс оптимизирован для больших экранов и точного управления мышью</span>
+                                </li>
+                                <li>
+                                    <span class="reason-icon">🎰</span>
+                                    <span>Рулетка и все элементы управления требуют экран от 1024px</span>
+                                </li>
+                                <li>
+                                    <span class="reason-icon">⚡</span>
+                                    <span>Стримеры и геймеры используют ПК для максимальной производительности</span>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mobile-block-alternatives">
+                            <h3>Что делать?</h3>
+                            <div class="alternatives-grid">
+                                <div class="alternative-card">
+                                    <div class="alternative-icon">💻</div>
+                                    <p>Откройте сайт на компьютере или ноутбуке</p>
+                                </div>
+                                <div class="alternative-card">
+                                    <div class="alternative-icon">📱</div>
+                                    <p>Используйте приложение на планшете в горизонтальном режиме</p>
+                                </div>
+                                <div class="alternative-card">
+                                    <div class="alternative-icon">🔗</div>
+                                    <p>Поделитесь ссылкой с друзьями для игры на ПК</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mobile-block-footer">
+                            <p class="mobile-block-version">Random Challenge Hub v2.0</p>
+                            <p class="mobile-block-copy">© 2026 Random Challenge Hub. Все права защищены.</p>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(blockContainer);
+                addMobileBlockStyles();
+                createParticleBackground();
+            }
+
+            function addMobileBlockStyles() {
+                const styles = document.createElement('style');
+                styles.textContent = `
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    
+                    body {
+                        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+                        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+                        min-height: 100vh;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                        overflow-x: hidden;
+                        position: relative;
+                    }
+                    
+                    #mobile-block-screen {
+                        position: relative;
+                        z-index: 10;
+                        width: 100%;
+                        max-width: 500px;
+                    }
+                    
+                    .mobile-block-wrapper {
+                        background: rgba(30, 41, 59, 0.9);
+                        backdrop-filter: blur(20px);
+                        border: 2px solid rgba(99, 102, 241, 0.3);
+                        border-radius: 24px;
+                        padding: 40px 24px;
+                        text-align: center;
+                        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), 0 0 40px rgba(99, 102, 241, 0.1);
+                        animation: fadeInUp 0.6s ease;
+                    }
+                    
+                    @keyframes fadeInUp {
+                        from { opacity: 0; transform: translateY(30px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    
+                    .mobile-block-icon {
+                        font-size: 64px;
+                        margin-bottom: 16px;
+                        animation: float 3s ease-in-out infinite;
+                    }
+                    
+                    @keyframes float {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-10px); }
+                    }
+                    
+                    .mobile-block-title {
+                        font-family: 'Orbitron', 'Inter', sans-serif;
+                        font-size: 24px;
+                        font-weight: 900;
+                        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                        margin-bottom: 8px;
+                        letter-spacing: 2px;
+                    }
+                    
+                    .mobile-block-divider {
+                        width: 60px;
+                        height: 3px;
+                        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+                        margin: 16px auto;
+                        border-radius: 2px;
+                    }
+                    
+                    .mobile-block-subtitle {
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: #f1f5f9;
+                        margin-bottom: 16px;
+                    }
+                    
+                    .mobile-block-description {
+                        font-size: 14px;
+                        color: #94a3b8;
+                        line-height: 1.6;
+                        margin-bottom: 24px;
+                    }
+                    
+                    .mobile-block-description strong { color: #cbd5e1; }
+                    
+                    .mobile-block-reasons {
+                        text-align: left;
+                        margin-bottom: 24px;
+                        padding: 20px;
+                        background: rgba(99, 102, 241, 0.05);
+                        border: 1px solid rgba(99, 102, 241, 0.2);
+                        border-radius: 16px;
+                    }
+                    
+                    .mobile-block-reasons h3 {
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: #818cf8;
+                        margin-bottom: 16px;
+                        text-align: center;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                    }
+                    
+                    .mobile-block-reasons ul {
+                        list-style: none;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                    }
+                    
+                    .mobile-block-reasons li {
+                        display: flex;
+                        align-items: flex-start;
+                        gap: 12px;
+                        font-size: 13px;
+                        color: #cbd5e1;
+                        line-height: 1.5;
+                    }
+                    
+                    .reason-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+                    
+                    .mobile-block-alternatives { margin-bottom: 24px; }
+                    
+                    .mobile-block-alternatives h3 {
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: #f1f5f9;
+                        margin-bottom: 16px;
+                    }
+                    
+                    .alternatives-grid {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 8px;
+                    }
+                    
+                    .alternative-card {
+                        padding: 16px 8px;
+                        background: rgba(255, 255, 255, 0.03);
+                        border: 1px solid rgba(255, 255, 255, 0.06);
+                        border-radius: 12px;
+                        text-align: center;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .alternative-icon { font-size: 24px; margin-bottom: 8px; }
+                    
+                    .alternative-card p { font-size: 11px; color: #94a3b8; line-height: 1.4; }
+                    
+                    .mobile-block-footer {
+                        padding-top: 16px;
+                        border-top: 1px solid rgba(255, 255, 255, 0.08);
+                    }
+                    
+                    .mobile-block-version { font-size: 11px; color: #64748b; margin-bottom: 4px; }
+                    .mobile-block-copy { font-size: 10px; color: #475569; }
+                    
+                    .bg-particle {
+                        position: fixed;
+                        border-radius: 50%;
+                        pointer-events: none;
+                        animation: particleFloat linear infinite;
+                    }
+                    
+                    @keyframes particleFloat {
+                        0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+                        10% { opacity: 0.6; }
+                        90% { opacity: 0.6; }
+                        100% { transform: translateY(-100vh) translateX(100px) scale(0); opacity: 0; }
+                    }
+                    
+                    @media (max-width: 360px) {
+                        .mobile-block-wrapper { padding: 24px 16px; }
+                        .mobile-block-title { font-size: 20px; }
+                        .mobile-block-icon { font-size: 48px; }
+                        .alternatives-grid { grid-template-columns: 1fr; }
+                    }
+                `;
+
+                document.head.appendChild(styles);
+            }
+
+            function createParticleBackground() {
+                const colors = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#3b82f6'];
+
+                for (let i = 0; i < 40; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'bg-particle';
+
+                    const size = Math.random() * 4 + 2;
+                    const posX = Math.random() * 100;
+                    const posY = Math.random() * 100;
+                    const duration = Math.random() * 15 + 10;
+                    const delay = Math.random() * 8;
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+
+                    particle.style.cssText = `
+                        width: ${size}px;
+                        height: ${size}px;
+                        left: ${posX}%;
+                        top: ${posY}%;
+                        background: ${color};
+                        animation-duration: ${duration}s;
+                        animation-delay: ${delay}s;
+                        box-shadow: 0 0 ${size * 2}px ${color};
+                    `;
+
+                    document.body.appendChild(particle);
+                }
+            }
+
+            if (isMobileDevice()) {
+                document.addEventListener('DOMContentLoaded', createMobileBlockScreen);
+                if (document.readyState === 'interactive' || document.readyState === 'complete') {
+                    createMobileBlockScreen();
+                }
+            }
+        })();
+    </script>
+
     <!-- Подключение скриптов -->
     <script src="script.js"></script>
 
