@@ -752,6 +752,43 @@ async function loadStreamerData() {
     }
 }
 
+function showReconnectToast(channelName) {
+    // Убираем предыдущий тост, если есть
+    const existing = document.getElementById('reconnectToast');
+    if (existing) existing.remove();
+
+    const group = document.querySelector('.channel-input-group');
+    if (!group) return;
+
+    const toast = document.createElement('div');
+    toast.id = 'reconnectToast';
+    toast.className = 'reconnect-toast';
+    toast.innerHTML = `
+        <span>🔌 Переподключиться к <strong>#${channelName}</strong>?</span>
+        <div class="reconnect-toast-actions">
+            <button class="reconnect-toast-yes" id="reconnectYes">Да</button>
+            <button class="reconnect-toast-no"  id="reconnectNo">Нет</button>
+        </div>
+    `;
+    group.insertAdjacentElement('afterend', toast);
+
+    const dismiss = () => {
+        toast.style.transition = 'opacity 0.2s, transform 0.2s';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-4px) scale(0.97)';
+        setTimeout(() => toast.remove(), 220);
+    };
+
+    document.getElementById('reconnectYes').addEventListener('click', () => {
+        dismiss();
+        twitchConnect(channelName);
+    });
+    document.getElementById('reconnectNo').addEventListener('click', dismiss);
+
+    // Автоскрытие через 8 секунд
+    setTimeout(dismiss, 8000);
+}
+
 function updateChannelInput() {
     // Обновляем поле ввода с задержкой, чтобы UI был готов
     setTimeout(() => {
@@ -925,10 +962,7 @@ function init() {
         // После загрузки данных стримера, предлагаем переподключиться
         setTimeout(() => {
             if (streamerState.channelName && currentTab === 'streamer') {
-                const shouldReconnect = confirm(`Переподключиться к каналу #${streamerState.channelName}?`);
-                if (shouldReconnect) {
-                    twitchConnect(streamerState.channelName);
-                }
+                showReconnectToast(streamerState.channelName);
             }
         }, 1500); // Увеличили задержку для полной загрузки
     });
@@ -1150,10 +1184,7 @@ function switchTab(name) {
                 // Предлагаем переподключение если есть сохранённый канал
                 if (streamerState.channelName && streamerState.twitchStatus === 'idle') {
                     setTimeout(() => {
-                        const shouldReconnect = confirm(`Переподключиться к каналу #${streamerState.channelName}?`);
-                        if (shouldReconnect) {
-                            twitchConnect(streamerState.channelName);
-                        }
+                        showReconnectToast(streamerState.channelName);
                     }, 500);
                 }
             }, 100);

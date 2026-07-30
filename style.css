@@ -1204,6 +1204,34 @@ input:checked + .toggle-slider:before {
 @keyframes slideIn  { from { transform: translateX(120%); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
 @keyframes slideOut { from { transform: translateX(0); opacity: 1 }   to { transform: translateX(120%); opacity: 0 } }
 
+/* ── RECONNECT TOAST ── */
+.reconnect-toast {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 10px;
+    font-size: 13px; color: var(--text-secondary);
+    animation: reconnectToastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.reconnect-toast strong { color: var(--accent-primary); font-weight: 700 }
+.reconnect-toast-actions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0 }
+.reconnect-toast-yes {
+    padding: 4px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 700;
+    background: var(--accent-primary); color: #fff; transition: opacity 0.15s;
+}
+.reconnect-toast-yes:hover { opacity: 0.85 }
+.reconnect-toast-no {
+    padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-medium); cursor: pointer;
+    font-size: 12px; font-weight: 600; background: transparent; color: var(--text-muted); transition: color 0.15s;
+}
+.reconnect-toast-no:hover { color: var(--text-primary) }
+@keyframes reconnectToastIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97) }
+    to   { opacity: 1; transform: translateY(0)    scale(1)    }
+}
+
 /* ── FLOATING ACTIONS ── */
 .floating-actions { position: fixed; bottom: 24px; left: 24px; z-index: 500 }
 .floating-btn {
