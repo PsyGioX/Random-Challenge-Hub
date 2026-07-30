@@ -135,30 +135,43 @@ async function fetchChannelInfo(channelName) {
     saveStreamerData();
 
     try {
-        // Используем публичный Twitch GQL endpoint (тот же, что использует сам сайт)
+        // Прямой GQL запрос — без persistedQuery (хеши быстро устаревают)
         const res = await fetch('https://gql.twitch.tv/gql', {
             method: 'POST',
             headers: {
                 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify([{
-                operationName: 'StreamMetadata',
-                variables: { channelLogin: channelName.toLowerCase() },
-                extensions: { persistedQuery: {
-                    version: 1,
-                    sha256Hash: '1c719a40e481453e5c48d9bb585d971b8b372f8efa9d9ff8a94bfc54b91fc1f0'
-                }}
-            }])
+            body: JSON.stringify({
+                query: `{
+                    user(login: "${channelName.toLowerCase()}") {
+                        id
+                        login
+                        displayName
+                        profileImageURL(width: 70)
+                        stream {
+                            id
+                            viewersCount
+                            game { displayName }
+                            broadcastSettings { title }
+                        }
+                    }
+                }`
+            })
         });
 
         if (!res.ok) throw new Error('GQL ' + res.status);
         const json = await res.json();
-        const user = json[0]?.data?.user;
-        if (!user) return;
+        const user = json?.data?.user;
+        if (!user) {
+            console.warn('Twitch: пользователь не найден:', channelName);
+            return;
+        }
 
-        streamerState.streamerProfile.displayName    = user.displayName || channelName;
-        streamerState.streamerProfile.profileImageUrl = user.profileImageURL || '';
+        streamerState.streamerProfile.displayName     = user.displayName || channelName;
+        if (user.profileImageURL) {
+            streamerState.streamerProfile.profileImageUrl = user.profileImageURL;
+        }
         streamerState.streamerProfile.isLive          = !!user.stream;
         streamerState.streamerProfile.viewerCount     = user.stream?.viewersCount || 0;
         streamerState.streamerProfile.gameName        = user.stream?.game?.displayName || '';
@@ -166,13 +179,22 @@ async function fetchChannelInfo(channelName) {
 
         saveStreamerData();
 
+        // Обновляем карточку стримера если вкладка открыта
+        const card = document.querySelector('.streamer-profile-card');
+        if (card) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = renderStreamerProfileCard();
+            if (tmp.firstElementChild) card.replaceWith(tmp.firstElementChild);
+        }
+
         // Обновляем оверлей если открыт
         updateOverlayChatData();
 
         console.log(`📡 Twitch данные загружены: ${streamerState.streamerProfile.displayName}`, {
             live: streamerState.streamerProfile.isLive,
             viewers: streamerState.streamerProfile.viewerCount,
-            game: streamerState.streamerProfile.gameName
+            game: streamerState.streamerProfile.gameName,
+            avatar: streamerState.streamerProfile.profileImageUrl ? '✅' : '❌'
         });
     } catch (error) {
         console.warn('Не удалось получить информацию о канале:', error);
@@ -1171,9 +1193,14 @@ function switchTab(name) {
             // Обновляем состояние UI после рендера
             setTimeout(() => {
                 updateStreamerUIState();
-                updateChannelInput(); // Обновляем поле ввода канала
-                updateTokenInput(); // Обновляем поле токена
-                
+                updateChannelInput();
+                updateTokenInput();
+
+                // Если есть имя канала — обновляем данные карточки
+                if (streamerState.channelName) {
+                    fetchChannelInfo(streamerState.channelName);
+                }
+
                 // Предлагаем переподключение если есть сохранённый канал
                 if (streamerState.channelName && streamerState.twitchStatus === 'idle') {
                     setTimeout(() => {
@@ -2451,11 +2478,12 @@ function renderStreamerProfileCard() {
     const ch = streamerState.channelName;
     if (!ch) return '';
 
-    const avatarHtml = p.profileImageUrl
-        ? `<img class="spc-avatar" src="${p.profileImageUrl}" alt="${p.displayName || ch}"
-               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-          + `<div class="spc-avatar-placeholder" style="display:none">🎮</div>`
-        : `<div class="spc-avatar-placeholder">🎮</div>`;
+    // Try profileImageUrl first, then fall back to Twitch's public avatar CDN
+    const avatarSrc = p.profileImageUrl
+        || `https://static-cdn.jtvnw.net/user-default-pictures-uv/ead5c8b2-a4c9-4724-b1dd-9f00b46cbd3d-profile_image-70x70.png`;
+
+    const avatarHtml = `<img class="spc-avatar" src="${avatarSrc}" alt="${p.displayName || ch}"
+           onerror="this.src='https://static-cdn.jtvnw.net/user-default-pictures-uv/ead5c8b2-a4c9-4724-b1dd-9f00b46cbd3d-profile_image-70x70.png'">`;
 
     const statusBadge = p.isLive
         ? `<span class="spc-badge-live">🔴 LIVE${p.viewerCount ? ' · <span class="spc-viewers">' + fmtViewers(p.viewerCount) + '</span>' : ''}</span>`
@@ -2487,16 +2515,9 @@ function fmtViewers(n) {
 
 async function refreshStreamerCard() {
     const btn = document.getElementById('spcRefreshBtn');
-    if (btn) btn.classList.add('spinning');
+    if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
     await fetchChannelInfo(streamerState.channelName);
-    // Перерендерить карточку
-    const card = document.querySelector('.streamer-profile-card');
-    if (card) {
-        const tmp = document.createElement('div');
-        tmp.innerHTML = renderStreamerProfileCard();
-        card.replaceWith(tmp.firstElementChild);
-    }
-    if (btn) btn.classList.remove('spinning');
+    if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
 }
 
 function renderStreamerTab() {

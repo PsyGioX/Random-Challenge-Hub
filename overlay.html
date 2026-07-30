@@ -569,10 +569,7 @@ function startPolling() {
     }, 60000);
 }
 
-// ── STREAMER DATA via Twitch Helix API ─────────────
-// Uses public endpoint that doesn't require auth for basic info
-const TWITCH_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko'; // Twitch public web client id
-
+// ── STREAMER DATA via Twitch GQL ──────────────────
 async function tryLoadStreamerData() {
     try {
         const sd = JSON.parse(localStorage.getItem('streamerState')||'{}');
@@ -590,63 +587,53 @@ async function tryLoadStreamerData() {
 
 async function fetchStreamerData(login) {
     try {
-        // Step 1: Get user info (avatar, display name, description)
-        const userRes = await fetch(
-            `https://api.twitch.tv/helix/users?login=${encodeURIComponent(login)}`,
-            { headers: { 'Client-Id': TWITCH_CLIENT_ID, 'Authorization': 'Extension ' + TWITCH_CLIENT_ID } }
-        );
-
-        // Twitch API requires a Bearer token; fall back to unofficial Kraken-style lookup
-        // Since Helix requires auth, we use the public GQL endpoint Twitch uses for its own pages
+        // Прямой GQL запрос без persistedQuery (хеши устаревают)
         const gqlRes = await fetch('https://gql.twitch.tv/gql', {
             method: 'POST',
             headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' },
-            body: JSON.stringify([{
-                operationName: 'StreamMetadata',
-                variables: { channelLogin: login.toLowerCase() },
-                extensions: { persistedQuery: {
-                    version: 1,
-                    sha256Hash: '1c719a40e481453e5c48d9bb585d971b8b372f8efa9d9ff8a94bfc54b91fc1f0'
-                }}
-            }, {
-                operationName: 'ChannelRoot_AboutPanel',
-                variables: { channelLogin: login.toLowerCase(), skipSchedule: false },
-                extensions: { persistedQuery: {
-                    version: 1,
-                    sha256Hash: 'f5e664a25a7eda64d21d38c31a9a3cf7b56f3d3b3c025bbcc26f0c98f8d38ee5'
-                }}
-            }])
+            body: JSON.stringify({
+                query: `{
+                    user(login: "${login.toLowerCase()}") {
+                        id
+                        login
+                        displayName
+                        profileImageURL(width: 70)
+                        followers { totalCount }
+                        stream {
+                            id
+                            viewersCount
+                            game { displayName }
+                            broadcastSettings { title }
+                        }
+                    }
+                }`
+            })
         });
 
-        if (!gqlRes.ok) throw new Error('GQL failed');
+        if (!gqlRes.ok) throw new Error('GQL ' + gqlRes.status);
         const gql = await gqlRes.json();
+        const user = gql?.data?.user;
 
-        const streamMeta   = gql[0]?.data?.user;
-        const aboutData    = gql[1]?.data?.user;
-
-        if (!streamMeta && !aboutData) {
+        if (!user) {
             renderStreamerNotFound(login);
             return;
         }
 
-        const user = streamMeta || aboutData;
-        const stream = streamMeta?.stream;
+        const stream = user.stream;
 
         renderStreamerInfo({
             login:       login,
             displayName: user.displayName || login,
             avatar:      user.profileImageURL || null,
-            description: aboutData?.description || '',
             isLive:      !!stream,
             viewers:     stream?.viewersCount || 0,
             gameName:    stream?.game?.displayName || (stream ? 'Стримит' : 'Офлайн'),
-            title:       stream?.broadcastSettings?.title || user.stream?.title || '',
+            title:       stream?.broadcastSettings?.title || '',
             followers:   user.followers?.totalCount || null,
         });
 
     } catch(err) {
         console.warn('Twitch GQL fetch failed:', err);
-        // Fallback: show data from local streamerState
         renderStreamerFromLocal();
     }
 }
