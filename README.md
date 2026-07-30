@@ -36,6 +36,3 @@
 
 ### Онлайн
 Просто откройте [демо-версию](https://random-challenge-hub.vercel.app) в браузере!
-
-# Откройте в браузере
-open index.html
