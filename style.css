@@ -898,6 +898,108 @@ input:checked + .toggle-slider:before {
 .stats-fill { height: 100%; background: var(--gradient-primary); border-radius: 4px; transition: width 0.8s ease }
 .player-stats-count { font-size: 11px; color: var(--text-muted); min-width: 50px; text-align: right }
 
+/* ── TIPS (Stats tab) ── */
+.tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+.tip-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+.tip-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+.tip-cat-coop::before    { background: linear-gradient(90deg, #10b981, #34d399) }
+.tip-cat-comp::before    { background: linear-gradient(90deg, #f59e0b, #fbbf24) }
+.tip-cat-online::before  { background: linear-gradient(90deg, #3b82f6, #60a5fa) }
+.tip-cat-fact::before    { background: linear-gradient(90deg, #8b5cf6, #a78bfa) }
+.tip-card:hover { border-color: var(--accent-primary); box-shadow: var(--shadow-glow); transform: translateY(-2px) }
+.tip-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.tip-icon  { font-size: 20px; line-height: 1; flex-shrink: 0 }
+.tip-tag   {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.tip-text  { font-size: 12px; color: var(--text-secondary); line-height: 1.65 }
+
+/* Tips filter bar */
+.tips-filter {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+.tips-filter-btn {
+    padding: 5px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    letter-spacing: 0.5px;
+}
+.tips-filter-btn:hover  { border-color: var(--accent-primary); color: var(--accent-primary) }
+.tips-filter-btn.active { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff }
+
+/* Tips scrollable list */
+.tips-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.tips-list::-webkit-scrollbar { width: 4px }
+.tips-list::-webkit-scrollbar-track { background: transparent }
+.tips-list::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px }
+
+.tip-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    transition: var(--transition-fast);
+    animation: fadeInUp 0.25s ease;
+}
+.tip-list-item:hover { border-color: var(--accent-primary); background: var(--bg-card) }
+.tip-list-icon  { font-size: 18px; flex-shrink: 0; margin-top: 1px }
+.tip-list-body  { flex: 1; min-width: 0 }
+.tip-list-tag   { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; padding: 1px 7px; border-radius: 10px; display: inline-block; margin-bottom: 5px }
+.tip-cat-coop-tag    { background: rgba(16,185,129,0.15); color: #34d399 }
+.tip-cat-comp-tag    { background: rgba(245,158,11,0.15); color: #fbbf24 }
+.tip-cat-online-tag  { background: rgba(59,130,246,0.15); color: #60a5fa }
+.tip-cat-fact-tag    { background: rgba(139,92,246,0.15); color: #a78bfa }
+.tip-list-text  { font-size: 12px; color: var(--text-secondary); line-height: 1.6 }
+
 /* ── SETTINGS ── */
 .settings-panel { display: flex; flex-direction: column; gap: 0 }
 .settings-header { margin-bottom: 20px }

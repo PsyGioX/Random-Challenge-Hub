@@ -5,7 +5,19 @@
 // ============================================================
 
 // ── GLOBAL STATE ──────────────────────────────────────────
-let players = JSON.parse(localStorage.getItem('challengePlayers')) || [];
+// Безопасная загрузка из localStorage с защитой от повреждённых данных
+function _safeParse(key, fallback) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw === null || raw === undefined) return fallback;
+        return JSON.parse(raw);
+    } catch (e) {
+        console.warn(`[Storage] Ошибка чтения "${key}":`, e);
+        return fallback;
+    }
+}
+
+let players = _safeParse('challengePlayers', []);
 let games   = {}; // инициализируется в init() — нормализация там
 
 let currentTab  = 'games';
@@ -22,8 +34,8 @@ let audioCtx       = null;
 let currentTheme   = localStorage.getItem('appTheme') || 'dark';
 let settingsSubTab = 'speed';
 
-// Spent tasks — eliminiation mode: { gameName: [task, ...], ... }
-let spentTasks = JSON.parse(localStorage.getItem('spentTasks') || '{}');
+// Spent tasks — elimination mode: { gameName: [task, ...], ... }
+let spentTasks = _safeParse('spentTasks', {});
 
 // Streamer state
 let streamerState = {
@@ -58,6 +70,23 @@ let streamerState = {
 
 // IndexedDB для сохранения данных стримера
 let streamerDB = null;
+
+// ── SECURITY UTILITIES ────────────────────────────────────
+// Экранирование HTML для безопасной вставки пользовательских данных в innerHTML
+function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
+
+// Экранирование для вставки строки в onclick="..." атрибуты
+function escAttr(str) {
+    return esc(str).replace(/`/g, '&#x60;');
+}
 
 // ── TWITCH IRC CONNECTION ─────────────────────────────────
 const TWITCH_IRC = 'wss://irc-ws.chat.twitch.tv:443';
@@ -491,8 +520,9 @@ function _randomChatColor(name) {
 }
 
 function _renderOneChatMsg(m) {
-    const badgeHtml = m.badge ? `<span class="chat-badge">${m.badge}</span>` : '';
-    return `<div class="chat-msg"><span class="chat-user" style="color:${m.color}">${badgeHtml}${m.user}</span><span class="chat-text">: ${m.text}</span></div>`;
+    const badgeHtml = m.badge ? `<span class="chat-badge ${esc(m.badge)}">${esc(m.badge)}</span>` : '';
+    const safeColor = /^#[0-9a-fA-F]{3,6}$/.test(m.color) ? m.color : '#818cf8';
+    return `<div class="chat-msg"><span class="chat-user" style="color:${safeColor}">${badgeHtml}${esc(m.user)}</span><span class="chat-text">: ${esc(m.text)}</span></div>`;
 }
 
 function _updateConnectBtn() {
@@ -564,7 +594,7 @@ function updateStreamerUIState() {
         statusBar.style.color = statusColor;
         
         statusBar.innerHTML = isConnected
-            ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> Читаем чат #${streamerState.channelName}</span>`
+            ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> Читаем чат #${esc(streamerState.channelName)}</span>`
             : streamerState.twitchStatus === 'connecting' ? '⏳ Подключение к Twitch IRC...'
             : streamerState.twitchStatus === 'error' ? '❌ Не удалось подключиться'
             : 'Введите ник канала и нажмите Подключить';
@@ -644,6 +674,7 @@ async function saveStreamerData() {
         const store = transaction.objectStore('chatStats');
         
         const data = {
+            date: 'singleton',          // keyPath — одна постоянная запись
             channelName: streamerState.channelName,
             subWheelList: streamerState.subWheelList,
             chatStats: streamerState.chatStats,
@@ -815,7 +846,7 @@ let taskOnlyState = {
 };
 
 // ── SETTINGS ──────────────────────────────────────────────
-let rouletteSettings = JSON.parse(localStorage.getItem('rouletteSettings')) || {
+let rouletteSettings = _safeParse('rouletteSettings', null) || {
     // Speed
     spinDuration: 5000, minSpins: 5, maxSpins: 10,
     // Sound
@@ -1178,7 +1209,7 @@ function renderGamesTab() {
         <div class="panel-section">
             <h3 class="section-title"><span class="neon-text">📋 ДОБАВИТЬ ЗАДАНИЕ</span></h3>
             <div class="input-group">
-                <select id="gameList" class="cyber-select">${Object.keys(games).map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
+                <select id="gameList" class="cyber-select">${Object.keys(games).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}</select>
                 <input type="text" id="newTask" placeholder="Описание задания..." class="cyber-input" onkeypress="if(event.key==='Enter')addTask()">
                 <button onclick="addTask()" class="cyber-btn add-btn">+ Добавить</button>
             </div>
@@ -1202,31 +1233,32 @@ function renderGamesList() {
     if (!Object.keys(games).length) return '<p class="empty-text">Нет добавленных игр. Добавьте первую игру!</p>';
     return Object.entries(games).map(([game, tasks]) => {
         const sid = game.replace(/[^a-zA-Z0-9]/g,'_');
-        const esc = game.replace(/'/g,"\\'");
+        const escGame = esc(game);
+        // data-атрибуты безопаснее onclick-строк: обработчики читают dataset
         return `<div class="game-card">
-            <div class="game-header" onclick="toggleGameDropdown('${esc}')">
+            <div class="game-header" data-game="${escGame}" onclick="toggleGameDropdown(this.dataset.game)">
                 <div class="game-header-left">
                     <span class="dropdown-arrow" id="arrow_${sid}">▶</span>
-                    <h4 class="game-name">🎮 ${game}</h4>
+                    <h4 class="game-name">🎮 ${escGame}</h4>
                 </div>
                 <div class="game-header-right">
                     <span class="task-count">${tasks.length} зад.</span>
-                    <button onclick="event.stopPropagation();deleteGame('${esc}')" class="delete-btn">🗑️</button>
+                    <button data-game="${escGame}" onclick="event.stopPropagation();deleteGame(this.dataset.game)" class="delete-btn">🗑️</button>
                 </div>
             </div>
             <div class="tasks-dropdown hidden" id="dropdown_${sid}">
                 <div class="tasks-list">${tasks.map((t,i)=>`
                     <div class="task-item">
                         <span class="task-number">#${i+1}</span>
-                        <span class="task-text">${t}</span>
-                        <button onclick="deleteTask('${esc}',${i})" class="delete-task-btn" title="Удалить">×</button>
+                        <span class="task-text">${esc(t)}</span>
+                        <button data-game="${escGame}" data-idx="${i}" onclick="deleteTask(this.dataset.game,+this.dataset.idx)" class="delete-task-btn" title="Удалить">×</button>
                     </div>`).join('')}
                 </div>
                 ${!tasks.length ? '<p class="empty-text">Нет заданий</p>' : ''}
                 <div class="task-actions">
                     <div class="input-group">
-                        <input type="text" id="quickTask_${sid}" placeholder="Быстрое задание..." class="cyber-input" onkeypress="if(event.key==='Enter')quickAddTask('${esc}')">
-                        <button onclick="quickAddTask('${esc}')" class="cyber-btn add-btn">+ Добавить</button>
+                        <input type="text" id="quickTask_${sid}" placeholder="Быстрое задание..." class="cyber-input" data-game="${escGame}" onkeypress="if(event.key==='Enter')quickAddTask(this.dataset.game)">
+                        <button data-game="${escGame}" onclick="quickAddTask(this.dataset.game)" class="cyber-btn add-btn">+ Добавить</button>
                     </div>
                 </div>
             </div>
@@ -1282,7 +1314,7 @@ function showBulkAddModal() {
     document.getElementById('modalMessage').innerHTML = `
         <div style="text-align:left">
             <select id="bulkGame" style="width:100%;margin-bottom:10px;padding:9px 12px;background:var(--bg-input);color:var(--text-primary);border:2px solid var(--border-light);border-radius:8px;font-size:13px">
-                ${Object.keys(games).map(g=>`<option value="${g}">${g}</option>`).join('')}
+                ${Object.keys(games).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}
             </select>
             <textarea id="bulkTasks" placeholder="Одно задание на строку..." style="width:100%;height:160px;padding:10px;background:var(--bg-input);color:var(--text-primary);border:2px solid var(--border-light);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
             <p style="font-size:11px;color:var(--text-muted);margin-top:6px">Каждая строка — отдельное задание</p>
@@ -1325,11 +1357,11 @@ function renderPlayersTab() {
                 ${players.length === 0 ? '<p class="empty-text">Нет игроков. Добавьте первого!</p>' :
                     players.map((p,i) => {
                         const cd = playerColors[p.color] || playerColors.indigo;
-                        return `<div class="player-card" style="border-color:${cd.name}">
-                            <div class="player-avatar" style="background:${cd.gradient}">${p.name[0].toUpperCase()}</div>
+                        return `<div class="player-card" style="border-color:${esc(cd.name)}">
+                            <div class="player-avatar" style="background:${esc(cd.gradient)}">${esc(p.name[0].toUpperCase())}</div>
                             <div class="player-info">
-                                <span class="player-name" style="color:${cd.name}">${p.name}</span>
-                                <span class="player-color">${cd.label}</span>
+                                <span class="player-name" style="color:${esc(cd.name)}">${esc(p.name)}</span>
+                                <span class="player-color">${esc(cd.label)}</span>
                                 <span class="player-stats-mini">🎮 ${p.stats?.gamesPlayed||0} игр · ✅ ${p.stats?.tasksCompleted||0} зад.</span>
                             </div>
                             <button onclick="deletePlayer(${i})" class="delete-btn" title="Удалить">🗑️</button>
@@ -1408,11 +1440,11 @@ function renderRouletteTab() {
             </div>
             <div class="status-card selected-game-card">
                 <div class="status-card-icon">🎮</div>
-                <div class="status-card-content"><span class="status-card-label">Выбранная игра</span><span class="status-card-value">${gameFirstState.selectedGame}</span></div>
+                <div class="status-card-content"><span class="status-card-label">Выбранная игра</span><span class="status-card-value">${esc(gameFirstState.selectedGame)}</span></div>
             </div>
             ${curP && !done ? `<div class="status-card current-player-card">
                 <div class="status-card-icon">👤</div>
-                <div class="status-card-content"><span class="status-card-label">Сейчас крутит</span><span class="status-card-value" style="color:${playerColors[curP.color]?.name||'#818cf8'}">${curP.name}</span></div>
+                <div class="status-card-content"><span class="status-card-label">Сейчас крутит</span><span class="status-card-value" style="color:${esc(playerColors[curP.color]?.name||'#818cf8')}">${esc(curP.name)}</span></div>
             </div>` : ''}
             <div class="stats-row">
                 <div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">Осталось: <strong>${remaining.length}</strong></span></div>
@@ -1428,9 +1460,9 @@ function renderRouletteTab() {
                         const cd = playerColors[pl?.color]||playerColors.indigo;
                         return `<div class="assigned-task-row">
                             <span class="assigned-task-number">#${idx+1}</span>
-                            <span class="assigned-player-name" style="color:${cd.name}">${pn}</span>
+                            <span class="assigned-player-name" style="color:${esc(cd.name)}">${esc(pn)}</span>
                             <span class="assigned-task-divider">→</span>
-                            <span class="assigned-task-text">${pt}</span>
+                            <span class="assigned-task-text">${esc(pt)}</span>
                         </div>`;
                     }).join('')}
                 </div>
@@ -1467,11 +1499,11 @@ function renderRouletteTab() {
                     <span>Выбор игры для заданий</span>
                 </div>
                 <div class="game-selector-grid">
-                    ${gamesWithTasks.map(([gameName, tasks], index) => `
+                    ${gamesWithTasks.map(([gameName, tasks]) => `
                         <button onclick="selectGameForTaskOnly(this.dataset.gameName)" 
-                                data-game-name="${gameName}"
+                                data-game-name="${esc(gameName)}"
                                 class="game-selector-btn ${taskOnlyState.selectedGame === gameName ? 'selected' : ''}">
-                            <div class="game-selector-name">${gameName}</div>
+                            <div class="game-selector-name">${esc(gameName)}</div>
                             <div class="game-selector-tasks">${tasks.length} заданий</div>
                         </button>
                     `).join('')}
@@ -1484,15 +1516,17 @@ function renderRouletteTab() {
                     <span>Выбор игрока</span>
                 </div>
                 <div class="player-selector-grid">
-                    <button onclick="selectPlayerForTaskOnly(null)" 
+                    <button onclick="selectPlayerForTaskOnly(this.dataset.playerName || null)" 
+                            data-player-name=""
                             class="player-selector-btn ${taskOnlyState.selectedPlayer === null ? 'selected' : ''}">
                         <div class="player-selector-name">🎲 Случайный</div>
                         <div class="player-selector-desc">Любой игрок</div>
                     </button>
                     ${players.map(player => `
-                        <button onclick="selectPlayerForTaskOnly('${player.name.replace(/'/g, "\\'")}')" 
+                        <button onclick="selectPlayerForTaskOnly(this.dataset.playerName)" 
+                                data-player-name="${esc(player.name)}"
                                 class="player-selector-btn ${taskOnlyState.selectedPlayer === player.name ? 'selected' : ''}">
-                            <div class="player-selector-name" style="color: ${playerColors[player.color]?.name || '#818cf8'}">${player.name}</div>
+                            <div class="player-selector-name" style="color: ${esc(playerColors[player.color]?.name || '#818cf8')}">${esc(player.name)}</div>
                             <div class="player-selector-desc">Конкретный игрок</div>
                         </button>
                     `).join('')}
@@ -1506,7 +1540,7 @@ function renderRouletteTab() {
                             <div class="status-card-icon">🎮</div>
                             <div class="status-card-content">
                                 <span class="status-card-label">Выбранная игра</span>
-                                <span class="status-card-value">${taskOnlyState.selectedGame}</span>
+                                <span class="status-card-value">${esc(taskOnlyState.selectedGame)}</span>
                             </div>
                         </div>
                     ` : ''}
@@ -1515,7 +1549,7 @@ function renderRouletteTab() {
                             <div class="status-card-icon">👤</div>
                             <div class="status-card-content">
                                 <span class="status-card-label">Выбранный игрок</span>
-                                <span class="status-card-value" style="color: ${taskOnlyState.selectedPlayer ? (playerColors[players.find(p => p.name === taskOnlyState.selectedPlayer)?.color]?.name || '#818cf8') : '#818cf8'}">${taskOnlyState.selectedPlayer || 'Случайный'}</span>
+                                <span class="status-card-value" style="color: ${esc(taskOnlyState.selectedPlayer ? (playerColors[players.find(p => p.name === taskOnlyState.selectedPlayer)?.color]?.name || '#818cf8') : '#818cf8')}">${esc(taskOnlyState.selectedPlayer || 'Случайный')}</span>
                             </div>
                         </div>
                     ` : ''}
@@ -1738,8 +1772,8 @@ function animateSegmentRemoval(segIdx, duration, callback) {
     const startTime = Date.now();
     function step() {
         const t = Math.min((Date.now() - startTime) / duration, 1);
-        // easeInCubic — ускоряется к концу (сначала медленно, потом быстро схлопывается)
-        const eased = t * t * t;
+        // easeInOutQuad — медленно начинает И медленно заканчивает, без резкого схлопывания
+        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         segmentScales[segIdx] = 1 - eased;
         renderWheel();
         if (t < 1) {
@@ -1958,62 +1992,43 @@ function updateGameSummary(gameName) {
         }
     }
     
-    // Обновляем или создаем карточку с выбранной игрой
+    // Обновляем или создаем карточку с выбранной игрой — DOM API, без innerHTML
     let gameCard = document.querySelector('.selected-game-card');
     if (gameCard) {
         const valueSpan = gameCard.querySelector('.status-card-value');
-        if (valueSpan) {
-            valueSpan.textContent = gameName;
-        }
+        if (valueSpan) valueSpan.textContent = gameName;
     } else if (gameName) {
-        // Создаем новую карточку игры
-        const gameCardHTML = `
-            <div class="status-card selected-game-card">
-                <div class="status-card-icon">🎮</div>
-                <div class="status-card-content">
-                    <span class="status-card-label">Выбранная игра</span>
-                    <span class="status-card-value">${gameName}</span>
-                </div>
-            </div>
-        `;
-        const summarySection = document.querySelector('.selection-summary');
-        if (summarySection) {
-            summarySection.insertAdjacentHTML('afterbegin', gameCardHTML);
-        }
+        const card = document.createElement('div');
+        card.className = 'status-card selected-game-card';
+        card.innerHTML = '<div class="status-card-icon">🎮</div><div class="status-card-content"><span class="status-card-label">Выбранная игра</span><span class="status-card-value"></span></div>';
+        card.querySelector('.status-card-value').textContent = gameName;
+        const sec = document.querySelector('.selection-summary');
+        if (sec) sec.prepend(card);
     }
-    
-    // Обновляем количество заданий
-    let tasksStat = document.querySelector('.stat-mini .stat-mini-text');
-    if (tasksStat && tasksStat.innerHTML.includes('Заданий:')) {
-        tasksStat.innerHTML = `Заданий: <strong>${games[gameName]?.length || 0}</strong>`;
+
+    // Обновляем количество заданий — textContent, без innerHTML
+    const tasksStat = document.querySelector('.stat-mini .stat-mini-text');
+    if (tasksStat && tasksStat.textContent.includes('Заданий:')) {
+        tasksStat.textContent = `Заданий: ${games[gameName]?.length || 0}`;
     }
 }
 
 function selectPlayerForTaskOnly(playerName) {
+    // null означает "случайный игрок"; пустая строка из dataset — тоже null
+    if (playerName === '' || playerName === 'null') playerName = null;
     taskOnlyState.selectedPlayer = playerName;
     saveAll();
-    
-    // Сразу обновляем стили кнопок игроков
+
+    // Обновляем стили кнопок через dataset — безопасно
     const buttons = document.querySelectorAll('.player-selector-btn');
     buttons.forEach(btn => {
-        // Определяем какой игрок на кнопке
-        const isRandomBtn = btn.onclick.toString().includes('null');
-        const buttonPlayerName = isRandomBtn ? null : btn.querySelector('.player-selector-name').textContent;
-        
-        // Сравниваем с выбранным игроком
-        const isSelected = (playerName === null && isRandomBtn) || 
-                          (playerName !== null && buttonPlayerName === playerName);
-        
-        if (isSelected) {
-            btn.classList.add('selected');
-        } else {
-            btn.classList.remove('selected');
-        }
+        const btnPlayer = btn.dataset.playerName !== undefined
+            ? (btn.dataset.playerName === '' ? null : btn.dataset.playerName)
+            : null; // кнопка "Случайный" не имеет data-player-name
+        btn.classList.toggle('selected', btnPlayer === playerName);
     });
-    
-    // Обновляем информацию о выбранном игроке в summary блоке
+
     updatePlayerSummary(playerName);
-    
     showNotification(`👤 Выбран игрок: ${playerName || 'Случайный'}`, 'info');
 }
 
@@ -2034,30 +2049,22 @@ function updatePlayerSummary(playerName) {
             }
         }
     } else if (playerName !== null) {
-        // Создаем новую карточку игрока
+        // Создаем карточку через DOM API — без innerHTML с пользовательскими данными
         const player = players.find(p => p.name === playerName);
-        const color = player ? (playerColors[player.color]?.name || '#818cf8') : '#818cf8';
-        const displayName = playerName || 'Случайный';
-        
-        const playerCardHTML = `
-            <div class="status-card selected-player-card">
-                <div class="status-card-icon">👤</div>
-                <div class="status-card-content">
-                    <span class="status-card-label">Выбранный игрок</span>
-                    <span class="status-card-value" style="color: ${color}">${displayName}</span>
-                </div>
-            </div>
-        `;
-        
-        const summarySection = document.querySelector('.selection-summary');
-        if (summarySection) {
-            // Вставляем после карточки игры, если она есть
-            const gameCard = summarySection.querySelector('.selected-game-card');
-            if (gameCard) {
-                gameCard.insertAdjacentHTML('afterend', playerCardHTML);
-            } else {
-                summarySection.insertAdjacentHTML('afterbegin', playerCardHTML);
-            }
+        // Цвет только из разрешённого словаря playerColors — безопасно
+        const safeColor = playerColors[player?.color]?.name || '#818cf8';
+
+        const card = document.createElement('div');
+        card.className = 'status-card selected-player-card';
+        card.innerHTML = '<div class="status-card-icon">👤</div><div class="status-card-content"><span class="status-card-label">Выбранный игрок</span><span class="status-card-value"></span></div>';
+        const val = card.querySelector('.status-card-value');
+        val.textContent = playerName || 'Случайный';
+        val.style.color  = safeColor;
+
+        const sec = document.querySelector('.selection-summary');
+        if (sec) {
+            const gameCard = sec.querySelector('.selected-game-card');
+            gameCard ? gameCard.after(card) : sec.prepend(card);
         }
     }
 }
@@ -2128,7 +2135,7 @@ function startFullRandomMode() {
             showPopupResult(selGame, selPlayer, selTask);
             markTaskSpent(selGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
-                animateSegmentRemoval(lastWinnerSegIdx, 550, () => {
+                animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
                     updateWheelSegments();
                     renderWheel();
                     checkAllTasksSpent(selGame);
@@ -2190,7 +2197,7 @@ function spinTaskOnly() {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(taskOnlyState.selectedGame, selectedPlayer, task);
             markTaskSpent(taskOnlyState.selectedGame, task);
             if (rouletteSettings.removeAfterSpin) {
-                animateSegmentRemoval(lastWinnerSegIdx, 550, () => {
+                animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
                     updateWheelSegments();
                     renderWheel();
                     checkAllTasksSpent(taskOnlyState.selectedGame);
@@ -2244,7 +2251,7 @@ function startGameFirstSpin() {
             showPopupResult(gameFirstState.selectedGame, curP, selTask);
             markTaskSpent(gameFirstState.selectedGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
-                animateSegmentRemoval(lastWinnerSegIdx, 550, () => {
+                animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
                     updatePlayerStats(curP.name); playWinSound();
                     gameFirstState.currentPlayerIndex++;
                     const nextP = players[gameFirstState.currentPlayerIndex];
@@ -2311,7 +2318,9 @@ function spinWheel(tasks, targetIdx, callback) {
     animateWheel(totalRot, callback);
 }
 
-function easeOutCubic(t)  { return 1 - Math.pow(1-t, 3) }
+// ── Easing functions ──────────────────────────────────────
+// easeOutQuint: очень плавное торможение без резкого останова
+function easeOutCubic(t)  { return 1 - Math.pow(1-t, 5) }
 function easeOutBounce(t) {
     const n1=7.5625, d1=2.75;
     if (t < 1/d1)      return n1*t*t;
@@ -2358,11 +2367,12 @@ function animateWheel(totalRotation, callback) {
             if (seg !== lastTickSeg) { lastTickSeg = seg; playTickSound() }
         }
 
-        // Glow effect near end
-        if (rouletteSettings.visualEffects && rouletteSettings.glowEffect && progress > 0.85) {
-            const g = 20 + (progress - 0.85) * 133;
-            const o = 0.4 + (progress - 0.85) * 4;
-            if (canvas) canvas.style.filter = `drop-shadow(0 0 ${g}px rgba(99,102,241,${Math.min(o,1)}))`;
+        // Glow effect near end — плавно нарастает с 70% прогресса
+        if (rouletteSettings.visualEffects && rouletteSettings.glowEffect && progress > 0.7) {
+            const t = (progress - 0.7) / 0.3;  // 0→1 в диапазоне 70–100%
+            const g = 6  + t * 22;              // 6px → 28px (мягко)
+            const o = 0.15 + t * 0.45;          // 0.15 → 0.60 (не режет глаз)
+            if (canvas) canvas.style.filter = `drop-shadow(0 0 ${g.toFixed(1)}px rgba(99,102,241,${o.toFixed(2)}))`;
         }
 
         if (progress < 1) {
@@ -2379,9 +2389,13 @@ function animateWheel(totalRotation, callback) {
 function finalizeSpin(callback) {
     renderWheel();
     const canvas = document.getElementById('rouletteWheel');
-    if (canvas) canvas.style.filter = 'drop-shadow(0 8px 24px rgba(0,0,0,0.5))';
+    // Плавно убираем glow через CSS transition
+    if (canvas) {
+        canvas.style.transition = 'filter 0.6s ease';
+        canvas.style.filter = 'drop-shadow(0 8px 24px rgba(0,0,0,0.5))';
+    }
     const wc = document.getElementById('wheelContainer');
-    if (wc) wc.style.transform = 'scale(1)';
+    if (wc) { wc.style.transition = 'transform 0.4s ease'; wc.style.transform = 'scale(1)'; }
     animationId = null;
     if (rouletteSettings.visualEffects && rouletteSettings.highlightWinner) highlightWinner(callback);
     else if (callback) callback();
@@ -2390,23 +2404,33 @@ function finalizeSpin(callback) {
 function shakeWheel(callback) {
     const canvas = document.getElementById('rouletteWheel');
     if (!canvas) { if (callback) callback(); return }
-    let n = 0; const total = 5;
-    function shake() {
-        if (n < total*2) {
-            canvas.style.transform = `rotate(${n%2===0?3:-3}deg) scale(${1+0.01*(total-n/2)})`;
-            canvas.style.transition = 'all 0.04s ease'; n++;
-            setTimeout(shake, 40);
-        } else { canvas.style.transform='rotate(0deg) scale(1)'; canvas.style.transition='all 0.2s ease'; setTimeout(() => { if (callback) callback() }, 200) }
+    // Плавная лёгкая вибрация — меньше амплитуда, дольше затухание
+    const frames = [1.5, -1.2, 0.9, -0.6, 0.3, 0];
+    let i = 0;
+    function step() {
+        if (i < frames.length) {
+            canvas.style.transition = `transform ${i === 0 ? 80 : 70}ms ease-out`;
+            canvas.style.transform  = `rotate(${frames[i]}deg) scale(1)`;
+            i++;
+            setTimeout(step, i === 1 ? 90 : 75);
+        } else {
+            canvas.style.transition = 'transform 0.35s ease';
+            canvas.style.transform  = 'rotate(0deg) scale(1)';
+            setTimeout(() => { if (callback) callback() }, 380);
+        }
     }
-    shake();
+    step();
 }
 
 function highlightWinner(callback) {
     const canvas = document.getElementById('rouletteWheel');
     if (canvas) {
-        canvas.style.transition = 'all 0.3s ease';
-        canvas.style.filter = 'drop-shadow(0 0 45px rgba(63,185,80,0.9)) brightness(1.25)';
-        setTimeout(() => { canvas.style.filter = 'drop-shadow(0 8px 24px rgba(0,0,0,0.5)) brightness(1)' }, 600);
+        canvas.style.transition = 'all 0.5s ease';
+        canvas.style.filter = 'drop-shadow(0 0 40px rgba(63,185,80,0.85)) brightness(1.18)';
+        setTimeout(() => {
+            canvas.style.transition = 'all 1.2s ease';
+            canvas.style.filter = 'drop-shadow(0 8px 24px rgba(0,0,0,0.5)) brightness(1)';
+        }, 800);
     }
     if (callback) callback();
 }
@@ -2485,19 +2509,28 @@ function showResult(game, player, task) {
     if (!rd || !rc) return;
     const cd = playerColors[player?.color] || playerColors.indigo;
     rc.innerHTML = `<div class="result-grid">
-        <div class="result-card-item"><div class="result-card-icon">🎮</div><div class="result-card-label">Игра</div><div class="result-card-value">${game}</div></div>
-        <div class="result-card-item"><div class="result-card-icon">👤</div><div class="result-card-label">Игрок</div><div class="result-card-value" style="color:${cd.name}">${player?.name||'?'}</div></div>
-        <div class="result-card-item"><div class="result-card-icon">⚡</div><div class="result-card-label">Задание</div><div class="result-card-value task-highlight">${task}</div></div>
+        <div class="result-card-item"><div class="result-card-icon">🎮</div><div class="result-card-label">Игра</div><div class="result-card-value">${esc(game)}</div></div>
+        <div class="result-card-item"><div class="result-card-icon">👤</div><div class="result-card-label">Игрок</div><div class="result-card-value" style="color:${esc(cd.name)}">${esc(player?.name||'?')}</div></div>
+        <div class="result-card-item"><div class="result-card-icon">⚡</div><div class="result-card-label">Задание</div><div class="result-card-value task-highlight">${esc(task)}</div></div>
     </div>`;
     if (ra) {
+        // Используем только безопасные статичные кнопки без пользовательских данных в обработчиках
         if (gameFirstState.active) {
             const nextP = players[gameFirstState.currentPlayerIndex];
             const rem   = getRemainingTasksForGame(gameFirstState.selectedGame);
-            ra.innerHTML = nextP && rem.length > 0
-                ? `<br><button onclick="startSpin()" class="cyber-btn add-btn">🔄 СЛЕДУЮЩИЙ: ${nextP.name}</button>`
-                : `<br><button onclick="showFinalResults()" class="cyber-btn add-btn">📋 ВСЕ РЕЗУЛЬТАТЫ</button>`;
+            if (nextP && rem.length > 0) {
+                const btn = document.createElement('button');
+                btn.className = 'cyber-btn add-btn';
+                btn.style.marginTop = '8px';
+                btn.textContent = `🔄 СЛЕДУЮЩИЙ: ${nextP.name}`;
+                btn.onclick = startSpin;
+                ra.innerHTML = '<br>';
+                ra.appendChild(btn);
+            } else {
+                ra.innerHTML = '<br><button onclick="showFinalResults()" class="cyber-btn add-btn">📋 ВСЕ РЕЗУЛЬТАТЫ</button>';
+            }
         } else {
-            ra.innerHTML = `<br><button onclick="startSpin()" class="cyber-btn add-btn">🔄 КРУТИТЬ ЕЩЁ</button>`;
+            ra.innerHTML = '<br><button onclick="startSpin()" class="cyber-btn add-btn">🔄 КРУТИТЬ ЕЩЁ</button>';
         }
     }
     rd.classList.remove('hidden'); rd.style.animation='none'; void rd.offsetHeight; rd.style.animation='fadeInUp 0.5s ease';
@@ -2511,7 +2544,7 @@ function showFinalResults() {
     if (!rd || !rc) return;
     rc.innerHTML = `
         <div class="final-result-header">
-            <div class="final-game-info"><span class="final-game-icon">🎮</span><span class="final-game-name">${gameFirstState.selectedGame}</span></div>
+            <div class="final-game-info"><span class="final-game-icon">🎮</span><span class="final-game-name">${esc(gameFirstState.selectedGame)}</span></div>
             <div class="final-stats">
                 <span class="final-stat-badge success">✅ ${assigned}</span>
                 ${unassigned.length ? `<span class="final-stat-badge warning">⚠️ ${unassigned.length}</span>` : ''}
@@ -2523,11 +2556,11 @@ function showFinalResults() {
                 ${Object.entries(gameFirstState.assignedTasks).map(([pn,pt],idx) => {
                     const pl = players.find(p => p.name===pn);
                     const cd = playerColors[pl?.color]||playerColors.indigo;
-                    return `<div class="final-result-row"><span class="final-result-number">#${idx+1}</span><span class="final-result-player" style="color:${cd.name}">${pn}</span><span class="final-result-arrow">→</span><span class="final-result-task">${pt}</span></div>`;
+                    return `<div class="final-result-row"><span class="final-result-number">#${idx+1}</span><span class="final-result-player" style="color:${esc(cd.name)}">${esc(pn)}</span><span class="final-result-arrow">→</span><span class="final-result-task">${esc(pt)}</span></div>`;
                 }).join('')}
             </div>
         </div>
-        ${unassigned.length ? `<div class="unassigned-warning"><p class="unassigned-warning-title">⚠️ Без заданий</p><div class="unassigned-players-list">${unassigned.map(p=>`<span class="unassigned-player-tag" style="border-color:${playerColors[p.color]?.name||'#818cf8'};color:${playerColors[p.color]?.name||'#818cf8'}">${p.name}</span>`).join('')}</div></div>` : ''}
+        ${unassigned.length ? `<div class="unassigned-warning"><p class="unassigned-warning-title">⚠️ Без заданий</p><div class="unassigned-players-list">${unassigned.map(p=>`<span class="unassigned-player-tag" style="border-color:${esc(playerColors[p.color]?.name||'#818cf8')};color:${esc(playerColors[p.color]?.name||'#818cf8')}">${esc(p.name)}</span>`).join('')}</div></div>` : ''}
     `;
     if (ra) ra.innerHTML = `<br><button onclick="resetGameFirstMode()" class="cyber-btn add-btn">🔄 НАЧАТЬ ЗАНОВО</button><button onclick="exportResults()" class="cyber-btn export-btn">📤 Экспорт</button>`;
     rd.classList.remove('hidden'); rd.style.animation='none'; void rd.offsetHeight; rd.style.animation='fadeInUp 0.5s ease';
@@ -2597,7 +2630,7 @@ function renderStreamerTab() {
                     <div><div class="streamer-tool-title">ГОЛОСОВАНИЕ ЧАТОМ</div><div class="streamer-tool-desc">Зрители выбирают задание через чат</div></div>
                 </div>
                 <div class="channel-input-group">
-                    <input type="text" id="channelNameInput" placeholder="Ник канала на Twitch..." value="${streamerState.channelName}" oninput="updateChannelName(this.value)" onkeypress="if(event.key==='Enter')twitchToggleConnect()">
+                    <input type="text" id="channelNameInput" placeholder="Ник канала на Twitch..." value="${esc(streamerState.channelName)}" oninput="updateChannelName(this.value)" onkeypress="if(event.key==='Enter')twitchToggleConnect()">
                     <button onclick="twitchToggleConnect()" class="cyber-btn ${streamerState.connected?'danger-btn':'add-btn'} channel-connect-btn" id="chatConnectBtn">
                         ${streamerState.twitchStatus==='connected'   ? '✅ Отключиться'
                         : streamerState.twitchStatus==='connecting'  ? '⏳ Подключение...'
@@ -2616,7 +2649,7 @@ function renderStreamerTab() {
                     : streamerState.twitchStatus==='error'   ? 'var(--accent-danger)'
                     : 'var(--text-muted)'}">
                     ${streamerState.twitchStatus==='connected'
-                        ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> Читаем чат #${streamerState.channelName} (только чтение)</span>`
+                        ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> Читаем чат #${esc(streamerState.channelName)} (только чтение)</span>`
                         : streamerState.twitchStatus==='connecting' ? '⏳ Подключение к Twitch IRC...'
                         : streamerState.twitchStatus==='error'      ? '❌ Не удалось подключиться'
                         : 'Введите ник канала и нажмите Подключить'}
@@ -2756,7 +2789,7 @@ function renderVoteArea() {
             </div>
             <div style="margin-bottom:10px">
                 <input type="text" id="voteTitle" placeholder="Тема голосования (необязательно)…"
-                    value="${streamerState.voteTitle||''}"
+                    value="${esc(streamerState.voteTitle||'')}"
                     oninput="streamerState.voteTitle=this.value"
                     style="width:100%;font-size:12px;padding:8px 12px;border-radius:var(--radius-md);
                            background:var(--bg-input);color:var(--text-primary);
@@ -2772,7 +2805,7 @@ function renderVoteArea() {
                 ${gameOptions.map((g,i) => `
                     <div class="vote-option">
                         <span class="vote-option-key">${i+1}</span>
-                        <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g}</span>
+                        <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g)}</span>
                     </div>`).join('')}
                 ${!gameOptions.length ? '<div style="font-size:12px;color:var(--text-muted)">Добавьте игры для голосования</div>' : ''}
             </div>
@@ -2790,7 +2823,7 @@ function renderVoteArea() {
                        text-align:center;margin-bottom:8px;padding:6px 10px;
                        background:rgba(99,102,241,0.1);border-radius:var(--radius-sm);
                        border:1px solid rgba(99,102,241,0.2);word-break:break-word">
-               🗳️ ${streamerState.voteTitle}
+               🗳️ ${esc(streamerState.voteTitle)}
            </div>`
         : '';
 
@@ -2809,7 +2842,7 @@ function renderVoteArea() {
                 return `<div class="vote-option">
                     <span class="vote-option-key">${i+1}</span>
                     <div style="flex:1;min-width:0">
-                        <span style="font-size:11px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o}</span>
+                        <span style="font-size:11px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o)}</span>
                         <div class="vote-option-bar">
                             <div class="vote-option-fill" id="vf${i}" style="width:${pct}%"></div>
                         </div>
@@ -2974,7 +3007,7 @@ function renderSubList() {
     }
     
     return `
-        ${streamerState.subWheelList.map((n,i)=>`<span class="sub-tag" onclick="removeSubFromWheel(${i})" title="Удалить">${n} ×</span>`).join('')}
+        ${streamerState.subWheelList.map((n,i)=>`<span class="sub-tag" data-idx="${i}" onclick="removeSubFromWheel(+this.dataset.idx)" title="Удалить">${esc(n)} ×</span>`).join('')}
         ${activeCount > 0 ? `<div style="margin-top:8px;font-size:10px;color:var(--text-secondary)">💬 ${activeCount} активных участников в чате доступно</div>` : ''}
     `;
 }
@@ -3005,7 +3038,7 @@ function spinSubWheel() {
     const modal = document.getElementById('confirmModal');
     if (modal) {
         document.getElementById('modalTitle').textContent = '🎉 Победитель определён!';
-        document.getElementById('modalMessage').innerHTML = `<div style="text-align:center;padding:20px"><div style="font-size:48px;margin-bottom:16px">🏆</div><div style="font-size:24px;font-weight:700;color:var(--accent-primary)">${winner}</div><div style="font-size:13px;color:var(--text-muted);margin-top:8px">из ${streamerState.subWheelList.length} зрителей</div></div>`;
+        document.getElementById('modalMessage').innerHTML = `<div style="text-align:center;padding:20px"><div style="font-size:48px;margin-bottom:16px">🏆</div><div style="font-size:24px;font-weight:700;color:var(--accent-primary)">${esc(winner)}</div><div style="font-size:13px;color:var(--text-muted);margin-top:8px">из ${streamerState.subWheelList.length} зрителей</div></div>`;
         document.getElementById('modalConfirm').textContent = 'ОК';
         document.getElementById('modalConfirm').onclick = closeModal;
         const cb = modal.querySelector('.cancel-btn'); if (cb) cb.style.display='none';
@@ -3182,53 +3215,130 @@ function showOverlaySettings() {
 // ── STATS TAB ─────────────────────────────────────────────
 function renderStatsTab() {
     const gTotal = Object.keys(games).length;
-    const tTotal = Object.values(games).reduce((s,t)=>s+t.length,0);
+    const tTotal = Object.values(games).reduce((s,t) => s + t.length, 0);
     const pTotal = players.length;
-    const topPlayer = players.reduce((mx,p)=>(p.stats?.gamesPlayed||(0))>(mx?.stats?.gamesPlayed||0)?p:mx, null);
-    const bigGame = Object.entries(games).reduce((mx,[g,t])=>t.length>(mx?.[1]?.length||0)?[g,t]:mx,null);
+    const totalSpins = players.reduce((s,p) => s + (p.stats?.gamesPlayed||0), 0);
+    const topPlayer = players.reduce((mx,p) => (p.stats?.gamesPlayed||0) > (mx?.stats?.gamesPlayed||0) ? p : mx, null);
+    const bigGame   = Object.entries(games).reduce((mx,[g,t]) => t.length > (mx?.[1]?.length||0) ? [g,t] : mx, null);
+
+    // Три совета дня — по одному из каждой категории
+    const tipCoop   = getDailyTip('coop');
+    const tipComp   = getDailyTip('comp');
+    const tipOnline = getDailyTip('online');
+    const tipFact   = getDailyTip('fact');
+    // Показываем 3 карточки: кооп, соревн., факт — ротируются каждый день
+    const dayIdx    = Math.floor(Date.now() / 86400000);
+    const featuredTips = [tipCoop, tipComp, dayIdx % 2 === 0 ? tipFact : tipOnline];
+
     return `<div class="stats-panel">
+
+        <!-- Счётчики -->
         <div class="stats-grid">
             <div class="stat-card"><div class="stat-value">${gTotal}</div><div class="stat-label">Игр</div></div>
             <div class="stat-card"><div class="stat-value">${tTotal}</div><div class="stat-label">Заданий</div></div>
             <div class="stat-card"><div class="stat-value">${pTotal}</div><div class="stat-label">Игроков</div></div>
-            <div class="stat-card"><div class="stat-value">${players.reduce((s,p)=>s+(p.stats?.gamesPlayed||0),0)}</div><div class="stat-label">Кручений</div></div>
+            <div class="stat-card"><div class="stat-value">${totalSpins}</div><div class="stat-label">Кручений</div></div>
         </div>
+
+        <!-- Топ игрок и топ игра -->
         ${topPlayer ? `<div class="top-player">
             <h3>👑 Самый активный игрок</h3>
-            <div class="player-highlight"><span class="highlight-name">${topPlayer.name}</span> — <span class="highlight-stats">${topPlayer.stats?.gamesPlayed||0} кручений</span></div>
+            <div class="player-highlight">
+                <span class="highlight-name">${esc(topPlayer.name)}</span> —
+                <span class="highlight-stats">${topPlayer.stats?.gamesPlayed||0} кручений</span>
+            </div>
         </div>` : ''}
         ${bigGame ? `<div class="top-player" style="border-color:var(--accent-success)">
             <h3>🎮 Самая большая игра</h3>
-            <div class="player-highlight"><span class="highlight-name">${bigGame[0]}</span> — <span class="highlight-stats">${bigGame[1].length} заданий</span></div>
+            <div class="player-highlight">
+                <span class="highlight-name">${esc(bigGame[0])}</span> —
+                <span class="highlight-stats">${bigGame[1].length} заданий</span>
+            </div>
         </div>` : ''}
+
+        <!-- ── СОВЕТЫ ДНЯ ── -->
+        <div class="top-player" style="border-color:var(--accent-primary);margin-bottom:0">
+            <h3>💡 Советы и факты — обновляются каждый день</h3>
+        </div>
+        <div class="tips-grid">
+            ${featuredTips.map(tip => `
+                <div class="tip-card tip-cat-${esc(tip.cat)}">
+                    <div class="tip-header">
+                        <span class="tip-icon">${tip.icon}</span>
+                        <span class="tip-tag">${esc(tip.tag)}</span>
+                    </div>
+                    <p class="tip-text">${esc(tip.text)}</p>
+                </div>
+            `).join('')}
+        </div>
+
+        <!-- Кнопки фильтра советов -->
+        <div class="tips-filter" id="tipsFilter">
+            <button class="tips-filter-btn active" onclick="filterTips('all',this)">Все</button>
+            <button class="tips-filter-btn" onclick="filterTips('coop',this)">🤝 Кооп</button>
+            <button class="tips-filter-btn" onclick="filterTips('comp',this)">🏆 Соревн.</button>
+            <button class="tips-filter-btn" onclick="filterTips('online',this)">🌐 Онлайн</button>
+            <button class="tips-filter-btn" onclick="filterTips('fact',this)">🧠 Факты</button>
+        </div>
+        <div class="tips-list" id="tipsList">
+            ${renderTipsList('all')}
+        </div>
+
+        <!-- Статистика игроков -->
         <div class="players-stats">
             <h3>📊 Статистика игроков</h3>
-            ${pTotal===0 ? '<p class="empty-text">Нет данных</p>' : players.map(p=>{
-                const plays = p.stats?.gamesPlayed||0;
-                const maxP  = Math.max(...players.map(x=>x.stats?.gamesPlayed||0), 1);
-                const pct   = Math.min(Math.round((plays/maxP)*100), 100);
-                const cd    = playerColors[p.color]||playerColors.indigo;
+            ${pTotal === 0 ? '<p class="empty-text">Нет данных</p>' : players.map(p => {
+                const plays = p.stats?.gamesPlayed || 0;
+                const maxP  = Math.max(...players.map(x => x.stats?.gamesPlayed||0), 1);
+                const pct   = Math.min(Math.round((plays / maxP) * 100), 100);
+                const cd    = playerColors[p.color] || playerColors.indigo;
                 return `<div class="player-stats-row">
-                    <span class="player-stats-name" style="color:${cd.name}">${p.name}</span>
-                    <div class="stats-bar"><div class="stats-fill" style="width:${pct}%;background:${cd.gradient}"></div></div>
+                    <span class="player-stats-name" style="color:${esc(cd.name)}">${esc(p.name)}</span>
+                    <div class="stats-bar"><div class="stats-fill" style="width:${pct}%;background:${esc(cd.gradient)}"></div></div>
                     <span class="player-stats-count">${plays} игр</span>
                 </div>`;
             }).join('')}
         </div>
+
+        <!-- Игры по заданиям -->
         <div class="players-stats">
             <h3>🎮 Игры по количеству заданий</h3>
-            ${gTotal===0 ? '<p class="empty-text">Нет игр</p>' : Object.entries(games).sort(([,a],[,b])=>b.length-a.length).map(([g,t],i)=>{
-                const maxT = Math.max(...Object.values(games).map(x=>x.length), 1);
-                const pct  = Math.round((t.length/maxT)*100);
-                const colors = COLOR_SCHEMES.default;
-                return `<div class="player-stats-row">
-                    <span class="player-stats-name">${g}</span>
-                    <div class="stats-bar"><div class="stats-fill" style="width:${pct}%;background:${colors[i%colors.length]}"></div></div>
-                    <span class="player-stats-count">${t.length} зад.</span>
-                </div>`;
-            }).join('')}
+            ${gTotal === 0 ? '<p class="empty-text">Нет игр</p>' : Object.entries(games)
+                .sort(([,a],[,b]) => b.length - a.length)
+                .map(([g,t], i) => {
+                    const maxT = Math.max(...Object.values(games).map(x => x.length), 1);
+                    const pct  = Math.round((t.length / maxT) * 100);
+                    const col  = COLOR_SCHEMES.default[i % COLOR_SCHEMES.default.length];
+                    return `<div class="player-stats-row">
+                        <span class="player-stats-name">${esc(g)}</span>
+                        <div class="stats-bar"><div class="stats-fill" style="width:${pct}%;background:${esc(col)}"></div></div>
+                        <span class="player-stats-count">${t.length} зад.</span>
+                    </div>`;
+                }).join('')}
         </div>
+
     </div>`;
+}
+
+// Рендер списка советов для фильтра
+function renderTipsList(category) {
+    const pool = category === 'all' ? GAMING_TIPS : GAMING_TIPS.filter(t => t.cat === category);
+    return pool.map(tip => `
+        <div class="tip-list-item">
+            <span class="tip-list-icon">${tip.icon}</span>
+            <div class="tip-list-body">
+                <span class="tip-list-tag tip-cat-${esc(tip.cat)}-tag">${esc(tip.tag)}</span>
+                <p class="tip-list-text">${esc(tip.text)}</p>
+            </div>
+        </div>`).join('');
+}
+
+// Фильтрация советов по категории (вызывается из onclick)
+function filterTips(category, btn) {
+    const list = document.getElementById('tipsList');
+    if (list) list.innerHTML = renderTipsList(category);
+    document.querySelectorAll('.tips-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
 }
 
 // ── SETTINGS TAB ──────────────────────────────────────────
@@ -3634,15 +3744,52 @@ function importData() {
         r.onload = ev => {
             try {
                 const d = JSON.parse(ev.target.result);
-                if (d.players && d.games) {
-                    players = d.players; games = d.games;
-                    if (d.rouletteMode) rouletteMode = d.rouletteMode;
-                    if (d.rouletteSettings) rouletteSettings = {...rouletteSettings,...d.rouletteSettings};
-                    if (d.currentTheme) applyTheme(d.currentTheme);
-                    saveAll(); saveSettings(); switchTab(currentTab);
-                    showNotification('📥 Данные импортированы', 'success');
-                } else showNotification('Неверный формат файла', 'error');
-            } catch { showNotification('Ошибка импорта', 'error') }
+                // Защита от прототипного загрязнения и невалидных структур
+                if (!d || typeof d !== 'object' || Array.isArray(d)) {
+                    return showNotification('Неверный формат файла', 'error');
+                }
+                if (!d.players || !d.games ||
+                    !Array.isArray(d.players) ||
+                    typeof d.games !== 'object' || Array.isArray(d.games)) {
+                    return showNotification('Неверный формат файла', 'error');
+                }
+                // Нормализуем игроков — только допустимые поля
+                const safeColors = Object.keys(playerColors);
+                players = d.players
+                    .filter(p => p && typeof p.name === 'string' && p.name.trim())
+                    .map(p => ({
+                        name:  String(p.name).trim().slice(0, 100),
+                        color: safeColors.includes(p.color) ? p.color : 'indigo',
+                        stats: {
+                            gamesPlayed:    Number(p.stats?.gamesPlayed)    || 0,
+                            tasksCompleted: Number(p.stats?.tasksCompleted) || 0,
+                        }
+                    }));
+                // Нормализуем игры — только строковые задания, без __proto__
+                games = {};
+                Object.entries(d.games).forEach(([gameName, tasks]) => {
+                    if (typeof gameName !== 'string' || !gameName.trim()) return;
+                    if (gameName === '__proto__' || gameName === 'constructor') return;
+                    if (!Array.isArray(tasks)) return;
+                    games[gameName.trim().slice(0, 200)] = tasks
+                        .filter(t => typeof t === 'string' && t.trim())
+                        .map(t => String(t).trim().slice(0, 500));
+                });
+                // Режим и тема — только допустимые значения
+                const safeModes = ['full', 'game-first', 'player-only', 'task-only'];
+                if (d.rouletteMode && safeModes.includes(d.rouletteMode)) {
+                    rouletteMode = d.rouletteMode;
+                }
+                if (d.rouletteSettings && typeof d.rouletteSettings === 'object') {
+                    rouletteSettings = { ...rouletteSettings, ...d.rouletteSettings };
+                }
+                const safeThemes = ['dark', 'neon', 'cyber', 'streamer', 'pastel'];
+                if (d.currentTheme && safeThemes.includes(d.currentTheme)) {
+                    applyTheme(d.currentTheme);
+                }
+                saveAll(); saveSettings(); switchTab(currentTab);
+                showNotification(`📥 Импортировано: ${players.length} игроков, ${Object.keys(games).length} игр`, 'success');
+            } catch { showNotification('Ошибка чтения файла', 'error') }
         };
         r.readAsText(f);
     };
@@ -3662,6 +3809,65 @@ function exportResults() {
 // ── SCROLL HELPER ─────────────────────────────────────────
 function scrollToTabs() {
     document.getElementById('mainPanel')?.scrollIntoView({behavior:'smooth'});
+}
+
+// ── DEFAULT GAMES DATA ────────────────────────────────────
+
+// ── GAMING TIPS & FACTS ───────────────────────────────────
+const GAMING_TIPS = [
+    // ── Кооперативные игры ────────────────────────────────
+    { cat: 'coop',    icon: '🤝', tag: 'Коопе­рация',      text: 'В кооп-играх назначьте роли заранее: кто танкует, кто хилит, кто наносит урон. Хаос без ролей убивает команду быстрее врагов.' },
+    { cat: 'coop',    icon: '🗣️', tag: 'Коопе­рация',      text: 'Сообщайте о перезарядке и кулдаунах вслух. Тиммейт не видит ваши иконки так же хорошо, как вы.' },
+    { cat: 'coop',    icon: '🔋', tag: 'Коопе­рация',      text: 'Никогда не уходите в соло-рейд без предупреждения. Один игрок на краю карты — это ресурс, которого нет у команды в нужный момент.' },
+    { cat: 'coop',    icon: '🛡️', tag: 'Коопе­рация',      text: 'В кооп-шутерах покрывайте перезарядку союзника: пока он в уязвимом состоянии — ваша задача закрыть углы.' },
+    { cat: 'coop',    icon: '📍', tag: 'Коопе­рация',      text: 'Маркируйте цели единообразно. Договоритесь об одном сигнале «атакуем это» — разнобой меток убивает фокус.' },
+    { cat: 'coop',    icon: '🏥', tag: 'Коопе­рация',      text: 'Хилер — не обслуживающий персонал. Он должен двигаться, уклоняться и выживать. Мёртвый хилер лечит никого.' },
+    { cat: 'coop',    icon: '🎯', tag: 'Коопе­рация',      text: 'Фокусируйте одну цель. Два игрока, убивающих разных врагов — это два полумёртвых врага вместо одного мёртвого.' },
+    { cat: 'coop',    icon: '🔄', tag: 'Коопе­рация',      text: 'После вайпа разберите ошибку за 30 секунд, а не молча повторяйте попытку. «Попробуем снова» без разбора — путь к 20-му вайпу.' },
+    { cat: 'coop',    icon: '🚪', tag: 'Коопе­рация',      text: 'В выживалках разделите зоны ответственности по карте. Двое в одной клетке — это двое вне другой.' },
+    { cat: 'coop',    icon: '💬', tag: 'Коопе­рация',      text: 'Краткий позитивный фидбек («хороший хил», «отличный отвлёк») повышает мотивацию команды сильнее, чем любая тактика.' },
+
+    // ── Соревновательные игры ─────────────────────────────
+    { cat: 'comp',    icon: '🧠', tag: 'Соревно­вание',    text: 'Усталость принятия решений реальна. После 3–4 часов игры качество решений падает на ~15–20%. Делайте перерывы.' },
+    { cat: 'comp',    icon: '📈', tag: 'Соревно­вание',    text: 'Записывайте и пересматривайте свои матчи. Вы видите 60% своих ошибок только со стороны — не изнутри боя.' },
+    { cat: 'comp',    icon: '🎮', tag: 'Соревно­вание',    text: 'Мастерство одного героя/персонажа ценнее посредственного владения пятью. Глубина > ширина на старте.' },
+    { cat: 'comp',    icon: '🔥', tag: 'Соревно­вание',    text: 'Тильт — главный враг рейтинга. Если вы проиграли 2 матча подряд с эмоциями — сделайте 15-минутный перерыв. Это не слабость, это математика.' },
+    { cat: 'comp',    icon: '⚡', tag: 'Соревно­вание',    text: 'Изучайте мету, но не становитесь её рабом. Понимание «почему мета работает» важнее слепого копирования топ-билдов.' },
+    { cat: 'comp',    icon: '🎯', tag: 'Соревно­вание',    text: 'Ставьте цель на сессию: «улучшить позиционирование», а не «поднять ранг». Процессные цели растят скилл быстрее результативных.' },
+    { cat: 'comp',    icon: '👁️', tag: 'Соревно­вание',    text: 'Смотрите мини-карту каждые 3–5 секунд. Игроки Challenger/Grandmaster делают это рефлекторно — отработайте привычку.' },
+    { cat: 'comp',    icon: '🧘', tag: 'Соревно­вание',    text: 'Физическое состояние влияет на рефлексы: сон, еда, температура в комнате — всё это миллисекунды реакции.' },
+    { cat: 'comp',    icon: '📊', tag: 'Соревно­вание',    text: 'Анализируйте смерти, а не убийства. «Почему меня убили» — более ценный вопрос, чем «как я убил».' },
+    { cat: 'comp',    icon: '🏆', tag: 'Соревно­вание',    text: 'Проигрыш у хорошего игрока — это данные. Проигрыш у слабого — это эмоции. Выбирайте первое отношение.' },
+
+    // ── Онлайн-игры ───────────────────────────────────────
+    { cat: 'online',  icon: '🌐', tag: 'Онлайн',           text: 'Пинг важнее FPS в сетевых играх. 60fps при 80ms пинге хуже, чем 144fps при 20ms для реакции и попаданий.' },
+    { cat: 'online',  icon: '🔒', tag: 'Онлайн',           text: 'Используйте уникальный пароль для игрового аккаунта. Утечка одного сервиса не должна компрометировать вашу библиотеку игр.' },
+    { cat: 'online',  icon: '🎙️', tag: 'Онлайн',           text: 'Включайте push-to-talk в рейтинговых матчах. Фоновый шум и случайные звуки отвлекают команду сильнее, чем молчание.' },
+    { cat: 'online',  icon: '⏱️', tag: 'Онлайн',           text: 'Используйте проводное подключение к роутеру вместо Wi-Fi. Разница в джиттере (колебание пинга) может быть в 3–5 раз.' },
+    { cat: 'online',  icon: '🗺️', tag: 'Онлайн',           text: 'Изучайте callouts — стандартные названия позиций на картах. Это сократит время коммуникации с 5 слов до 1.' },
+    { cat: 'online',  icon: '🛑', tag: 'Онлайн',           text: 'Токсичность снижает вашу собственную производительность на 10–20% из-за активации стресс-реакции. Mute — не трусость.' },
+    { cat: 'online',  icon: '📅', tag: 'Онлайн',           text: 'Играйте в одно время суток. Игровые серверы и качество соперников варьируются по времени — найдите свой «прайм-тайм».' },
+    { cat: 'online',  icon: '💾', tag: 'Онлайн',           text: 'Регулярно проверяйте настройки конфиденциальности аккаунта. Публичная история активности — лёгкая цель для социальной инженерии.' },
+    { cat: 'online',  icon: '🎲', tag: 'Онлайн',           text: 'Lobby-рулетки и случайные задания лучше всего работают когда все игроки понимают правила заранее — объясните формат до старта.' },
+    { cat: 'online',  icon: '🤖', tag: 'Онлайн',           text: 'Включите двухфакторную аутентификацию на всех игровых платформах. Steam, Epic, Battle.net — все три поддерживают 2FA.' },
+
+    // ── Общие игровые факты ───────────────────────────────
+    { cat: 'fact',    icon: '🧬', tag: 'Факт',             text: 'Среднее время реакции человека — 250мс. Профессиональные киберспортсмены тренируют его до 150–180мс через специфические упражнения.' },
+    { cat: 'fact',    icon: '🎵', tag: 'Факт',             text: 'Музыка с темпом 120–140 BPM статистически повышает концентрацию в экшн-играх. Именно поэтому большинство игровых саундтреков в этом диапазоне.' },
+    { cat: 'fact',    icon: '💡', tag: 'Факт',             text: 'Правило 20-20-20: каждые 20 минут смотрите на объект в 6 метрах от вас в течение 20 секунд. Снижает усталость глаз на 25%.' },
+    { cat: 'fact',    icon: '🧩', tag: 'Факт',             text: 'Мозг обрабатывает случайное вознаграждение (лутбоксы, рандомные задания) через тот же дофаминовый контур, что и слот-машины.' },
+    { cat: 'fact',    icon: '🕹️', tag: 'Факт',             text: 'Феномен «одного матча» — средний игрок переоценивает время следующей сессии примерно на 40%. Ставьте таймер.' },
+    { cat: 'fact',    icon: '🌡️', tag: 'Факт',             text: 'Оптимальная температура для игровой сессии — 19–21°C. При 25°C+ скорость обработки информации падает на 8–10%.' },
+    { cat: 'fact',    icon: '🖱️', tag: 'Факт',             text: 'DPI мыши выше 1600 не улучшает точность в шутерах для большинства игроков — мелкие тремуры становятся заметнее. 400–800 DPI + высокая чувствительность в игре дают больший контроль.' },
+    { cat: 'fact',    icon: '🏋️', tag: 'Факт',             text: '30-минутная аэробная нагрузка перед игрой улучшает когнитивные функции на 2–4 часа — задокументировано в исследованиях киберспортивной медицины.' },
+];
+
+// Возвращает совет дня (детерминированно по дате) или случайный
+function getDailyTip(category) {
+    const pool = category ? GAMING_TIPS.filter(t => t.cat === category) : GAMING_TIPS;
+    if (!pool.length) return GAMING_TIPS[0];
+    const dayIndex = Math.floor(Date.now() / 86400000); // меняется каждый день
+    return pool[dayIndex % pool.length];
 }
 
 // ── DEFAULT GAMES DATA ────────────────────────────────────

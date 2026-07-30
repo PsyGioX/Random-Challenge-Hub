@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
+    <!-- Content Security Policy: блокирует инлайн-скрипты из сторонних источников,
+         разрешает только 'self' и Twitch WebSocket. Inline-скрипты в этом файле
+         допускаются через 'unsafe-inline' т.к. страница полностью локальная
+         (file:// или localhost) — без сервера нельзя использовать nonce/hash. -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                   script-src 'self' 'unsafe-inline';
+                   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+                   font-src 'self' https://fonts.gstatic.com;
+                   connect-src 'self' wss://irc-ws.chat.twitch.tv;
+                   img-src 'self' data:;
+                   object-src 'none';
+                   base-uri 'self';">
+
     <title>Random Challenge Hub v3 | Рулетка заданий для стримеров и геймеров</title>
     <meta name="description" content="Random Challenge Hub — интерактивная рулетка заданий для стримеров, геймеров и компаний. OBS overlay, голосование чатом, 5 тем, 10 цветовых схем.">
     <meta name="keywords" content="рулетка заданий, стример инструменты, OBS overlay, колесо фортуны, игровые челленджи, случайный выбор, twitch рулетка">
@@ -228,6 +242,111 @@
             const t = localStorage.getItem('appTheme') || 'dark';
             document.documentElement.setAttribute('data-theme', t);
             // Кнопки темы отметятся после init()
+        })();
+    </script>
+
+    <!-- Скрипт блокировки мобильных устройств -->
+    <script>
+        (function () {
+            function isMobileDevice() {
+                const ua = navigator.userAgent || navigator.vendor || window.opera;
+                const mobileRe = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+                const hasTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+                const isSmall  = window.innerWidth <= 768;
+                return (mobileRe.test(ua) && hasTouch) || (hasTouch && isSmall);
+            }
+
+            function addStyles() {
+                const s = document.createElement('style');
+                s.textContent = `
+                    *{margin:0;padding:0;box-sizing:border-box}
+                    body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;overflow-x:hidden}
+                    #mbs{position:relative;z-index:10;width:100%;max-width:480px}
+                    .mbw{background:rgba(30,41,59,0.92);backdrop-filter:blur(20px);border:2px solid rgba(99,102,241,0.3);border-radius:24px;padding:36px 24px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.45),0 0 40px rgba(99,102,241,0.1);animation:mbFade .6s ease}
+                    @keyframes mbFade{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+                    .mb-ico{font-size:60px;margin-bottom:14px;display:block;animation:mbFloat 3s ease-in-out infinite}
+                    @keyframes mbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+                    .mb-title{font-size:22px;font-weight:900;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:2px;margin-bottom:6px}
+                    .mb-div{width:56px;height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6);margin:14px auto;border-radius:2px}
+                    .mb-sub{font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:14px}
+                    .mb-desc{font-size:13px;color:#94a3b8;line-height:1.65;margin-bottom:22px}
+                    .mb-desc strong{color:#cbd5e1}
+                    .mb-box{text-align:left;margin-bottom:22px;padding:18px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:14px}
+                    .mb-box h3{font-size:11px;font-weight:600;color:#818cf8;margin-bottom:14px;text-align:center;text-transform:uppercase;letter-spacing:2px}
+                    .mb-box ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+                    .mb-box li{display:flex;align-items:flex-start;gap:10px;font-size:12px;color:#cbd5e1;line-height:1.5}
+                    .ri{font-size:16px;flex-shrink:0;margin-top:1px}
+                    .mb-alt h3{font-size:13px;font-weight:600;color:#f1f5f9;margin-bottom:12px}
+                    .alt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+                    .alt-card{padding:14px 6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:11px;text-align:center}
+                    .alt-card span{font-size:22px;display:block;margin-bottom:6px}
+                    .alt-card p{font-size:10px;color:#94a3b8;line-height:1.4}
+                    .mb-foot{padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)}
+                    .mb-ver{font-size:10px;color:#64748b;margin-bottom:3px}
+                    .mb-copy{font-size:9px;color:#475569}
+                    .bgp{position:fixed;border-radius:50%;pointer-events:none;animation:bgpAnim linear infinite}
+                    @keyframes bgpAnim{0%{transform:translateY(0) scale(1);opacity:0}10%{opacity:.55}90%{opacity:.55}100%{transform:translateY(-100vh) scale(0);opacity:0}}
+                    @media(max-width:360px){.mbw{padding:22px 14px}.mb-title{font-size:18px}.mb-ico{font-size:46px}.alt-grid{grid-template-columns:1fr}}
+                `;
+                document.head.appendChild(s);
+            }
+
+            function createParticles() {
+                const cols = ['#6366f1','#8b5cf6','#10b981','#f59e0b','#3b82f6'];
+                for (let i = 0; i < 38; i++) {
+                    const p = document.createElement('div');
+                    p.className = 'bgp';
+                    const sz = Math.random()*4+2, c = cols[i%cols.length];
+                    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;background:${c};animation-duration:${Math.random()*14+9}s;animation-delay:${Math.random()*8}s;box-shadow:0 0 ${sz*2}px ${c}`;
+                    document.body.appendChild(p);
+                }
+            }
+
+            function showBlock() {
+                document.body.innerHTML = '';
+                addStyles();
+                const wrap = document.createElement('div');
+                wrap.id = 'mbs';
+                wrap.innerHTML = `
+                    <div class="mbw">
+                        <span class="mb-ico">🖥️</span>
+                        <div class="mb-title">RANDOM CHALLENGE HUB</div>
+                        <div class="mb-div"></div>
+                        <div class="mb-sub">Требуется компьютер</div>
+                        <p class="mb-desc">Приложение оптимизировано для <strong>компьютеров и ноутбуков</strong>. Оно предназначено для использования во время игровых сессий, стримов и киберспортивных мероприятий на ПК.</p>
+                        <div class="mb-box">
+                            <h3>Почему только ПК?</h3>
+                            <ul>
+                                <li><span class="ri">🎮</span><span>Создано для параллельной работы с играми на ПК</span></li>
+                                <li><span class="ri">🖥️</span><span>Интерфейс оптимизирован для экранов от 1024px и мыши</span></li>
+                                <li><span class="ri">🎰</span><span>Рулетка требует точного управления и большого экрана</span></li>
+                                <li><span class="ri">⚡</span><span>Стримеры и геймеры используют ПК для лучшей производительности</span></li>
+                            </ul>
+                        </div>
+                        <div class="mb-alt">
+                            <h3>Что делать?</h3>
+                            <div class="alt-grid">
+                                <div class="alt-card"><span>💻</span><p>Откройте на компьютере или ноутбуке</p></div>
+                                <div class="alt-card"><span>📱</span><p>Планшет в горизонтальном режиме</p></div>
+                                <div class="alt-card"><span>🔗</span><p>Поделитесь ссылкой с другом на ПК</p></div>
+                            </div>
+                        </div>
+                        <div class="mb-foot">
+                            <p class="mb-ver">Random Challenge Hub v3.0</p>
+                            <p class="mb-copy">© 2026 Random Challenge Hub. Все права защищены.</p>
+                        </div>
+                    </div>`;
+                document.body.appendChild(wrap);
+                createParticles();
+            }
+
+            if (isMobileDevice()) {
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', showBlock);
+                } else {
+                    showBlock();
+                }
+            }
         })();
     </script>
 </body>
