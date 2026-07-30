@@ -119,6 +119,13 @@
 
         /* ── VOTE WIDGET ── */
         .ow-vote-title { font-size:10px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px }
+        .ow-vote-topic {
+            font-size:13px; font-weight:700; text-align:center;
+            color:#a78bfa; margin-bottom:8px; padding:6px 10px;
+            background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.25);
+            border-radius:8px; line-height:1.35; word-break:break-word;
+            animation: rowIn 0.35s ease;
+        }
         .ow-vote-option { display:flex; align-items:center; gap:7px; margin-bottom:5px }
         .ow-vote-key { font-size:11px; font-weight:700; color:#818cf8; min-width:16px; text-align:center }
         .ow-vote-bar { flex:1; height:5px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden }
@@ -273,6 +280,7 @@
             </div>
             <div id="owVote" style="display:none">
                 <div class="ow-vote-title">🗳️ Голосование в чате</div>
+                <div class="ow-vote-topic" id="owVoteTopic" style="display:none"></div>
                 <div class="ow-vote-timer" id="owVoteTimer">30с</div>
                 <div id="owVoteOptions"></div>
             </div>
@@ -426,8 +434,18 @@ function showResult(game, player, task, duration) {
     typeEl('owTask',   task   || '—', 20);
     if (duration > 0) startCountdown(duration);
 }
-function showVote(options, timerSec) {
+function showVote(options, timerSec, title) {
     _h('owIdle'); _h('owResult'); _h('owWinner'); _s('owVote');
+    // Показываем тему если есть
+    const topicEl = document.getElementById('owVoteTopic');
+    if (topicEl) {
+        if (title && title.trim()) {
+            topicEl.textContent = title.trim();
+            topicEl.style.display = '';
+        } else {
+            topicEl.style.display = 'none';
+        }
+    }
     renderVoteOptions(options);
     runVoteTimer(timerSec || 30, options);
 }
@@ -515,7 +533,7 @@ function runVoteTimer(sec, options) {
 function handleMessage(e) {
     const d = e.data; if (!d?.type) return;
     if (d.type==='result') showResult(d.game, d.player, d.task, d.duration||6000);
-    if (d.type==='vote')   showVote(d.options, d.timer);
+    if (d.type==='vote')   showVote(d.options, d.timer, d.title||'');
     if (d.type==='winner') showWinner(d.name, d.from);
     if (d.type==='idle')   showIdle();
     if (d.type==='theme')  applyTheme(d.theme);
@@ -528,15 +546,17 @@ let _lastChat    = null;
 function startPolling() {
     setInterval(() => {
         try {
+            // overlayState — результаты, голосование, победитель
             const raw = localStorage.getItem('overlayState');
             if (raw && raw !== _lastOverlay) {
                 _lastOverlay = raw;
                 const s = JSON.parse(raw);
                 if (s.type==='result') showResult(s.game, s.player, s.task, s.duration);
-                if (s.type==='vote')   showVote(s.options, s.timer);
+                if (s.type==='vote')   showVote(s.options, s.timer, s.title||'');
                 if (s.type==='winner') showWinner(s.name, s.from);
                 if (s.type==='idle')   showIdle();
             }
+            // overlayChatData — сообщения чата
             const cr = localStorage.getItem('overlayChatData');
             if (cr && cr !== _lastChat) { _lastChat=cr; updateChatWidget(JSON.parse(cr)) }
         } catch(e){}
@@ -741,7 +761,8 @@ function showDemo(type) {
             showResult(g, sd.streamerProfile?.displayName || 'Стример', task, 8000);
         } else if (type==='vote') {
             const opts = (gl.length ? gl.slice(0,4) : ['Minecraft','CS2','Apex','Valorant']).map(n=>({name:n,count:0}));
-            showVote(opts, 20);
+            const demoTitle = sd.voteTitle || 'Тестовое голосование';
+            showVote(opts, 20, demoTitle);
         } else if (type==='winner') {
             const users = sd.chatUserPool ? [...sd.chatUserPool].slice(-10) : ['NightWolf99','GamerPro','TwitchViewer'];
             const winner = users[Math.floor(Math.random()*users.length)];

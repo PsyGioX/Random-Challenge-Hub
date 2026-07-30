@@ -33,6 +33,7 @@ let streamerState = {
     voteDuration:  30,
     voteTimer:     0,
     voteInterval:  null,
+    voteTitle:     '',   // тема/название голосования
     subWheelList:  [],
     channelName:   '',
     connected:     false,
@@ -2693,6 +2694,16 @@ function renderVoteArea() {
                     ? `✅ Чат подключён — зрители пишут <b>1–4</b> для голосования`
                     : `⚠️ Подключите Twitch чат для голосования зрителями`}
             </div>
+            <div style="margin-bottom:10px">
+                <input type="text" id="voteTitle" placeholder="Тема голосования (необязательно)…"
+                    value="${streamerState.voteTitle||''}"
+                    oninput="streamerState.voteTitle=this.value"
+                    style="width:100%;font-size:12px;padding:8px 12px;border-radius:var(--radius-md);
+                           background:var(--bg-input);color:var(--text-primary);
+                           border:2px solid var(--border-light);outline:none;box-sizing:border-box"
+                    onfocus="this.style.borderColor='var(--border-focus)'"
+                    onblur="this.style.borderColor='var(--border-light)'">
+            </div>
             <div class="input-group" style="margin-bottom:10px">
                 <input type="number" id="voteDuration" placeholder="Сек" min="10" max="300" value="${streamerState.voteDuration}" style="max-width:80px" oninput="streamerState.voteDuration=parseInt(this.value)||30">
                 <label style="font-size:12px;color:var(--text-secondary);min-width:auto">сек голосования</label>
@@ -2714,8 +2725,17 @@ function renderVoteArea() {
     const votes = streamerState.voteVotes   || {};
     const total = Object.values(votes).reduce((s,v) => s + v.count, 0) || 1;
     const voterCount = Object.keys(streamerState.voteVoters || {}).length;
+    const titleHtml = streamerState.voteTitle
+        ? `<div style="font-size:13px;font-weight:700;color:var(--accent-primary);
+                       text-align:center;margin-bottom:8px;padding:6px 10px;
+                       background:rgba(99,102,241,0.1);border-radius:var(--radius-sm);
+                       border:1px solid rgba(99,102,241,0.2);word-break:break-word">
+               🗳️ ${streamerState.voteTitle}
+           </div>`
+        : '';
 
     return `
+        ${titleHtml}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <div class="vote-timer ${streamerState.voteTimer<=5?'urgent':''}" id="voteCountdown" style="font-size:24px;margin:0">${streamerState.voteTimer}с</div>
             <div style="font-size:11px;color:var(--text-secondary);text-align:right">
@@ -2745,6 +2765,10 @@ function startVote() {
     const gameOptions = Object.keys(games).slice(0, 4);
     if (!gameOptions.length) return showNotification('Добавьте игры для голосования', 'error');
     if (!streamerState.connected) return showNotification('Сначала подключитесь к Twitch-каналу', 'warning');
+
+    // Сохраняем тему из поля ввода если оно ещё в DOM
+    const titleInput = document.getElementById('voteTitle');
+    if (titleInput) streamerState.voteTitle = titleInput.value.trim();
     
     streamerState.voteOptions   = gameOptions;
     streamerState.voteVotes     = {};
@@ -2753,7 +2777,18 @@ function startVote() {
     streamerState.voteTimer     = streamerState.voteDuration || 30;
     gameOptions.forEach((_,i) => { streamerState.voteVotes[i+1] = { option: gameOptions[i], count: 0 } });
 
-    showNotification(`🗳️ Голосование началось! Зрители пишут 1–${gameOptions.length} в чате`, 'success');
+    const titleMsg = streamerState.voteTitle ? ` "${streamerState.voteTitle}"` : '';
+    showNotification(`🗳️ Голосование${titleMsg} началось! Зрители пишут 1–${gameOptions.length} в чате`, 'success');
+
+    // Передаём данные голосования в overlay через localStorage
+    try {
+        localStorage.setItem('overlayState', JSON.stringify({
+            type:    'vote',
+            title:   streamerState.voteTitle || '',
+            options: gameOptions.map(g => ({ name: g, count: 0 })),
+            timer:   streamerState.voteDuration || 30
+        }));
+    } catch(e) {}
 
     streamerState.voteInterval = setInterval(() => {
         streamerState.voteTimer--;
@@ -2798,11 +2833,20 @@ function stopVote() {
     if (winner && maxVotes > 0) {
         const message = `🏆 Победитель: ${winner} с ${maxVotes} голос${maxVotes===1?'':'ов'} от ${voterCount} зрителей`;
         showNotification(message, 'success');
-        
-        // Отправляем результат в чат
-        // Функция отправки в чат недоступна без авторизации
+
+        // Передаём победителя в overlay
+        try {
+            localStorage.setItem('overlayState', JSON.stringify({
+                type: 'winner',
+                name: winner,
+                from: `из голосования · ${voterCount} зрит. · ${streamerState.voteTitle||''}`
+            }));
+        } catch(e) {}
     } else {
         showNotification('Голосование завершено без голосов', 'info');
+        try {
+            localStorage.setItem('overlayState', JSON.stringify({ type: 'idle' }));
+        } catch(e) {}
     }
 }
 
@@ -3045,13 +3089,24 @@ function quickResetSession() {
 
 // OBS Overlay
 function getOverlayUrl() {
-    return window.location.origin + window.location.pathname.replace('index.html','') + 'overlay.html';
+    // Формируем полный URL к overlay.html относительно текущего файла
+    const base = window.location.href.replace(/[^/]*$/, '');
+    return base + 'overlay.html';
 }
 function copyOverlayUrl() {
-    navigator.clipboard.writeText(getOverlayUrl()).then(()=>showNotification('📋 URL скопирован! Вставьте в OBS Browser Source','success')).catch(()=>showNotification('Ошибка копирования','error'));
+    navigator.clipboard.writeText(getOverlayUrl())
+        .then(()=>showNotification('📋 URL скопирован! Вставьте в OBS Browser Source','success'))
+        .catch(()=>showNotification('Ошибка копирования','error'));
 }
 function openOverlayWindow() {
-    window.open('overlay.html','obs-overlay','width=460,height=460,menubar=no,toolbar=no,location=no');
+    const url = getOverlayUrl();
+    const w = window.open(url, 'obs-overlay');
+    if (!w) {
+        // Если браузер заблокировал popup — показываем инструкцию
+        showNotification('🚫 Popup заблокирован. Скопируйте URL и откройте вручную или в OBS.', 'warning');
+    } else {
+        showNotification('🖥️ Overlay открыт. Добавьте URL в OBS Browser Source.', 'info');
+    }
 }
 function toggleChromaKey() {
     rouletteSettings.chromaKey = !rouletteSettings.chromaKey; saveSettings();
