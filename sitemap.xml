@@ -2,159 +2,46 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
 
-    <!-- Main App -->
     <url>
         <loc>https://random-challenge-hub.vercel.app/</loc>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="en"
-            href="https://random-challenge-hub.vercel.app/?lang=en"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="ru"
-            href="https://random-challenge-hub.vercel.app/?lang=ru"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="uk"
-            href="https://random-challenge-hub.vercel.app/?lang=uk"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="x-default"
-            href="https://random-challenge-hub.vercel.app/"/>
-
-        <lastmod>2026-07-31</lastmod>
-        <changefreq>weekly</changefreq>
+        <lastmod>2026-07-29</lastmod>
+        <changefreq>monthly</changefreq>
         <priority>1.0</priority>
     </url>
 
-
-    <!-- About -->
     <url>
         <loc>https://random-challenge-hub.vercel.app/legal/about.html</loc>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="en"
-            href="https://random-challenge-hub.vercel.app/legal/about.html?lang=en"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="ru"
-            href="https://random-challenge-hub.vercel.app/legal/about.html?lang=ru"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="uk"
-            href="https://random-challenge-hub.vercel.app/legal/about.html?lang=uk"/>
-
-        <lastmod>2026-07-31</lastmod>
-        <changefreq>yearly</changefreq>
-        <priority>0.5</priority>
-    </url>
-
-
-    <!-- Privacy -->
-    <url>
-        <loc>https://random-challenge-hub.vercel.app/legal/privacy_policy.html</loc>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="en"
-            href="https://random-challenge-hub.vercel.app/legal/privacy_policy.html?lang=en"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="ru"
-            href="https://random-challenge-hub.vercel.app/legal/privacy_policy.html?lang=ru"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="uk"
-            href="https://random-challenge-hub.vercel.app/legal/privacy_policy.html?lang=uk"/>
-
-        <lastmod>2026-07-31</lastmod>
-        <changefreq>yearly</changefreq>
-        <priority>0.6</priority>
-    </url>
-
-
-    <!-- Terms -->
-    <url>
-        <loc>https://random-challenge-hub.vercel.app/legal/terms_of_service.html</loc>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="en"
-            href="https://random-challenge-hub.vercel.app/legal/terms_of_service.html?lang=en"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="ru"
-            href="https://random-challenge-hub.vercel.app/legal/terms_of_service.html?lang=ru"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="uk"
-            href="https://random-challenge-hub.vercel.app/legal/terms_of_service.html?lang=uk"/>
-
-        <lastmod>2026-07-31</lastmod>
-        <changefreq>yearly</changefreq>
-        <priority>0.5</priority>
-    </url>
-
-
-    <!-- Disclaimer -->
-    <url>
-        <loc>https://random-challenge-hub.vercel.app/legal/disclaimer.html</loc>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="en"
-            href="https://random-challenge-hub.vercel.app/legal/disclaimer.html?lang=en"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="ru"
-            href="https://random-challenge-hub.vercel.app/legal/disclaimer.html?lang=ru"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="uk"
-            href="https://random-challenge-hub.vercel.app/legal/disclaimer.html?lang=uk"/>
-
-        <lastmod>2026-07-31</lastmod>
+        <lastmod>2026-07-29</lastmod>
         <changefreq>yearly</changefreq>
         <priority>0.4</priority>
     </url>
 
+    <url>
+        <loc>https://random-challenge-hub.vercel.app/legal/privacy_policy.html</loc>
+        <lastmod>2026-07-29</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
 
-    <!-- License -->
+    <url>
+        <loc>https://random-challenge-hub.vercel.app/legal/terms_of_service.html</loc>
+        <lastmod>2026-07-29</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://random-challenge-hub.vercel.app/legal/disclaimer.html</loc>
+        <lastmod>2026-07-29</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.4</priority>
+    </url>
+
     <url>
         <loc>https://random-challenge-hub.vercel.app/legal/license.html</loc>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="en"
-            href="https://random-challenge-hub.vercel.app/legal/license.html?lang=en"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="ru"
-            href="https://random-challenge-hub.vercel.app/legal/license.html?lang=ru"/>
-
-        <xhtml:link 
-            rel="alternate"
-            hreflang="uk"
-            href="https://random-challenge-hub.vercel.app/legal/license.html?lang=uk"/>
-
-        <lastmod>2026-07-31</lastmod>
+        <lastmod>2026-07-29</lastmod>
         <changefreq>yearly</changefreq>
         <priority>0.3</priority>
     </url>
-
 
 </urlset>
