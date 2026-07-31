@@ -17,6 +17,41 @@ window.RCH_TRANSLATIONS['en'] = {
     rtl:         false,
   },
 
+  // ── META / SEO ─────────────────────────────────────────────
+
+'meta.title':
+'Random Challenge Hub v3 | Random Challenge Roulette for Streamers & Gamers',
+
+'meta.description':
+'Random Challenge Hub — free interactive challenge roulette for streamers, gamers and groups. OBS overlay, Twitch chat voting, 4 roulette modes, 5 themes, 10 color schemes. Works directly in your browser without installation.',
+
+'meta.keywords':
+'challenge roulette, streamer tools, OBS overlay, game challenges, random selection, Twitch roulette, random challenge, gaming tasks, stream tools, browser source OBS, challenge wheel',
+
+'meta.language':
+'English',
+
+'meta.locale':
+'en_US',
+
+'meta.og_title':
+'Random Challenge Hub v3 | Challenge Roulette for Streamers',
+
+'meta.og_description':
+'Free interactive challenge roulette with OBS overlay, Twitch chat voting, 4 modes, 5 themes and browser-based tools. No installation required.',
+
+'meta.og_image_alt':
+'Random Challenge Hub — challenge roulette for streamers',
+
+'meta.twitter_title':
+'Random Challenge Hub v3 | Streamer Challenge Roulette',
+
+'meta.twitter_description':
+'Free interactive challenge roulette with OBS overlay for streamers and gamers.',
+
+'meta.twitter_image_alt':
+'Random Challenge Hub logo',
+
   // ── COMMON ────────────────────────────────────────────────
   'common.app_name':        'Random Challenge Hub',
   'common.tagline':         'Create • Play • Stream • Win',
