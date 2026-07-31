@@ -1,5 +1,7 @@
 # 🎲 Random Challenge Hub
 
+![Random Challenge Hub v3](https://raw.githubusercontent.com/PsyGioX/Random-Challenge-Hub/refs/heads/main/screenshot.png)
+
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
