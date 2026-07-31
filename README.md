@@ -10,8 +10,8 @@
 [![Vanilla JS](https://img.shields.io/badge/Vanilla-JavaScript-f7df1e?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](package.json)
 
-**Интерактивная платформа для создания случайных игровых заданий и челленджей.**  
-Для стримеров, геймеров и компаний друзей — прямо в браузере, без установки.
+**An interactive platform for generating random gaming challenges and party activities.**  
+Perfect for streamers, gamers, and groups of friends — runs entirely in your browser with no installation required.
 
 [![Live Demo](https://img.shields.io/badge/🌐%20Live%20Demo-random--challenge--hub.vercel.app-6366f1?style=for-the-badge)](https://random-challenge-hub.vercel.app)
 
@@ -19,278 +19,365 @@
 
 ---
 
-## 📋 Содержание
+# 📋 Table of Contents
 
-- [О проекте](#-о-проекте)
-- [Возможности](#-возможности)
-- [Скриншоты](#-скриншоты)
-- [Быстрый старт](#-быстрый-старт)
-- [Структура проекта](#-структура-проекта)
-- [Режимы рулетки](#-режимы-рулетки)
+- [About](#-about)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Project Structure](#-project-structure)
+- [Roulette Modes](#-roulette-modes)
 - [OBS Overlay](#-obs-overlay)
-- [Стример-режим](#-стример-режим)
-- [Настройки](#-настройки)
-- [Технологии](#-технологии)
-- [Безопасность и конфиденциальность](#-безопасность-и-конфиденциальность)
-- [Лицензия](#-лицензия)
+- [Streamer Mode](#-streamer-mode)
+- [Settings](#-settings)
+- [Technology Stack](#-technology-stack)
+- [Security & Privacy](#-security--privacy)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
-## 🎯 О проекте
+# 🎯 About
 
-Random Challenge Hub v3 — бесплатное веб-приложение для честного случайного выбора игровых заданий. Проект решает простую задачу: *«во что поиграть и как разнообразить игровой процесс»* — будь то стрим, LAN-вечеринка или онлайн-сессия с друзьями.
+Random Challenge Hub v3 is a free web application for fair and completely random gaming challenge selection.
 
-Всё работает **локально в браузере** — никаких серверов, никаких аккаунтов, никакого сбора данных.
+Whether you're streaming on Twitch, hosting a LAN party, or playing online with friends, the app solves one simple question:
 
----
+> **"What should we play next?"**
 
-## ✨ Возможности
-
-### Основные
-| Функция | Описание |
-|---------|----------|
-| 🎮 **Игры и задания** | Создавайте любые игры и добавляйте к ним челленджи |
-| 👥 **Игроки** | Список участников с цветовой индикацией и статистикой |
-| 🎰 **4 режима рулетки** | Полный рандом, Сначала игра, Только игрок, Только задание |
-| 📊 **Статистика** | История спинов, активность игроков, рейтинги |
-| 🎨 **5 тем оформления** | Тёмная, Неон, Кибер, Стример, Пастель |
-| 🖌️ **10 цветовых схем** | Для сегментов колеса — от дефолтной до Twitch-палитры |
-| 💾 **Локальное хранение** | Все данные в `localStorage` браузера |
-| 📤 **Экспорт / Импорт** | Сохраняйте и загружайте конфигурацию в JSON |
-| 🔊 **Звуковые эффекты** | Web Audio API — без внешних файлов |
-| ❌ **Режим выбывания** | Выпавшее задание убирается с колеса |
-| 🚫 **Чёрный список** | Исключайте задания из вращения |
-
-### Для стримеров
-| Функция | Описание |
-|---------|----------|
-| 🖥️ **OBS Browser Source Overlay** | Виджеты результата, таймера и чата прямо поверх стрима |
-| 🗳️ **Голосование чатом** | Зрители выбирают задание командами `!1`, `!2`, `!3`... |
-| 💜 **Колесо подписчиков** | Случайный выбор из зрителей чата |
-| ⏱️ **Таймер стримера** | Обратный отсчёт с трансляцией в overlay |
-| 💬 **Виджет чата** | Live-лента сообщений Twitch в overlay |
-| 📡 **Twitch IRC** | Подключение только для чтения, без OAuth |
-| 🟢 **Chroma Key** | Зелёный фон для хромакей-замены |
+Everything runs **locally in your browser**—no servers, no accounts, no tracking, and no data collection.
 
 ---
 
-## 🚀 Быстрый старт
+# ✨ Features
 
-### Онлайн (без установки)
+## Core Features
 
-Откройте [**random-challenge-hub.vercel.app**](https://random-challenge-hub.vercel.app) в браузере — и всё готово.
+| Feature | Description |
+|---------|-------------|
+| 🎮 **Games & Challenges** | Create unlimited games with custom challenges |
+| 👥 **Players** | Manage participants with colors and statistics |
+| 🎰 **4 Roulette Modes** | Full Random, Game First, Player Only, Challenge Only |
+| 📊 **Statistics** | Spin history, player activity, and rankings |
+| 🎨 **5 UI Themes** | Dark, Neon, Cyber, Streamer, and Pastel |
+| 🖌️ **10 Color Palettes** | Customize wheel segment colors |
+| 💾 **Local Storage** | Everything is saved in your browser |
+| 📤 **Import / Export** | Backup and restore configurations as JSON |
+| 🔊 **Sound Effects** | Generated with the Web Audio API |
+| ❌ **Elimination Mode** | Remove completed challenges automatically |
+| 🚫 **Blacklist** | Exclude challenges from future spins |
 
-### Локально
+## Streamer Features
+
+| Feature | Description |
+|---------|-------------|
+| 🖥️ **OBS Browser Source Overlay** | Live widgets for results, timer, and chat |
+| 🗳️ **Chat Voting** | Viewers vote using `!1`, `!2`, `!3`, etc. |
+| 💜 **Viewer Wheel** | Randomly pick a viewer from chat |
+| ⏱️ **Streamer Timer** | Countdown synced with OBS Overlay |
+| 💬 **Live Chat Widget** | Twitch chat displayed in the overlay |
+| 📡 **Twitch IRC** | Anonymous read-only connection (no OAuth required) |
+| 🟢 **Chroma Key Mode** | Green background for OBS chroma key |
+
+---
+
+# 🚀 Quick Start
+
+## Online
+
+Open the app in your browser:
+
+https://random-challenge-hub.vercel.app
+
+No installation required.
+
+## Run Locally
 
 ```bash
 git clone https://github.com/PsyGioX/Random-Challenge-Hub.git
 cd Random-Challenge-Hub
 ```
 
-Затем просто откройте `index.html` в браузере. Никаких зависимостей, никакого сервера не нужно.
+Simply open `index.html` in your browser.
 
-> Для OBS Overlay работа через локальный HTTP-сервер даёт лучшие результаты:
-> ```bash
-> npx serve .
-> # или
-> python -m http.server 8080
-> ```
+No dependencies.
+No build tools.
+No server required.
 
-### Использование
+For the best OBS Overlay experience, use a local HTTP server:
 
-1. **Вкладка «Игры»** — добавьте игры и задания к ним
-2. **Вкладка «Игроки»** — добавьте участников
-3. **Вкладка «Рулетка»** — выберите режим и крутите!
-4. **Вкладка «Стример»** — подключите Twitch и настройте OBS Overlay
+```bash
+npx serve .
+
+# or
+
+python -m http.server 8080
+```
+
+## Basic Usage
+
+1. Add games and challenges.
+2. Add players.
+3. Choose a roulette mode.
+4. Spin the wheel.
+5. Connect Twitch and configure OBS Overlay if you're streaming.
 
 ---
 
-## 📁 Структура проекта
+# 📁 Project Structure
 
 ```
 Random-Challenge-Hub/
-├── index.html          # Главное приложение
-├── overlay.html        # OBS Browser Source (отдельная страница)
-├── script.js           # Вся логика приложения (~3500 строк)
-├── style.css           # Стили + 5 тем оформления
-├── site.webmanifest    # PWA манифест
-├── sitemap.xml         # SEO карта сайта
-├── robots.txt          # Директивы для поисковиков
+├── index.html
+├── overlay.html
+├── script.js
+├── style.css
+├── site.webmanifest
+├── sitemap.xml
+├── robots.txt
 ├── favicon/
-│   └── favicon.png     # Иконка приложения
+│   └── favicon.png
 └── legal/
-    ├── about.html          # О проекте
-    ├── privacy_policy.html # Политика конфиденциальности
+    ├── about.html
+    ├── privacy_policy.html
     ├── terms_of_service.html
     ├── disclaimer.html
-    └── license.html        # Лицензия MIT
+    └── license.html
 ```
 
 ---
 
-## 🎰 Режимы рулетки
+# 🎰 Roulette Modes
 
-### Полный рандом
-Колесо содержит все задания из всех игр. За один спин выбирается случайная **игра + задание + игрок** одновременно.
+## Full Random
 
-### Сначала игра
-Сначала выбирается **игра** — потом каждый игрок по очереди крутит рулетку и получает **индивидуальное задание** из неё. Идеально для LAN-вечеринок.
+Every challenge from every game is added to the wheel.
 
-### Только игрок
-Колесо содержит только **список игроков**. Используется для случайного выбора участника без назначения задания.
+A single spin randomly selects:
 
-### Только задание
-Выбирается конкретная игра и (опционально) игрок — колесо крутит задания **только из этой игры**.
+- Game
+- Challenge
+- Player
 
 ---
 
-## 🖥️ OBS Overlay
+## Game First
 
-Overlay — отдельная страница (`overlay.html`), которая добавляется в OBS как **Browser Source**.
+The wheel first selects a game.
 
-### Подключение
+Each player then spins separately and receives a unique challenge from that game.
 
-1. В OBS: `Источники → + → Браузер`
-2. URL: `https://random-challenge-hub.vercel.app/overlay.html?obs=1`
-3. Размер: `1920×1080` (или ваш формат стрима)
-
-Параметры URL:
-
-| Параметр | Значение | Описание |
-|----------|----------|----------|
-| `obs=1` | — | Скрывает панель управления |
-| `chroma=1` | — | Зелёный фон для хромакей |
-| `theme=neon` | dark / neon / cyber / streamer / pastel | Тема оформления |
-
-### Виджеты
-
-- **Результат** — показывает игру, игрока и задание после каждого спина
-- **Таймер** — синхронизируется с таймером стримера в реальном времени
-- **Чат** — лента сообщений Twitch
-
-Виджеты **перетаскиваются** мышью и **прилипают** к краям экрана. Позиции сохраняются.
-
-### Синхронизация
-
-Overlay и основное приложение обмениваются данными через `localStorage`. Оба окна должны быть **открыты в одном браузере**.
+Perfect for LAN parties and multiplayer sessions.
 
 ---
 
-## 📡 Стример-режим
+## Player Only
 
-### Подключение к Twitch
+The wheel contains only player names.
 
-Введите ник канала и нажмите «Подключить». Используется **анонимное IRC-подключение** (только чтение) — токен не нужен.
+Useful when you simply need to randomly choose someone.
+
+---
+
+## Challenge Only
+
+Select a specific game.
+
+The wheel spins only challenges belonging to that game, with an optional player selection.
+
+---
+
+# 🖥️ OBS Overlay
+
+The overlay is a separate page (`overlay.html`) that can be added to OBS as a **Browser Source**.
+
+## Setup
+
+1. OBS → Sources → Add → Browser Source
+2. URL:
 
 ```
-Канал: name  →  wss://irc-ws.chat.twitch.tv
+https://random-challenge-hub.vercel.app/overlay.html?obs=1
 ```
 
-### Голосование чатом
+3. Set your preferred resolution (1920×1080 recommended).
 
-1. Нажмите **«Голосование»** во вкладке Стример
-2. Введите опциональную тему голосования
-3. Зрители голосуют командами `!1`, `!2`, `!3`, `!4`
-4. По истечении времени — автоматически объявляется победитель
+### URL Parameters
 
-### Колесо подписчиков
+| Parameter | Description |
+|-----------|-------------|
+| `obs=1` | Hide the control panel |
+| `chroma=1` | Green background for chroma key |
+| `theme=neon` | Select overlay theme |
 
-Добавляйте зрителей вручную или кнопкой **«Добавить всех из чата»** — колесо случайно выберет одного.
+## Widgets
 
-### Быстрые команды чата
+- Challenge Result
+- Countdown Timer
+- Twitch Chat
 
-| Команда | Действие |
-|---------|----------|
-| `!spin` | Запустить рулетку (только модераторы) |
-| `!timer 5` | Установить таймер на 5 минут |
-| `!add Ник` | Добавить зрителя в колесо подписчиков |
+Widgets are draggable and automatically snap to screen edges.
 
----
+Their positions are saved locally.
 
-## ⚙️ Настройки
+## Synchronization
 
-### Колесо
-- **Скорость** — от 1 до 10
-- **Время вращения** — от 2 до 15 секунд
-- **Задержка объявления** — пауза перед показом результата
-- **Размер шрифта** на сегментах
-- **Стиль указателя** — стрелка, треугольник, ромб, звезда, булавка
-- **Стиль рамки** — обычная, неон, пунктир, свечение
+The overlay communicates with the main application using `localStorage`.
 
-### Частицы
-- **Количество** и **стиль** (круги / звёзды) победных частиц
-
-### Звук
-- Включение/отключение эффектов
-
-### Режим выбывания
-При включении — выпавшее задание **удаляется с колеса** с анимацией сжатия.
+Both pages must be open in the **same browser**.
 
 ---
 
-## 🛠️ Технологии
+# 📡 Streamer Mode
 
-| Технология | Использование |
-|------------|---------------|
-| **HTML5** | Семантическая разметка, Canvas |
-| **CSS3** | 5 тем через CSS-переменные, анимации |
-| **Vanilla JavaScript** | Вся логика без фреймворков |
-| **Canvas API** | Рендер и анимация колеса рулетки |
-| **Web Audio API** | Генерация звуковых эффектов |
-| **WebSocket (Twitch IRC)** | `wss://irc-ws.chat.twitch.tv` |
-| **localStorage / IndexedDB** | Хранение данных стримера |
-| **CSS Custom Properties** | Система тем оформления |
+## Twitch Connection
 
-**Нет зависимостей.** Никаких `node_modules`, никаких бандлеров, никаких фреймворков.
+Enter your channel name and click **Connect**.
 
----
+The app connects through anonymous **Twitch IRC** in read-only mode.
 
-## 🔒 Безопасность и конфиденциальность
+No OAuth token is required.
 
-- Все данные (игры, задания, игроки, статистика) хранятся **исключительно локально** в браузере
-- Twitch IRC подключается **только для чтения** — OAuth токен не используется и не хранится
-- Content Security Policy заблокирует любые внешние скрипты
-- Приложение не использует куки, трекеры или аналитику
-- Нет внешних API-вызовов (кроме WebSocket к Twitch при явном подключении)
+```
+Channel → wss://irc-ws.chat.twitch.tv
+```
 
 ---
 
-## 🤝 Вклад в проект
+## Chat Voting
 
-Pull Request-ы приветствуются!
+1. Start a poll.
+2. Optionally enter a poll title.
+3. Viewers vote using:
+
+```
+!1
+!2
+!3
+!4
+```
+
+When the timer ends, the winner is selected automatically.
+
+---
+
+## Viewer Wheel
+
+Add viewers manually or import everyone currently in chat.
+
+The wheel randomly selects one viewer.
+
+---
+
+## Chat Commands
+
+| Command | Description |
+|---------|-------------|
+| `!spin` | Spin the wheel (moderators only) |
+| `!timer 5` | Start a 5-minute timer |
+| `!add username` | Add a viewer to the viewer wheel |
+
+---
+
+# ⚙️ Settings
+
+## Wheel
+
+- Spin Speed
+- Spin Duration
+- Result Delay
+- Segment Font Size
+- Pointer Style
+- Border Style
+
+## Particles
+
+Customize the amount and style of victory particles.
+
+## Audio
+
+Enable or disable sound effects.
+
+## Elimination Mode
+
+Completed challenges are automatically removed from the wheel after selection.
+
+---
+
+# 🛠 Technology Stack
+
+| Technology | Purpose |
+|------------|---------|
+| HTML5 | Semantic markup & Canvas |
+| CSS3 | Themes, variables, animations |
+| Vanilla JavaScript | Entire application logic |
+| Canvas API | Wheel rendering & animation |
+| Web Audio API | Sound generation |
+| WebSocket (Twitch IRC) | Live Twitch chat |
+| localStorage / IndexedDB | Local data persistence |
+| CSS Custom Properties | Theme system |
+
+**Zero dependencies.**
+
+No Node.js.
+No frameworks.
+No bundlers.
+
+---
+
+# 🔒 Security & Privacy
+
+- All data is stored locally in your browser.
+- Twitch IRC uses anonymous read-only access.
+- No OAuth tokens are stored.
+- A strict Content Security Policy blocks unauthorized scripts.
+- No cookies.
+- No analytics.
+- No trackers.
+- No external APIs (except Twitch WebSocket when explicitly connected).
+
+---
+
+# 🤝 Contributing
+
+Pull Requests are always welcome!
 
 ```bash
-# 1. Форкните репозиторий
-# 2. Создайте ветку фичи
+# Fork the repository
+
+# Create a feature branch
 git checkout -b feature/my-feature
 
-# 3. Закоммитьте изменения
+# Commit your changes
 git commit -m "feat: add my feature"
 
-# 4. Запушьте
+# Push the branch
 git push origin feature/my-feature
 
-# 5. Откройте Pull Request
+# Open a Pull Request
 ```
 
 ---
 
-## 📄 Лицензия
+# 📄 License
 
-Проект распространяется под лицензией **MIT** — используйте, модифицируйте и распространяйте свободно.
+This project is licensed under the **MIT License**.
+
+You are free to use, modify, and distribute it.
 
 ```
 Copyright (c) 2026 Random Challenge Hub
 ```
 
-Полный текст: [legal/license.html](https://random-challenge-hub.vercel.app/legal/license.html)
+Full license:
+
+https://random-challenge-hub.vercel.app/legal/license.html
 
 ---
 
 <div align="center">
 
-Сделано с ❤️ для стримеров и геймеров
+Made with ❤️ for streamers and gamers
 
-[🌐 Demo](https://random-challenge-hub.vercel.app) · [🐛 Issues](https://github.com/PsyGioX/Random-Challenge-Hub/issues) · [📜 Лицензия](https://random-challenge-hub.vercel.app/legal/license.html)
+[🌐 Live Demo](https://random-challenge-hub.vercel.app) • [🐞 Issues](https://github.com/PsyGioX/Random-Challenge-Hub/issues) • [📄 License](https://random-challenge-hub.vercel.app/legal/license.html)
 
 </div>
