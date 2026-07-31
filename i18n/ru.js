@@ -16,6 +16,41 @@ window.RCH_TRANSLATIONS['ru'] = {
     rtl:         false,
   },
 
+  // ── META / SEO ─────────────────────────────────────────────
+
+'meta.title':
+'Random Challenge Hub v3 | Рулетка заданий для стримеров и геймеров',
+
+'meta.description':
+'Random Challenge Hub — бесплатная интерактивная рулетка заданий для стримеров, геймеров и компаний. OBS overlay, голосование чатом Twitch, 4 режима рулетки, 5 тем оформления, 10 цветовых схем. Работает прямо в браузере без установки.',
+
+'meta.keywords':
+'рулетка заданий, инструменты для стримеров, OBS overlay, игровые челленджи, случайный выбор, Twitch рулетка, random challenge, геймерские задания, инструменты для стримов, browser source OBS, колесо испытаний',
+
+'meta.language':
+'Russian',
+
+'meta.locale':
+'ru_RU',
+
+'meta.og_title':
+'Random Challenge Hub v3 | Рулетка заданий для стримеров',
+
+'meta.og_description':
+'Бесплатная интерактивная рулетка заданий с OBS overlay, голосованием чатом Twitch, 4 режимами, 5 темами оформления и работой прямо в браузере без установки.',
+
+'meta.og_image_alt':
+'Random Challenge Hub — рулетка заданий для стримеров',
+
+'meta.twitter_title':
+'Random Challenge Hub v3 | Рулетка для стримеров',
+
+'meta.twitter_description':
+'Интерактивная рулетка заданий с OBS overlay для стримеров и геймеров.',
+
+'meta.twitter_image_alt':
+'Логотип Random Challenge Hub',
+
   // ── COMMON ────────────────────────────────────────────────
   'common.app_name':        'Random Challenge Hub',
   'common.tagline':         'Создавай • Играй • Стримь • Побеждай',
