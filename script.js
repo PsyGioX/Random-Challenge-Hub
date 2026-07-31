@@ -41,20 +41,20 @@ function _safeParse(key, fallback) {
 }
 
 let players = _safeParse('challengePlayers', []);
-let games   = {}; // инициализируется в init() — нормализация там
+let games = {}; // инициализируется в init() — нормализация там
 
-let currentTab  = 'games';
-let spinning    = false;
-let wheelSegments  = [];
+let currentTab = 'games';
+let spinning = false;
+let wheelSegments = [];
 let currentWheelAngle = 0;
-let animationId    = null;
-let rouletteMode   = 'full';
+let animationId = null;
+let rouletteMode = 'full';
 let lastWinnerSegIdx = -1;          // индекс выигравшего сегмента для анимации удаления
-let segmentScales    = [];          // масштаб каждого сегмента (1 = норма, 0 = удалён)
-let openDropdowns  = {};
-let modalCallback  = null;
-let audioCtx       = null;
-let currentTheme   = localStorage.getItem('appTheme') || 'dark';
+let segmentScales = [];          // масштаб каждого сегмента (1 = норма, 0 = удалён)
+let openDropdowns = {};
+let modalCallback = null;
+let audioCtx = null;
+let currentTheme = localStorage.getItem('appTheme') || 'dark';
 let settingsSubTab = 'speed';
 
 // Spent tasks — elimination mode: { gameName: [task, ...], ... }
@@ -63,24 +63,24 @@ let spentTasks = _safeParse('spentTasks', {});
 // Streamer state
 let streamerState = {
     timerInterval: null,
-    timerSeconds:  0,
-    timerRunning:  false,
-    timerInitial:  0,
-    chatMessages:  [],
-    voteActive:    false,
-    voteOptions:   [],
-    voteVotes:     {},
-    voteDuration:  30,
-    voteTimer:     0,
-    voteInterval:  null,
-    voteTitle:     '',   // тема/название голосования
-    subWheelList:  [],
-    channelName:   '',
-    connected:     false,
-    twitchWs:      null,    // реальный WebSocket к Twitch IRC
-    twitchStatus:  'idle',  // idle | connecting | connected | error
-// УДАЛЕНО: OAuth токен для отправки сообщений
-    overlayOpen:   false,
+    timerSeconds: 0,
+    timerRunning: false,
+    timerInitial: 0,
+    chatMessages: [],
+    voteActive: false,
+    voteOptions: [],
+    voteVotes: {},
+    voteDuration: 30,
+    voteTimer: 0,
+    voteInterval: null,
+    voteTitle: '',   // тема/название голосования
+    subWheelList: [],
+    channelName: '',
+    connected: false,
+    twitchWs: null,    // реальный WebSocket к Twitch IRC
+    twitchStatus: 'idle',  // idle | connecting | connected | error
+    // УДАЛЕНО: OAuth токен для отправки сообщений
+    overlayOpen: false,
     // Новые данные для IndexedDB
     recentFollowers: [],
     recentSubscribers: [],
@@ -127,7 +127,7 @@ function twitchConnect(channel) {
     streamerState.channelName = ch;
     streamerState.twitchStatus = 'connecting';
     _updateConnectBtn();
-    showNotification(t('streamer.connecting_to', {ch}), 'info');
+    showNotification(t('streamer.connecting_to', { ch }), 'info');
 
     const ws = new WebSocket(TWITCH_IRC);
     streamerState.twitchWs = ws;
@@ -147,9 +147,9 @@ function twitchConnect(channel) {
         }
         if (raw.includes(`JOIN #${ch}`) && streamerState.twitchStatus !== 'connected') {
             streamerState.twitchStatus = 'connected';
-            streamerState.connected    = true;
+            streamerState.connected = true;
             _updateConnectBtn();
-            showNotification(t('streamer.connected_msg', {ch}), 'success');
+            showNotification(t('streamer.connected_msg', { ch }), 'success');
             saveStreamerData();
             updateOverlayChatData();
         }
@@ -157,7 +157,7 @@ function twitchConnect(channel) {
 
     ws.onerror = () => {
         streamerState.twitchStatus = 'error';
-        streamerState.connected    = false;
+        streamerState.connected = false;
         _updateConnectBtn();
         showNotification(t('streamer.connect_error'), 'error');
         updateOverlayChatData();
@@ -166,7 +166,7 @@ function twitchConnect(channel) {
     ws.onclose = () => {
         if (streamerState.twitchStatus !== 'idle') {
             streamerState.twitchStatus = 'idle';
-            streamerState.connected    = false;
+            streamerState.connected = false;
             _updateConnectBtn();
             updateOverlayChatData();
         }
@@ -180,7 +180,7 @@ function twitchDisconnect() {
         streamerState.twitchWs = null;
     }
     streamerState.twitchStatus = 'idle';
-    streamerState.connected    = false;
+    streamerState.connected = false;
     _updateConnectBtn();
     showNotification(t('streamer.disconnected'), 'info');
     updateOverlayChatData();
@@ -191,23 +191,23 @@ function sendTwitchChatMessage(text) { return false; }
 
 function _parseTwitchMsg(raw) {
     // Формат: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :message
-    const tagsPart  = raw.startsWith('@') ? raw.slice(1, raw.indexOf(' ')) : '';
-    const rest      = raw.startsWith('@') ? raw.slice(raw.indexOf(' ') + 1) : raw;
+    const tagsPart = raw.startsWith('@') ? raw.slice(1, raw.indexOf(' ')) : '';
+    const rest = raw.startsWith('@') ? raw.slice(raw.indexOf(' ') + 1) : raw;
     const userMatch = rest.match(/^:(\w+)!/);
-    const msgMatch  = rest.match(/PRIVMSG #\S+ :(.+)/s);
+    const msgMatch = rest.match(/PRIVMSG #\S+ :(.+)/s);
     if (!userMatch || !msgMatch) return;
 
     const user = userMatch[1];
     const text = msgMatch[1].replace(/\r?\n$/, '').trim();
 
     // Разбираем теги (цвет, badges)
-    const tags   = {};
-    tagsPart.split(';').forEach(t => { const [k,v] = t.split('='); if (k) tags[k] = v || '' });
-    const color  = tags['color'] || _randomChatColor(user);
-    const isSub  = tags['subscriber'] === '1';
-    const isMod  = tags['mod'] === '1';
+    const tags = {};
+    tagsPart.split(';').forEach(t => { const [k, v] = t.split('='); if (k) tags[k] = v || '' });
+    const color = tags['color'] || _randomChatColor(user);
+    const isSub = tags['subscriber'] === '1';
+    const isMod = tags['mod'] === '1';
     const isBroad = tags['badges'] && tags['badges'].includes('broadcaster');
-    const badge  = isBroad ? 'broadcaster' : isMod ? 'mod' : isSub ? 'sub' : '';
+    const badge = isBroad ? 'broadcaster' : isMod ? 'mod' : isSub ? 'sub' : '';
 
     const msgObj = { user, text, color, badge, timestamp: Date.now() };
     streamerState.chatMessages.push(msgObj);
@@ -222,7 +222,7 @@ function _parseTwitchMsg(raw) {
 
     // Воспроизводим звук уведомления
     playChatNotificationSound();
-    
+
     // Обновляем данные для оверлея
     updateOverlayChatData();
 
@@ -244,7 +244,7 @@ function _parseTwitchMsg(raw) {
 
     // Проверяем команды чата
     processChatCommand(user, text, { isBroad, isMod, isSub });
-    
+
     // Автоматически добавляем активных пользователей в потенциальные участники колеса
     addChatUserToPool(user, { isBroad, isMod, isSub });
 }
@@ -255,15 +255,15 @@ function addChatUserToPool(user, permissions) {
     if (!streamerState.chatUserPool) {
         streamerState.chatUserPool = new Set();
     }
-    
+
     // Добавляем пользователя в пул
     streamerState.chatUserPool.add(user);
-    
+
     // Обновляем активность пользователя
     if (!streamerState.userActivity) {
         streamerState.userActivity = {};
     }
-    
+
     if (!streamerState.userActivity[user]) {
         streamerState.userActivity[user] = {
             messages: 0,
@@ -273,10 +273,10 @@ function addChatUserToPool(user, permissions) {
             isBroadcaster: permissions.isBroad
         };
     }
-    
+
     streamerState.userActivity[user].messages++;
     streamerState.userActivity[user].lastSeen = Date.now();
-    
+
     // Сохраняем данные
     saveStreamerData();
 }
@@ -284,15 +284,15 @@ function addChatUserToPool(user, permissions) {
 // Получить список активных участников чата
 function getChatParticipants(minMessages = 1, excludeMods = false) {
     if (!streamerState.userActivity) return [];
-    
+
     const participants = [];
     const now = Date.now();
     const oneHourAgo = now - (60 * 60 * 1000); // 1 час назад
-    
+
     Object.entries(streamerState.userActivity).forEach(([user, data]) => {
         // Исключаем модераторов если нужно
         if (excludeMods && (data.isMod || data.isBroadcaster)) return;
-        
+
         // Проверяем активность
         if (data.messages >= minMessages && data.lastSeen > oneHourAgo) {
             participants.push({
@@ -304,7 +304,7 @@ function getChatParticipants(minMessages = 1, excludeMods = false) {
             });
         }
     });
-    
+
     // Сортируем по активности
     return participants.sort((a, b) => b.messages - a.messages);
 }
@@ -312,19 +312,19 @@ function getChatParticipants(minMessages = 1, excludeMods = false) {
 function processChatCommand(user, text, permissions) {
     const { isBroad, isMod, isSub } = permissions;
     const isPrivileged = isBroad || isMod;
-    
+
     // Команды только для модераторов и стримера
     if (isPrivileged) {
         if (text.toLowerCase() === '!spin') {
             quickSpin();
             return;
         }
-        
+
         if (text.toLowerCase() === '!vote') {
             startVote();
             return;
         }
-        
+
         if (text.toLowerCase().startsWith('!timer ')) {
             const timeMatch = text.match(/!timer (\d+)/);
             if (timeMatch) {
@@ -333,24 +333,24 @@ function processChatCommand(user, text, permissions) {
                 return;
             }
         }
-        
+
         if (text.toLowerCase() === '!addchatters') {
             addAllChattersToWheel();
             return;
         }
-        
+
         if (text.toLowerCase() === '!clearwheel') {
             clearSubWheel();
             return;
         }
     }
-    
+
     // Команды для всех зрителей
     if (text.toLowerCase() === '!join' || text.toLowerCase() === '!addme') {
         addSubToWheelFromChat(user);
         return;
     }
-    
+
     if (text.toLowerCase() === '!commands' || text.toLowerCase() === '!help') {
         sendCommandsList();
         return;
@@ -362,7 +362,7 @@ function addAllChattersToWheel() {
     const participants = getChatParticipants(1, false); // Минимум 1 сообщение, включая всех
     let added = 0;
     const addedUsers = [];
-    
+
     participants.forEach(p => {
         if (!streamerState.subWheelList.includes(p.user)) {
             streamerState.subWheelList.push(p.user);
@@ -370,11 +370,11 @@ function addAllChattersToWheel() {
             added++;
         }
     });
-    
+
     if (added > 0) {
         saveStreamerData();
         if (currentTab === 'streamer') switchTab('streamer');
-        showNotification(t('streamer.all_chatters_added', {n: added}), 'success');
+        showNotification(t('streamer.all_chatters_added', { n: added }), 'success');
     } else {
         showNotification(t('streamer.all_already_in_wheel'), 'info');
     }
@@ -385,9 +385,9 @@ function addSubToWheelFromChat(user) {
         streamerState.subWheelList.push(user);
         saveStreamerData();
         if (currentTab === 'streamer') switchTab('streamer');
-        showNotification(t('streamer.sub_added', {name: user}), 'success');
+        showNotification(t('streamer.sub_added', { name: user }), 'success');
     } else {
-        showNotification(t('streamer.sub_active_count', {n: streamerState.subWheelList.length}), 'info');
+        showNotification(t('streamer.sub_active_count', { n: streamerState.subWheelList.length }), 'info');
     }
 }
 
@@ -395,7 +395,7 @@ function setTimerFromChat(minutes) {
     streamerState.timerSeconds = minutes * 60;
     streamerState.timerInitial = streamerState.timerSeconds;
     updateTimerDisplay();
-    showNotification(t('streamer.stats_min', {n: minutes}), 'info');
+    showNotification(t('streamer.stats_min', { n: minutes }), 'info');
 }
 
 // Новые функции для инструментов стрима
@@ -413,26 +413,26 @@ function toggleAutoSpin(enabled) {
 
 function playChatNotificationSound() {
     if (!streamerState.chatSounds) return;
-    
+
     try {
         initAudio();
         if (!audioCtx) return;
-        
+
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        
+
         osc.type = 'sine';
         osc.frequency.setValueAtTime(800, audioCtx.currentTime);
         osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.1);
-        
+
         gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
-        
+
         osc.start(audioCtx.currentTime);
         osc.stop(audioCtx.currentTime + 0.15);
-    } catch(e) {}
+    } catch (e) { }
 }
 
 function showStreamStats() {
@@ -442,18 +442,18 @@ function showStreamStats() {
     const mostActive = streamerState.chatStats.mostActiveUser;
     const sessionStart = streamerState.sessionStartTime || Date.now();
     const duration = Math.round((Date.now() - sessionStart) / (1000 * 60)); // минуты
-    
+
     const modal = document.getElementById('confirmModal');
     if (modal) {
         document.getElementById('modalTitle').textContent = t('streamer.stats_title');
         document.getElementById('modalMessage').innerHTML = `
             <div style="text-align:left;font-size:13px;line-height:1.6">
-                <div style="margin-bottom:12px"><strong>${t('streamer.stats_session')}</strong> ${t('streamer.stats_min', {n: duration})}</div>
+                <div style="margin-bottom:12px"><strong>${t('streamer.stats_session')}</strong> ${t('streamer.stats_min', { n: duration })}</div>
                 <div style="margin-bottom:12px"><strong>${t('streamer.stats_messages')}</strong> ${totalMessages}</div>
                 <div style="margin-bottom:12px"><strong>${t('streamer.stats_unique')}</strong> ${uniqueViewers}</div>
                 <div style="margin-bottom:12px"><strong>${t('streamer.stats_most_active')}</strong> ${mostActive || t('streamer.stats_no_data')}</div>
                 <div style="margin-bottom:12px"><strong>${t('streamer.stats_in_wheel')}</strong> ${streamerState.subWheelList.length}</div>
-                <div style="margin-bottom:12px"><strong>${t('streamer.stats_participants')}</strong> ${t('streamer.stats_active', {n: participants.length})}</div>
+                <div style="margin-bottom:12px"><strong>${t('streamer.stats_participants')}</strong> ${t('streamer.stats_active', { n: participants.length })}</div>
                 ${streamerState.voteActive ? `<div style="color:var(--accent-warning)">${t('streamer.stats_vote_active')}</div>` : ''}
             </div>
         `;
@@ -480,13 +480,13 @@ function exportStreamData() {
         recentMessages: streamerState.chatMessages.slice(-50),
         exportDate: new Date().toISOString()
     };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `stream-data-${streamerState.channelName}-${Date.now()}.json`;
     a.click();
-    
+
     showNotification(t('streamer.export_done'), 'success');
 }
 
@@ -512,7 +512,7 @@ function updateOverlayChatData() {
         stats: streamerState.chatStats,
         timestamp: Date.now()
     };
-    
+
     try {
         localStorage.setItem('overlayChatData', JSON.stringify(chatData));
     } catch (error) {
@@ -521,7 +521,7 @@ function updateOverlayChatData() {
 }
 
 function _randomChatColor(name) {
-    const palette = ['#818cf8','#34d399','#fbbf24','#f472b6','#67e8f9','#a3e635','#fb923c','#e879f9'];
+    const palette = ['#818cf8', '#34d399', '#fbbf24', '#f472b6', '#67e8f9', '#a3e635', '#fb923c', '#e879f9'];
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     return palette[Math.abs(hash) % palette.length];
@@ -537,10 +537,10 @@ function _updateConnectBtn() {
     const btn = document.getElementById('chatConnectBtn');
     if (!btn) return;
     const s = streamerState.twitchStatus;
-    btn.textContent = s === 'connected'   ? t('streamer.disconnect_btn')
-                    : s === 'connecting'  ? t('streamer.connecting_btn')
-                    : s === 'error'       ? t('streamer.error_btn')
-                    :                       t('streamer.connect_btn');
+    btn.textContent = s === 'connected' ? t('streamer.disconnect_btn')
+        : s === 'connecting' ? t('streamer.connecting_btn')
+            : s === 'error' ? t('streamer.error_btn')
+                : t('streamer.connect_btn');
     btn.className = `cyber-btn channel-connect-btn ${s === 'connected' ? 'danger-btn' : 'add-btn'}`;
     btn.disabled = s === 'connecting';
     updateStreamerUIState();
@@ -566,44 +566,44 @@ function twitchToggleConnect() {
 
 function updateStreamerUIState() {
     const isConnected = streamerState.twitchStatus === 'connected';
-    
+
     // Обновляем кнопку "Все из чата"
     const addChattersBtn = document.querySelector('button[onclick="addAllChattersToWheel()"]');
     if (addChattersBtn) {
         addChattersBtn.disabled = !isConnected;
     }
-    
+
     // Обновляем кнопку "Команды"
     const commandsBtn = document.querySelector('button[onclick="sendCommandsList()"]');
     if (commandsBtn) {
         commandsBtn.disabled = !isConnected;
     }
-    
+
     // Обновляем кнопку "Голосование" в быстрых командах
     const voteBtn = document.querySelector('.quick-cmd-btn[onclick="startVote()"]');
     if (voteBtn) {
         voteBtn.disabled = !isConnected;
     }
-    
+
     // Принудительно обновляем область голосования
     const voteArea = document.getElementById('voteArea');
     if (voteArea) {
         voteArea.innerHTML = renderVoteArea();
     }
-    
+
     // Обновляем статус бар чата
     const statusBar = document.getElementById('twitchStatusBar');
     if (statusBar) {
-        const statusColor = isConnected ? 'var(--accent-success)' 
-            : streamerState.twitchStatus === 'error' ? 'var(--accent-danger)' 
-            : 'var(--text-muted)';
+        const statusColor = isConnected ? 'var(--accent-success)'
+            : streamerState.twitchStatus === 'error' ? 'var(--accent-danger)'
+                : 'var(--text-muted)';
         statusBar.style.color = statusColor;
-        
+
         statusBar.innerHTML = isConnected
-            ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> ${t('streamer.status_reading', {ch: esc(streamerState.channelName)})}</span>`
+            ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> ${t('streamer.status_reading', { ch: esc(streamerState.channelName) })}</span>`
             : streamerState.twitchStatus === 'connecting' ? t('streamer.status_connecting')
-            : streamerState.twitchStatus === 'error' ? t('streamer.status_error')
-            : t('streamer.status_idle');
+                : streamerState.twitchStatus === 'error' ? t('streamer.status_error')
+                    : t('streamer.status_idle');
     }
 }
 
@@ -616,41 +616,41 @@ function _refreshVoteUI() {
 async function initStreamerDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open('StreamerDatabase', 1);
-        
+
         request.onerror = () => {
             console.warn('IndexedDB недоступна, используем localStorage');
             resolve();
         };
-        
+
         request.onsuccess = (event) => {
             streamerDB = event.target.result;
             loadStreamerData();
-            
+
             // Инициализируем время начала сессии
             if (!streamerState.sessionStartTime) {
                 streamerState.sessionStartTime = Date.now();
                 saveStreamerData();
             }
-            
+
             resolve();
         };
-        
+
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            
+
             // Хранилище для сообщений чата
             if (!db.objectStoreNames.contains('chatMessages')) {
                 const chatStore = db.createObjectStore('chatMessages', { keyPath: 'id', autoIncrement: true });
                 chatStore.createIndex('timestamp', 'timestamp');
                 chatStore.createIndex('user', 'user');
             }
-            
+
             // Хранилище для подписчиков
             if (!db.objectStoreNames.contains('subscribers')) {
                 const subStore = db.createObjectStore('subscribers', { keyPath: 'user' });
                 subStore.createIndex('timestamp', 'timestamp');
             }
-            
+
             // Хранилище для статистики
             if (!db.objectStoreNames.contains('chatStats')) {
                 db.createObjectStore('chatStats', { keyPath: 'date' });
@@ -674,11 +674,11 @@ async function saveStreamerData() {
         localStorage.setItem('streamerState', JSON.stringify(dataToSave));
         return;
     }
-    
+
     try {
         const transaction = streamerDB.transaction(['chatStats'], 'readwrite');
         const store = transaction.objectStore('chatStats');
-        
+
         const data = {
             date: 'singleton',          // keyPath — одна постоянная запись
             channelName: streamerState.channelName,
@@ -689,7 +689,7 @@ async function saveStreamerData() {
             sessionStartTime: streamerState.sessionStartTime,
             lastUpdated: Date.now()
         };
-        
+
         await store.put(data);
     } catch (error) {
         console.warn('Ошибка сохранения в IndexedDB:', error);
@@ -721,7 +721,7 @@ async function loadStreamerData() {
                 streamerState.chatSounds = data.chatSounds || false;
                 streamerState.autoSpin = data.autoSpin || false;
                 streamerState.sessionStartTime = data.sessionStartTime || Date.now();
-                
+
                 // Обновляем поля ввода при загрузке
                 updateChannelInput();
                 updateTokenInput();
@@ -731,12 +731,12 @@ async function loadStreamerData() {
         }
         return;
     }
-    
+
     try {
         const transaction = streamerDB.transaction(['chatStats'], 'readonly');
         const store = transaction.objectStore('chatStats');
         const request = store.getAll();
-        
+
         request.onsuccess = () => {
             const results = request.result;
             if (results.length > 0) {
@@ -747,7 +747,7 @@ async function loadStreamerData() {
                 streamerState.chatSounds = data.chatSounds || false;
                 streamerState.autoSpin = data.autoSpin || false;
                 streamerState.sessionStartTime = data.sessionStartTime || Date.now();
-                
+
                 // Обновляем поля ввода при загрузке
                 updateChannelInput();
                 updateTokenInput();
@@ -770,7 +770,7 @@ function showReconnectToast(channelName) {
     toast.id = 'reconnectToast';
     toast.className = 'reconnect-toast';
     toast.innerHTML = `
-        <span>${t('streamer.reconnect_msg', {ch: channelName})}</span>
+        <span>${t('streamer.reconnect_msg', { ch: channelName })}</span>
         <div class="reconnect-toast-actions">
             <button class="reconnect-toast-yes" id="reconnectYes">${t('common.yes')}</button>
             <button class="reconnect-toast-no"  id="reconnectNo">${t('common.no')}</button>
@@ -830,22 +830,22 @@ function updateTwitchToken(value) {
 
 async function saveChatMessage(message) {
     if (!streamerDB) return;
-    
+
     try {
         const transaction = streamerDB.transaction(['chatMessages'], 'readwrite');
         const store = transaction.objectStore('chatMessages');
-        
+
         const messageData = {
             ...message,
             timestamp: Date.now(),
             channelName: streamerState.channelName
         };
-        
+
         await store.add(messageData);
-        
+
         // Обновляем статистику
         updateChatStats(message.user);
-        
+
     } catch (error) {
         console.warn('Ошибка сохранения сообщения:', error);
     }
@@ -853,18 +853,18 @@ async function saveChatMessage(message) {
 
 function updateChatStats(user) {
     streamerState.chatStats.totalMessages++;
-    
+
     // Подсчет уникальных зрителей
     const uniqueViewers = new Set();
     streamerState.chatMessages.forEach(msg => uniqueViewers.add(msg.user));
     streamerState.chatStats.uniqueViewers = uniqueViewers.size;
-    
+
     // Самый активный пользователь
     const userCounts = {};
     streamerState.chatMessages.forEach(msg => {
         userCounts[msg.user] = (userCounts[msg.user] || 0) + 1;
     });
-    
+
     let maxCount = 0;
     let mostActive = '';
     Object.entries(userCounts).forEach(([user, count]) => {
@@ -873,7 +873,7 @@ function updateChatStats(user) {
             mostActive = user;
         }
     });
-    
+
     streamerState.chatStats.mostActiveUser = mostActive;
     saveStreamerData();
 }
@@ -921,38 +921,38 @@ let rouletteSettings = _safeParse('rouletteSettings', null) || {
     bonusRoundEnabled: false,
     bonusRoundChance: 10,    // %
     doubleSpinEnabled: false,
-    blacklistEnabled:  false,
-    blacklistTasks:    [],
-    weightedSegments:  false,
-    removeAfterSpin:   false, // убирать задание из колеса после каждой прокрутки
+    blacklistEnabled: false,
+    blacklistTasks: [],
+    weightedSegments: false,
+    removeAfterSpin: false, // убирать задание из колеса после каждой прокрутки
 };
 
 // ── COLOR SCHEMES ──────────────────────────────────────────
 const COLOR_SCHEMES = {
-    default:    ['#6366f1','#8b5cf6','#10b981','#f59e0b','#ef4444','#3b82f6','#ec4899','#06b6d4','#f97316','#84cc16','#a855f7','#14b8a6'],
-    neon:       ['#ff00ff','#00ffff','#ff6600','#00ff00','#ff0000','#ffff00','#ff0099','#00ccff','#ff3300','#33ff00','#cc00ff','#00ffcc'],
-    pastel:     ['#a78bfa','#67e8f9','#86efac','#fde68a','#fca5a5','#93c5fd','#f9a8d4','#5eead4','#fbbf24','#c084fc','#6ee7b7','#7dd3fc'],
-    fire:       ['#ff4500','#ff6a00','#ff8c00','#ffb300','#ffd700','#ff2200','#cc3300','#ff7700','#ff5500','#ff9900','#ffcc00','#ff3300'],
-    ocean:      ['#0077b6','#0096c7','#00b4d8','#48cae4','#90e0ef','#0077b6','#023e8a','#03045e','#0081a7','#00afb9','#0cb0a9','#006d77'],
-    forest:     ['#2d6a4f','#40916c','#52b788','#74c69d','#95d5b2','#1b4332','#081c15','#d8f3dc','#b7e4c7','#52b788','#40916c','#2d6a4f'],
-    gold:       ['#ffd700','#ffb800','#ffa500','#ff8c00','#e6960c','#c47a0e','#f5b700','#e09b1a','#d4a017','#c8960c','#b8860b','#a07800'],
-    monochrome: ['#1a1a2e','#16213e','#0f3460','#533483','#e94560','#1f4068','#1b262c','#4a4a6a','#6a6a9a','#8a8abb','#aaaacc','#303050'],
-    rainbow:    ['#ff0000','#ff7700','#ffff00','#00ff00','#0000ff','#8b00ff','#ff00ff','#00ffff','#ff6600','#33cc00','#0066ff','#cc00cc'],
-    cyber:      ['#00d4ff','#7b2ff7','#e040fb','#00e676','#ff6d00','#448aff','#ff5252','#ffab40','#00bcd4','#69f0ae','#ea80fc','#ff4081'],
-    twitch:     ['#9147ff','#bf94ff','#772ce8','#a970ff','#6441a5','#00e5b3','#ff6ec7','#ffb700','#4b367c','#d8a3ff','#b9a3e3','#6600cc'],
+    default: ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#06b6d4', '#f97316', '#84cc16', '#a855f7', '#14b8a6'],
+    neon: ['#ff00ff', '#00ffff', '#ff6600', '#00ff00', '#ff0000', '#ffff00', '#ff0099', '#00ccff', '#ff3300', '#33ff00', '#cc00ff', '#00ffcc'],
+    pastel: ['#a78bfa', '#67e8f9', '#86efac', '#fde68a', '#fca5a5', '#93c5fd', '#f9a8d4', '#5eead4', '#fbbf24', '#c084fc', '#6ee7b7', '#7dd3fc'],
+    fire: ['#ff4500', '#ff6a00', '#ff8c00', '#ffb300', '#ffd700', '#ff2200', '#cc3300', '#ff7700', '#ff5500', '#ff9900', '#ffcc00', '#ff3300'],
+    ocean: ['#0077b6', '#0096c7', '#00b4d8', '#48cae4', '#90e0ef', '#0077b6', '#023e8a', '#03045e', '#0081a7', '#00afb9', '#0cb0a9', '#006d77'],
+    forest: ['#2d6a4f', '#40916c', '#52b788', '#74c69d', '#95d5b2', '#1b4332', '#081c15', '#d8f3dc', '#b7e4c7', '#52b788', '#40916c', '#2d6a4f'],
+    gold: ['#ffd700', '#ffb800', '#ffa500', '#ff8c00', '#e6960c', '#c47a0e', '#f5b700', '#e09b1a', '#d4a017', '#c8960c', '#b8860b', '#a07800'],
+    monochrome: ['#1a1a2e', '#16213e', '#0f3460', '#533483', '#e94560', '#1f4068', '#1b262c', '#4a4a6a', '#6a6a9a', '#8a8abb', '#aaaacc', '#303050'],
+    rainbow: ['#ff0000', '#ff7700', '#ffff00', '#00ff00', '#0000ff', '#8b00ff', '#ff00ff', '#00ffff', '#ff6600', '#33cc00', '#0066ff', '#cc00cc'],
+    cyber: ['#00d4ff', '#7b2ff7', '#e040fb', '#00e676', '#ff6d00', '#448aff', '#ff5252', '#ffab40', '#00bcd4', '#69f0ae', '#ea80fc', '#ff4081'],
+    twitch: ['#9147ff', '#bf94ff', '#772ce8', '#a970ff', '#6441a5', '#00e5b3', '#ff6ec7', '#ffb700', '#4b367c', '#d8a3ff', '#b9a3e3', '#6600cc'],
 };
 
 // ── PLAYER COLORS ──────────────────────────────────────────
 const playerColors = {
-    indigo:   { gradient: 'linear-gradient(135deg,#6366f1,#818cf8)', border: '#6366f1',  name: '#818cf8', label: 'Индиго'     },
-    purple:   { gradient: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', border: '#8b5cf6',  name: '#a78bfa', label: 'Фиолетовый' },
-    emerald:  { gradient: 'linear-gradient(135deg,#10b981,#34d399)', border: '#10b981',  name: '#34d399', label: 'Изумрудный' },
-    amber:    { gradient: 'linear-gradient(135deg,#f59e0b,#fbbf24)', border: '#f59e0b',  name: '#fbbf24', label: 'Янтарный'   },
-    rose:     { gradient: 'linear-gradient(135deg,#ec4899,#f472b6)', border: '#ec4899',  name: '#f472b6', label: 'Розовый'    },
-    cyan:     { gradient: 'linear-gradient(135deg,#06b6d4,#67e8f9)', border: '#06b6d4',  name: '#67e8f9', label: 'Циан'       },
-    orange:   { gradient: 'linear-gradient(135deg,#f97316,#fb923c)', border: '#f97316',  name: '#fb923c', label: 'Оранжевый'  },
-    lime:     { gradient: 'linear-gradient(135deg,#84cc16,#a3e635)', border: '#84cc16',  name: '#a3e635', label: 'Лайм'       },
-    twitch:   { gradient: 'linear-gradient(135deg,#9147ff,#bf94ff)', border: '#9147ff',  name: '#bf94ff', label: 'Твич'       },
+    indigo: { gradient: 'linear-gradient(135deg,#6366f1,#818cf8)', border: '#6366f1', name: '#818cf8', label: 'Индиго' },
+    purple: { gradient: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', border: '#8b5cf6', name: '#a78bfa', label: 'Фиолетовый' },
+    emerald: { gradient: 'linear-gradient(135deg,#10b981,#34d399)', border: '#10b981', name: '#34d399', label: 'Изумрудный' },
+    amber: { gradient: 'linear-gradient(135deg,#f59e0b,#fbbf24)', border: '#f59e0b', name: '#fbbf24', label: 'Янтарный' },
+    rose: { gradient: 'linear-gradient(135deg,#ec4899,#f472b6)', border: '#ec4899', name: '#f472b6', label: 'Розовый' },
+    cyan: { gradient: 'linear-gradient(135deg,#06b6d4,#67e8f9)', border: '#06b6d4', name: '#67e8f9', label: 'Циан' },
+    orange: { gradient: 'linear-gradient(135deg,#f97316,#fb923c)', border: '#f97316', name: '#fb923c', label: 'Оранжевый' },
+    lime: { gradient: 'linear-gradient(135deg,#84cc16,#a3e635)', border: '#84cc16', name: '#a3e635', label: 'Лайм' },
+    twitch: { gradient: 'linear-gradient(135deg,#9147ff,#bf94ff)', border: '#9147ff', name: '#bf94ff', label: 'Твич' },
 };
 
 // ── INIT ──────────────────────────────────────────────────
@@ -1026,7 +1026,7 @@ function loadStreamerDataSync() {
             streamerState.chatSounds = data.chatSounds || false;
             streamerState.autoSpin = data.autoSpin || false;
             streamerState.sessionStartTime = data.sessionStartTime || Date.now();
-            
+
             console.log('Загружены данные стримера:', streamerState.channelName);
         } catch (e) {
             console.warn('Ошибка загрузки из localStorage:', e);
@@ -1081,7 +1081,7 @@ function closeFloatingMenu(e) {
 function showConfirmModal(title, msg, confirmTxt, cancelTxt, onConfirm) {
     const modal = document.getElementById('confirmModal');
     if (!modal) return;
-    document.getElementById('modalTitle').textContent   = title;
+    document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalMessage').textContent = msg;
     const btn = document.getElementById('modalConfirm');
     btn.textContent = confirmTxt || 'ПОДТВЕРДИТЬ';
@@ -1098,8 +1098,8 @@ function closeModal() {
 }
 
 // ── SAVE / LOAD ───────────────────────────────────────────
-function saveAll()      { 
-    localStorage.setItem('challengePlayers', JSON.stringify(players)); 
+function saveAll() {
+    localStorage.setItem('challengePlayers', JSON.stringify(players));
     localStorage.setItem('challengeGames', JSON.stringify(games));
     localStorage.setItem('taskOnlyState', JSON.stringify(taskOnlyState));
     localStorage.setItem('rouletteMode', rouletteMode);
@@ -1114,7 +1114,7 @@ function confirmClearCache() {
 function clearCache() {
     localStorage.removeItem('challengePlayers'); localStorage.removeItem('challengeGames'); sessionStorage.clear();
     players = []; games = getDefaultGames();
-    gameFirstState = { active:false, selectedGame:null, currentPlayerIndex:0, assignedTasks:{} };
+    gameFirstState = { active: false, selectedGame: null, currentPlayerIndex: 0, assignedTasks: {} };
     saveAll(); updateWheelSegments(); switchTab('games');
     showNotification(t('modal.cache_cleared'), 'success');
 }
@@ -1125,7 +1125,7 @@ function confirmResetAll() {
 function resetAllData() {
     players = []; games = {};
     localStorage.removeItem('challengePlayers'); localStorage.removeItem('challengeGames'); sessionStorage.clear();
-    gameFirstState = { active:false, selectedGame:null, currentPlayerIndex:0, assignedTasks:{} };
+    gameFirstState = { active: false, selectedGame: null, currentPlayerIndex: 0, assignedTasks: {} };
     updateWheelSegments(); switchTab('games');
     showNotification(t('modal.all_reset'), 'warning');
 }
@@ -1137,12 +1137,12 @@ function createTabs(initialTab) {
     const tab = initialTab || 'games';
     mp.innerHTML = `
         <div class="cyber-tabs">
-            <button class="cyber-tab${tab==='games'?' active':''}"    data-tab="games"    onclick="switchTab('games')">   <span class="tab-icon">🎮</span> ${t('tab.games')}</button>
-            <button class="cyber-tab${tab==='players'?' active':''}"  data-tab="players"  onclick="switchTab('players')"> <span class="tab-icon">👥</span> ${t('tab.players')} <span class="tab-badge" id="playersBadge">${players.length}</span></button>
-            <button class="cyber-tab${tab==='roulette'?' active':''}" data-tab="roulette" onclick="switchTab('roulette')"><span class="tab-icon">🎰</span> ${t('tab.roulette')}</button>
-            <button class="cyber-tab${tab==='streamer'?' active':''}" data-tab="streamer" onclick="switchTab('streamer')"><span class="tab-icon">📡</span> ${t('tab.streamer')}</button>
-            <button class="cyber-tab${tab==='stats'?' active':''}"    data-tab="stats"    onclick="switchTab('stats')">   <span class="tab-icon">📊</span> ${t('tab.stats')}</button>
-            <button class="cyber-tab${tab==='settings'?' active':''}" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> ${t('tab.settings')}</button>
+            <button class="cyber-tab${tab === 'games' ? ' active' : ''}"    data-tab="games"    onclick="switchTab('games')">   <span class="tab-icon">🎮</span> ${t('tab.games')}</button>
+            <button class="cyber-tab${tab === 'players' ? ' active' : ''}"  data-tab="players"  onclick="switchTab('players')"> <span class="tab-icon">👥</span> ${t('tab.players')} <span class="tab-badge" id="playersBadge">${players.length}</span></button>
+            <button class="cyber-tab${tab === 'roulette' ? ' active' : ''}" data-tab="roulette" onclick="switchTab('roulette')"><span class="tab-icon">🎰</span> ${t('tab.roulette')}</button>
+            <button class="cyber-tab${tab === 'streamer' ? ' active' : ''}" data-tab="streamer" onclick="switchTab('streamer')"><span class="tab-icon">📡</span> ${t('tab.streamer')}</button>
+            <button class="cyber-tab${tab === 'stats' ? ' active' : ''}"    data-tab="stats"    onclick="switchTab('stats')">   <span class="tab-icon">📊</span> ${t('tab.stats')}</button>
+            <button class="cyber-tab${tab === 'settings' ? ' active' : ''}" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> ${t('tab.settings')}</button>
         </div>
         <div class="tab-content" id="tabContent"></div>
     `;
@@ -1170,8 +1170,8 @@ function switchTab(name) {
     const content = document.getElementById('tabContent');
     if (!content) return;
     const renders = {
-        games:    () => { content.innerHTML = renderGamesTab();    setTimeout(restoreDropdownState, 50) },
-        players:  () => { content.innerHTML = renderPlayersTab()   },
+        games: () => { content.innerHTML = renderGamesTab(); setTimeout(restoreDropdownState, 50) },
+        players: () => { content.innerHTML = renderPlayersTab() },
         roulette: () => {
             content.innerHTML = renderRouletteTab();
             setTimeout(() => {
@@ -1182,8 +1182,8 @@ function switchTab(name) {
                 refreshRouletteControls();
             }, 80);
         },
-        streamer: () => { 
-            content.innerHTML = renderStreamerTab(); 
+        streamer: () => {
+            content.innerHTML = renderStreamerTab();
             // Обновляем состояние UI после рендера
             setTimeout(() => {
                 updateStreamerUIState();
@@ -1198,10 +1198,10 @@ function switchTab(name) {
                 }
             }, 100);
         },
-        stats:    () => { content.innerHTML = renderStatsTab()     },
-        settings: () => { content.innerHTML = renderSettingsTab()  },
+        stats: () => { content.innerHTML = renderStatsTab() },
+        settings: () => { content.innerHTML = renderSettingsTab() },
     };
-    (renders[name] || (() => {}))();
+    (renders[name] || (() => { }))();
     content.style.animation = 'none';
     void content.offsetHeight;
     content.style.animation = 'fadeInUp 0.35s ease';
@@ -1211,7 +1211,7 @@ function switchTab(name) {
 function saveDropdownState() {
     openDropdowns = {};
     document.querySelectorAll('.tasks-dropdown').forEach(d => {
-        const id = d.id.replace('dropdown_','');
+        const id = d.id.replace('dropdown_', '');
         if (!d.classList.contains('hidden')) openDropdowns[id] = true;
     });
 }
@@ -1224,7 +1224,7 @@ function restoreDropdownState() {
     });
 }
 function toggleGameDropdown(gameName) {
-    const sid = gameName.replace(/[^a-zA-Z0-9]/g,'_');
+    const sid = gameName.replace(/[^a-zA-Z0-9]/g, '_');
     const dd = document.getElementById(`dropdown_${sid}`);
     const ar = document.getElementById(`arrow_${sid}`);
     if (!dd) return;
@@ -1249,7 +1249,7 @@ function renderGamesTab() {
         <div class="panel-section">
             <h3 class="section-title"><span class="neon-text">${t('games.add_task_title')}</span></h3>
             <div class="input-group">
-                <select id="gameList" class="cyber-select">${Object.keys(games).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}</select>
+                <select id="gameList" class="cyber-select">${Object.keys(games).map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')}</select>
                 <input type="text" id="newTask" placeholder="${t('games.task_placeholder')}" class="cyber-input" onkeypress="if(event.key==='Enter')addTask()">
                 <button onclick="addTask()" class="cyber-btn add-btn">${t('common.add')}</button>
             </div>
@@ -1257,7 +1257,7 @@ function renderGamesTab() {
         <div class="panel-section">
             <h3 class="section-title">
                 <span class="neon-text">${t('games.list_title')}</span>
-                <span class="section-badge">${t('games.games_badge', {g: Object.keys(games).length, t: Object.values(games).reduce((s,ts)=>s+ts.length,0)})}</span>
+                <span class="section-badge">${t('games.games_badge', { g: Object.keys(games).length, t: Object.values(games).reduce((s, ts) => s + ts.length, 0) })}</span>
             </h3>
             <div id="gamesList" class="games-list">${renderGamesList()}</div>
         </div>
@@ -1272,7 +1272,7 @@ function renderGamesTab() {
 function renderGamesList() {
     if (!Object.keys(games).length) return `<p class="empty-text">${t('games.empty_games')}</p>`;
     return Object.entries(games).map(([game, tasks]) => {
-        const sid = game.replace(/[^a-zA-Z0-9]/g,'_');
+        const sid = game.replace(/[^a-zA-Z0-9]/g, '_');
         const escGame = esc(game);
         return `<div class="game-card">
             <div class="game-header" data-game="${escGame}" onclick="toggleGameDropdown(this.dataset.game)">
@@ -1281,14 +1281,14 @@ function renderGamesList() {
                     <h4 class="game-name">🎮 ${escGame}</h4>
                 </div>
                 <div class="game-header-right">
-                    <span class="task-count">${t('games.tasks_count', {n: tasks.length})}</span>
+                    <span class="task-count">${t('games.tasks_count', { n: tasks.length })}</span>
                     <button data-game="${escGame}" onclick="event.stopPropagation();deleteGame(this.dataset.game)" class="delete-btn">🗑️</button>
                 </div>
             </div>
             <div class="tasks-dropdown hidden" id="dropdown_${sid}">
-                <div class="tasks-list">${tasks.map((tk,i)=>`
+                <div class="tasks-list">${tasks.map((tk, i) => `
                     <div class="task-item">
-                        <span class="task-number">${t('games.task_number', {n: i+1})}</span>
+                        <span class="task-number">${t('games.task_number', { n: i + 1 })}</span>
                         <span class="task-text">${esc(tk)}</span>
                         <button data-game="${escGame}" data-idx="${i}" onclick="deleteTask(this.dataset.game,+this.dataset.idx)" class="delete-task-btn" title="${t('common.delete')}">×</button>
                     </div>`).join('')}
@@ -1311,7 +1311,7 @@ function addGame() {
     if (!name) return showNotification(t('games.no_game_name'), 'error');
     if (games[name]) return showNotification(t('games.game_exists'), 'warning');
     games[name] = []; saveAll(); switchTab('games');
-    showNotification(t('games.added', {name}), 'success');
+    showNotification(t('games.added', { name }), 'success');
 }
 function addTask() {
     const gs = document.getElementById('gameList'), ti = document.getElementById('newTask');
@@ -1324,7 +1324,7 @@ function addTask() {
     showNotification(t('games.task_added'), 'success');
 }
 function quickAddTask(gameName) {
-    const sid = gameName.replace(/[^a-zA-Z0-9]/g,'_');
+    const sid = gameName.replace(/[^a-zA-Z0-9]/g, '_');
     const inp = document.getElementById(`quickTask_${sid}`); if (!inp) return;
     const task = inp.value.trim();
     if (!task) return showNotification(t('games.no_task_desc'), 'error');
@@ -1336,14 +1336,14 @@ function quickAddTask(gameName) {
     showNotification(t('games.task_added'), 'success');
 }
 function deleteGame(name) {
-    showConfirmModal(t('games.delete_game_title'), t('games.delete_game_msg', {name}), t('games.delete_btn'), t('common.cancel'), () => {
+    showConfirmModal(t('games.delete_game_title'), t('games.delete_game_msg', { name }), t('games.delete_btn'), t('common.cancel'), () => {
         delete games[name]; saveAll(); switchTab('games');
-        showNotification(t('games.game_deleted', {name}), 'warning');
+        showNotification(t('games.game_deleted', { name }), 'warning');
     });
 }
 function deleteTask(gameName, idx) {
     const tk = games[gameName]?.[idx];
-    showConfirmModal(t('games.delete_task_title'), t('games.delete_task_msg', {name: tk}), t('games.delete_btn'), t('common.cancel'), () => {
+    showConfirmModal(t('games.delete_task_title'), t('games.delete_task_msg', { name: tk }), t('games.delete_btn'), t('common.cancel'), () => {
         games[gameName].splice(idx, 1); saveAll(); switchTab('games');
         showNotification(t('games.task_deleted'), 'warning');
     });
@@ -1355,7 +1355,7 @@ function showBulkAddModal() {
     document.getElementById('modalMessage').innerHTML = `
         <div style="text-align:left">
             <select id="bulkGame" style="width:100%;margin-bottom:10px;padding:9px 12px;background:var(--bg-input);color:var(--text-primary);border:2px solid var(--border-light);border-radius:8px;font-size:13px">
-                ${Object.keys(games).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}
+                ${Object.keys(games).map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')}
             </select>
             <textarea id="bulkTasks" placeholder="${t('games.bulk_hint')}" style="width:100%;height:160px;padding:10px;background:var(--bg-input);color:var(--text-primary);border:2px solid var(--border-light);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
             <p style="font-size:11px;color:var(--text-muted);margin-top:6px">${t('games.bulk_hint')}</p>
@@ -1364,7 +1364,7 @@ function showBulkAddModal() {
     btn.textContent = t('games.bulk_add_btn');
     btn.onclick = () => {
         const game = document.getElementById('bulkGame')?.value;
-        const raw  = document.getElementById('bulkTasks')?.value || '';
+        const raw = document.getElementById('bulkTasks')?.value || '';
         const tasks = raw.split('\n').map(tk => tk.trim()).filter(tk => tk.length > 0);
         if (game && tasks.length) {
             const existing = games[game] || [];
@@ -1373,8 +1373,8 @@ function showBulkAddModal() {
             if (!newTasks.length) return showNotification(t('games.bulk_all_exist'), 'warning');
             games[game].push(...newTasks); saveAll(); closeModal(); switchTab('games');
             const msg = skipped > 0
-                ? t('games.bulk_skipped', {n: newTasks.length, s: skipped})
-                : t('games.bulk_added', {n: newTasks.length, game});
+                ? t('games.bulk_skipped', { n: newTasks.length, s: skipped })
+                : t('games.bulk_added', { n: newTasks.length, game });
             showNotification(msg, 'success');
         } else { showNotification(t('games.bulk_select_hint'), 'error') }
     };
@@ -1391,7 +1391,7 @@ function renderPlayersTab() {
             <div class="input-group">
                 <input type="text" id="newPlayer" placeholder="${t('players.placeholder')}" class="cyber-input" onkeypress="if(event.key==='Enter')addPlayer()">
                 <select id="playerColor" class="cyber-select">
-                    ${Object.entries(playerColors).map(([k,v])=>`<option value="${k}">${t('color.' + k) || v.label}</option>`).join('')}
+                    ${Object.entries(playerColors).map(([k, v]) => `<option value="${k}">${t('color.' + k) || v.label}</option>`).join('')}
                 </select>
                 <button onclick="addPlayer()" class="cyber-btn add-btn">${t('common.add')}</button>
             </div>
@@ -1399,27 +1399,27 @@ function renderPlayersTab() {
         <div class="panel-section">
             <h3 class="section-title">
                 <span class="neon-text">${t('players.list_title')}</span>
-                <span class="section-badge">${t('players.count_badge', {n: players.length})}</span>
+                <span class="section-badge">${t('players.count_badge', { n: players.length })}</span>
             </h3>
             <div class="players-grid">
                 ${players.length === 0 ? `<p class="empty-text">${t('players.empty')}</p>` :
-                    players.map((p,i) => {
-                        const cd = playerColors[p.color] || playerColors.indigo;
-                        return `<div class="player-card" style="border-color:${esc(cd.name)}">
+            players.map((p, i) => {
+                const cd = playerColors[p.color] || playerColors.indigo;
+                return `<div class="player-card" style="border-color:${esc(cd.name)}">
                             <div class="player-avatar" style="background:${esc(cd.gradient)}">${esc(p.name[0].toUpperCase())}</div>
                             <div class="player-info">
                                 <span class="player-name" style="color:${esc(cd.name)}">${esc(p.name)}</span>
                                 <span class="player-color">${t('color.' + p.color) || esc(cd.label)}</span>
-                                <span class="player-stats-mini">${t('players.stats_mini', {g: p.stats?.gamesPlayed||0, t: p.stats?.tasksCompleted||0})}</span>
+                                <span class="player-stats-mini">${t('players.stats_mini', { g: p.stats?.gamesPlayed || 0, t: p.stats?.tasksCompleted || 0 })}</span>
                             </div>
                             <button onclick="deletePlayer(${i})" class="delete-btn" title="${t('common.delete')}">🗑️</button>
                         </div>`;
-                    }).join('')}
+            }).join('')}
             </div>
         </div>
         <div class="panel-actions">
-            <button onclick="clearAllPlayers()" class="cyber-btn danger-btn" ${!players.length?'disabled':''}>${t('players.clear_all')}</button>
-            <button onclick="resetAllStats()" class="cyber-btn outline-btn" ${!players.length?'disabled':''}>${t('players.reset_stats')}</button>
+            <button onclick="clearAllPlayers()" class="cyber-btn danger-btn" ${!players.length ? 'disabled' : ''}>${t('players.clear_all')}</button>
+            <button onclick="resetAllStats()" class="cyber-btn outline-btn" ${!players.length ? 'disabled' : ''}>${t('players.reset_stats')}</button>
         </div>
     </div>`;
 }
@@ -1430,51 +1430,51 @@ function addPlayer() {
     const name = ni.value.trim(), color = cs.value;
     if (!name) return showNotification(t('players.no_name'), 'error');
     if (players.some(p => p.name === name)) return showNotification(t('players.exists'), 'warning');
-    players.push({ name, color, stats: { gamesPlayed:0, tasksCompleted:0 } }); saveAll(); switchTab('players');
-    showNotification(t('players.added', {name}), 'success');
+    players.push({ name, color, stats: { gamesPlayed: 0, tasksCompleted: 0 } }); saveAll(); switchTab('players');
+    showNotification(t('players.added', { name }), 'success');
 }
 function deletePlayer(i) {
     const name = players[i]?.name || '?';
-    showConfirmModal(t('games.delete_game_title'), t('players.delete_confirm', {name}), t('players.delete_btn'), t('common.cancel'), () => {
+    showConfirmModal(t('games.delete_game_title'), t('players.delete_confirm', { name }), t('players.delete_btn'), t('common.cancel'), () => {
         players.splice(i, 1); saveAll(); switchTab('players');
-        showNotification(t('players.deleted', {name}), 'warning');
+        showNotification(t('players.deleted', { name }), 'warning');
     });
 }
 function clearAllPlayers() {
     if (!players.length) return;
-    showConfirmModal(t('players.clear_all'), t('players.clear_confirm', {n: players.length}), t('players.clear_btn'), t('common.cancel'), () => {
+    showConfirmModal(t('players.clear_all'), t('players.clear_confirm', { n: players.length }), t('players.clear_btn'), t('common.cancel'), () => {
         players = []; saveAll(); switchTab('players');
         showNotification(t('players.cleared'), 'warning');
     });
 }
 function resetAllStats() {
     showConfirmModal(t('players.reset_stats'), t('players.reset_confirm'), t('common.reset'), t('common.cancel'), () => {
-        players.forEach(p => { p.stats = { gamesPlayed:0, tasksCompleted:0 } }); saveAll(); switchTab('players');
+        players.forEach(p => { p.stats = { gamesPlayed: 0, tasksCompleted: 0 } }); saveAll(); switchTab('players');
         showNotification(t('players.stats_reset'), 'info');
     });
 }
 
 // ── ROULETTE TAB ──────────────────────────────────────────
 function renderRouletteTab() {
-    const avail = Object.entries(games).filter(([,t]) => t.length > 0);
+    const avail = Object.entries(games).filter(([, t]) => t.length > 0);
     const gCount = Object.keys(games).length;
-    const tCount = Object.values(games).reduce((s,tasks) => s+tasks.length, 0);
+    const tCount = Object.values(games).reduce((s, tasks) => s + tasks.length, 0);
     let modeInfo = '', canSpin = true, wheelHidden = false;
     let spinTxt = t('roulette.spin_btn');
 
     if (gameFirstState.active && gameFirstState.selectedGame) {
-        const curP      = players[gameFirstState.currentPlayerIndex];
+        const curP = players[gameFirstState.currentPlayerIndex];
         const remaining = getRemainingTasksForGame(gameFirstState.selectedGame);
-        const assigned  = Object.keys(gameFirstState.assignedTasks).length;
-        const total     = players.length;
+        const assigned = Object.keys(gameFirstState.assignedTasks).length;
+        const total = players.length;
         const done = total > 0 && (assigned >= total || remaining.length === 0);
-        const pct  = total > 0 ? Math.round((assigned / total) * 100) : 0;
+        const pct = total > 0 ? Math.round((assigned / total) * 100) : 0;
         if (done) {
             canSpin = false;
             spinTxt = t('roulette.all_done_btn');
             wheelHidden = true;
         } else if (curP) {
-            spinTxt = t('roulette.spinning_for', {name: curP.name.toUpperCase()});
+            spinTxt = t('roulette.spinning_for', { name: curP.name.toUpperCase() });
         }
 
         modeInfo = `<div class="game-first-status">
@@ -1491,33 +1491,33 @@ function renderRouletteTab() {
             </div>
             ${curP && !done ? `<div class="status-card current-player-card">
                 <div class="status-card-icon">👤</div>
-                <div class="status-card-content"><span class="status-card-label">${t('roulette.now_spinning')}</span><span class="status-card-value" style="color:${esc(playerColors[curP.color]?.name||'#818cf8')}">${esc(curP.name)}</span></div>
+                <div class="status-card-content"><span class="status-card-label">${t('roulette.now_spinning')}</span><span class="status-card-value" style="color:${esc(playerColors[curP.color]?.name || '#818cf8')}">${esc(curP.name)}</span></div>
             </div>` : ''}
             <div class="stats-row">
-                <div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">${t('roulette.remaining', {n: remaining.length})}</span></div>
-                <div class="stat-mini"><span class="stat-mini-icon">✅</span><span class="stat-mini-text">${t('roulette.assigned', {n: assigned})}</span></div>
+                <div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">${t('roulette.remaining', { n: remaining.length })}</span></div>
+                <div class="stat-mini"><span class="stat-mini-icon">✅</span><span class="stat-mini-text">${t('roulette.assigned', { n: assigned })}</span></div>
             </div>
             ${assigned > 0 ? `<div class="assigned-tasks-section">
                 <div class="section-subtitle" onclick="toggleAssignedTasks()">
-                    <span class="dropdown-arrow" id="assignedArrow">▶</span><span>${t('roulette.assigned_count', {n: assigned})}</span>
+                    <span class="dropdown-arrow" id="assignedArrow">▶</span><span>${t('roulette.assigned_count', { n: assigned })}</span>
                 </div>
                 <div class="assigned-tasks-list hidden" id="assignedTasksList">
-                    ${Object.entries(gameFirstState.assignedTasks).map(([pn,pt],idx)=>{
-                        const pl = players.find(p=>p.name===pn);
-                        const cd = playerColors[pl?.color]||playerColors.indigo;
-                        return `<div class="assigned-task-row">
-                            <span class="assigned-task-number">#${idx+1}</span>
+                    ${Object.entries(gameFirstState.assignedTasks).map(([pn, pt], idx) => {
+            const pl = players.find(p => p.name === pn);
+            const cd = playerColors[pl?.color] || playerColors.indigo;
+            return `<div class="assigned-task-row">
+                            <span class="assigned-task-number">#${idx + 1}</span>
                             <span class="assigned-player-name" style="color:${esc(cd.name)}">${esc(pn)}</span>
                             <span class="assigned-task-divider">→</span>
                             <span class="assigned-task-text">${esc(pt)}</span>
                         </div>`;
-                    }).join('')}
+        }).join('')}
                 </div>
             </div>` : ''}
             ${done ? `<div class="completion-notice">
                 <div class="completion-icon">🎉</div>
                 <p class="completion-text">${t('roulette.done_notice')}</p>
-                <p class="completion-subtext">${t('roulette.done_players', {assigned, total})}</p>
+                <p class="completion-subtext">${t('roulette.done_players', { assigned, total })}</p>
                 <div class="completion-actions">
                     <button onclick="showFinalResults()" class="cyber-btn add-btn">${t('roulette.btn_results')}</button>
                     <button onclick="resetGameFirstMode()" class="cyber-btn danger-btn">${t('roulette.btn_reset')}</button>
@@ -1527,7 +1527,7 @@ function renderRouletteTab() {
     }
 
     if (rouletteMode === 'task-only') {
-        const gamesWithTasks = Object.entries(games).filter(([,tasks]) => tasks.length > 0);
+        const gamesWithTasks = Object.entries(games).filter(([, tasks]) => tasks.length > 0);
         if (gamesWithTasks.length === 0) {
             canSpin = false;
             spinTxt = t('roulette.no_games');
@@ -1535,7 +1535,7 @@ function renderRouletteTab() {
             canSpin = false;
             spinTxt = t('roulette.select_game_btn');
         } else {
-            spinTxt = t('roulette.spinning_for', {name: taskOnlyState.selectedGame.toUpperCase()});
+            spinTxt = t('roulette.spinning_for', { name: taskOnlyState.selectedGame.toUpperCase() });
         }
 
         modeInfo = `<div class="task-only-status">
@@ -1550,7 +1550,7 @@ function renderRouletteTab() {
                                 data-game-name="${esc(gameName)}"
                                 class="game-selector-btn ${taskOnlyState.selectedGame === gameName ? 'selected' : ''}">
                             <div class="game-selector-name">${esc(gameName)}</div>
-                            <div class="game-selector-tasks">${t('games.tasks_count', {n: tasks.length})}</div>
+                            <div class="game-selector-tasks">${t('games.tasks_count', { n: tasks.length })}</div>
                         </button>
                     `).join('')}
                 </div>
@@ -1571,7 +1571,7 @@ function renderRouletteTab() {
                         <button onclick="selectPlayerForTaskOnly(this.dataset.playerName)"
                                 data-player-name="${esc(player.name)}"
                                 class="player-selector-btn ${taskOnlyState.selectedPlayer === player.name ? 'selected' : ''}">
-                            <div class="player-selector-name" style="color:${esc(playerColors[player.color]?.name||'#818cf8')}">${esc(player.name)}</div>
+                            <div class="player-selector-name" style="color:${esc(playerColors[player.color]?.name || '#818cf8')}">${esc(player.name)}</div>
                             <div class="player-selector-desc">${t('roulette.specific_player')}</div>
                         </button>
                     `).join('')}
@@ -1592,12 +1592,12 @@ function renderRouletteTab() {
                             <div class="status-card-icon">👤</div>
                             <div class="status-card-content">
                                 <span class="status-card-label">${t('roulette.now_spinning')}</span>
-                                <span class="status-card-value" style="color:${esc(taskOnlyState.selectedPlayer?(playerColors[players.find(p=>p.name===taskOnlyState.selectedPlayer)?.color]?.name||'#818cf8'):'#818cf8')}">${esc(taskOnlyState.selectedPlayer||t('roulette.any_player'))}</span>
+                                <span class="status-card-value" style="color:${esc(taskOnlyState.selectedPlayer ? (playerColors[players.find(p => p.name === taskOnlyState.selectedPlayer)?.color]?.name || '#818cf8') : '#818cf8')}">${esc(taskOnlyState.selectedPlayer || t('roulette.any_player'))}</span>
                             </div>
                         </div>` : ''}
                     <div class="stats-row">
-                        ${taskOnlyState.selectedGame?`<div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">${t('roulette.assigned', {n: games[taskOnlyState.selectedGame]?.length||0})}</span></div>`:''}
-                        <div class="stat-mini"><span class="stat-mini-icon">👥</span><span class="stat-mini-text">${t('roulette.assigned', {n: players.length}).replace(/\d+/, players.length)}</span></div>
+                        ${taskOnlyState.selectedGame ? `<div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">${t('roulette.assigned', { n: games[taskOnlyState.selectedGame]?.length || 0 })}</span></div>` : ''}
+                        <div class="stat-mini"><span class="stat-mini-icon">👥</span><span class="stat-mini-text">${t('roulette.assigned', { n: players.length }).replace(/\d+/, players.length)}</span></div>
                     </div>
                 </div>` : ''}
         </div>`;
@@ -1607,6 +1607,9 @@ function renderRouletteTab() {
         if (rouletteMode === 'player-only' && players.length === 0) {
             canSpin = false; spinTxt = t('roulette.no_players_btn');
         }
+        if (rouletteMode === 'game-only' && !Object.keys(games).some(g => games[g].length > 0)) {
+            canSpin = false; spinTxt = t('roulette.no_games_only');
+        }
     }
 
     const wsz = rouletteSettings.wheelSize;
@@ -1615,25 +1618,30 @@ function renderRouletteTab() {
             <div class="mode-selector">
                 <p class="roulette-mode">🎲 <span class="neon-text">${t('roulette.mode_label')}</span></p>
                 <div class="mode-buttons">
-                    <button onclick="setRouletteMode('full')" class="mode-btn ${rouletteMode==='full'?'active':''}">
+                    <button onclick="setRouletteMode('full')" class="mode-btn ${rouletteMode === 'full' ? 'active' : ''}">
                         <span class="mode-btn-icon">🎰</span>
                         <span class="mode-btn-text">${t('roulette.mode_full')}</span>
                         <span class="mode-btn-desc">${t('roulette.mode_full_desc')}</span>
                     </button>
-                    <button onclick="setRouletteMode('game-first')" class="mode-btn ${rouletteMode==='game-first'?'active':''}">
+                    <button onclick="setRouletteMode('game-first')" class="mode-btn ${rouletteMode === 'game-first' ? 'active' : ''}">
                         <span class="mode-btn-icon">🎯</span>
                         <span class="mode-btn-text">${t('roulette.mode_game_first')}</span>
                         <span class="mode-btn-desc">${t('roulette.mode_game_first_desc')}</span>
                     </button>
-                    <button onclick="setRouletteMode('player-only')" class="mode-btn ${rouletteMode==='player-only'?'active':''}">
+                    <button onclick="setRouletteMode('player-only')" class="mode-btn ${rouletteMode === 'player-only' ? 'active' : ''}">
                         <span class="mode-btn-icon">👤</span>
                         <span class="mode-btn-text">${t('roulette.mode_player_only')}</span>
                         <span class="mode-btn-desc">${t('roulette.mode_player_only_desc')}</span>
                     </button>
-                    <button onclick="setRouletteMode('task-only')" class="mode-btn ${rouletteMode==='task-only'?'active':''}">
+                    <button onclick="setRouletteMode('task-only')" class="mode-btn ${rouletteMode === 'task-only' ? 'active' : ''}">
                         <span class="mode-btn-icon">📋</span>
                         <span class="mode-btn-text">${t('roulette.mode_task_only')}</span>
                         <span class="mode-btn-desc">${t('roulette.mode_task_only_desc')}</span>
+                    </button>
+                    <button onclick="setRouletteMode('game-only')" class="mode-btn ${rouletteMode === 'game-only' ? 'active' : ''}">
+                        <span class="mode-btn-icon">🎮</span>
+                        <span class="mode-btn-text">${t('roulette.mode_game_only')}</span>
+                        <span class="mode-btn-desc">${t('roulette.mode_game_only_desc')}</span>
                     </button>
                 </div>
             </div>
@@ -1646,14 +1654,14 @@ function renderRouletteTab() {
             </div>` : ''}
         </div>
         <div class="wheel-and-controls">
-            <div class="wheel-container" id="wheelContainer" style="${wheelHidden?'opacity:0;transform:scale(0.8);pointer-events:none;max-height:0;overflow:hidden;margin:0':'opacity:1;transform:scale(1)'}">
+            <div class="wheel-container" id="wheelContainer" style="${wheelHidden ? 'opacity:0;transform:scale(0.8);pointer-events:none;max-height:0;overflow:hidden;margin:0' : 'opacity:1;transform:scale(1)'}">
                 <canvas id="rouletteWheel" width="${wsz}" height="${wsz}" onclick="startSpin()"></canvas>
                 <div class="wheel-pointer" id="wheelPointer">${getPointerSymbol()}</div>
             </div>
             <div class="roulette-controls">
-                <button onclick="startSpin()" class="cyber-btn spin-btn" ${spinning||!canSpin?'disabled':''}>${spinTxt}</button>
+                <button onclick="startSpin()" class="cyber-btn spin-btn" ${spinning || !canSpin ? 'disabled' : ''}>${spinTxt}</button>
                 ${gameFirstState.active && canSpin ? `<br><button onclick="resetGameFirstMode()" class="cyber-btn danger-btn outline-btn" style="margin-top:8px">${t('roulette.reset_mode')}</button>` : ''}
-                <p class="spin-hint">${avail.length===0 ? t('roulette.no_games') : t('roulette.ready', {g: gCount, t: tCount, p: players.length})}</p>
+                <p class="spin-hint">${avail.length === 0 ? t('roulette.no_games') : t('roulette.ready', { g: gCount, t: tCount, p: players.length })}</p>
             </div>
             <div id="spinResult" class="spin-result hidden">
                 <div class="result-card"><h3>🎯 ${t('roulette.result_task')}:</h3><div id="resultContent"></div><div id="resultActions"></div></div>
@@ -1664,10 +1672,11 @@ function renderRouletteTab() {
 
 function getModeHint() {
     const hints = {
-        'full':        t('roulette.hint_full'),
-        'game-first':  t('roulette.hint_game_first'),
+        'full': t('roulette.hint_full'),
+        'game-first': t('roulette.hint_game_first'),
         'player-only': t('roulette.hint_player_only'),
-        'task-only':   t('roulette.hint_task_only'),
+        'task-only': t('roulette.hint_task_only'),
+        'game-only': t('roulette.hint_game_only'),
     };
     return hints[rouletteMode] || '';
 }
@@ -1689,9 +1698,39 @@ function getSegmentColor(i, total) {
 function updateWheelSegments() {
     segmentScales = []; // сброс масштабов при обновлении сегментов
     if (rouletteMode === 'player-only') {
-        wheelSegments = players.length > 0
-            ? players.map((p,i) => ({ label: p.name, task: p.name, game: t('wheel.player_pick'), color: playerColors[p.color]?.border || getSegmentColor(i, players.length) }))
-            : [{ label: t('wheel.no_players'), task: t('wheel.add_players'), game: '', color: '#484f58' }];
+        if (!players.length) {
+            wheelSegments = [{ label: t('wheel.no_players'), task: t('wheel.add_players'), game: '', color: '#484f58' }];
+            return;
+        }
+        let availablePlayers = players;
+        if (rouletteSettings.removeAfterSpin) {
+            const spent = spentTasks['__players__'] || [];
+            availablePlayers = players.filter(p => !spent.includes(p.name));
+            if (!availablePlayers.length) {
+                wheelSegments = [{ label: '✅', task: t('wheel.all_done'), game: '', color: '#484f58' }];
+                return;
+            }
+        }
+        wheelSegments = availablePlayers.map((p, i) => ({
+            label: p.name, task: p.name, game: t('wheel.player_pick'),
+            color: playerColors[p.color]?.border || getSegmentColor(i, availablePlayers.length)
+        }));
+        return;
+    }
+    if (rouletteMode === 'game-only') {
+        let gameList = Object.keys(games).filter(g => games[g].length > 0);
+        if (rouletteSettings.removeAfterSpin) {
+            const spent = spentTasks['__games__'] || [];
+            gameList = gameList.filter(g => !spent.includes(g));
+        }
+        if (!gameList.length) {
+            wheelSegments = [{ label: '✅', task: t('wheel.all_done'), game: '', color: '#484f58' }];
+        } else {
+            wheelSegments = gameList.map((g, i) => ({
+                label: g, task: g, game: g,
+                color: getSegmentColor(i, gameList.length),
+            }));
+        }
         return;
     }
     if (rouletteMode === 'task-only') {
@@ -1704,11 +1743,11 @@ function updateWheelSegments() {
             if (!selectedTasks.length) {
                 wheelSegments = [{ label: t('wheel.all_done'), task: t('wheel.all_done_desc'), game: taskOnlyState.selectedGame, color: '#484f58' }];
             } else {
-                wheelSegments = selectedTasks.map((t,i) => ({ 
-                    label: `#${i+1}`, 
-                    task: t, 
-                    game: taskOnlyState.selectedGame, 
-                    color: getSegmentColor(i, selectedTasks.length) 
+                wheelSegments = selectedTasks.map((t, i) => ({
+                    label: `#${i + 1}`,
+                    task: t,
+                    game: taskOnlyState.selectedGame,
+                    color: getSegmentColor(i, selectedTasks.length)
                 }));
             }
         } else {
@@ -1751,8 +1790,8 @@ function updateWheelSegments() {
             const [gameName, items] = gameEntries[i];
             wheelSegments.push({
                 label: gameName,
-                task:  items[0].task,
-                game:  gameName,
+                task: items[0].task,
+                game: gameName,
                 color: getSegmentColor(i, groupCount),
                 isGroup: true,
                 items: items
@@ -1761,8 +1800,8 @@ function updateWheelSegments() {
     } else {
         wheelSegments = allTasks.map((item, i) => ({
             label: item.game,
-            task:  item.task,
-            game:  item.game,
+            task: item.task,
+            game: item.game,
             color: getSegmentColor(i, allTasks.length)
         }));
     }
@@ -1839,40 +1878,40 @@ function checkAllTasksSpent(gameName) {
     const total = (games[gameName] || []).length;
     const spent = (spentTasks[gameName] || []).length;
     if (total > 0 && spent >= total) {
-        showNotification(t('notif.all_tasks_spent', {game: gameName}), 'warning');
+        showNotification(t('notif.all_tasks_spent', { game: gameName }), 'warning');
     }
 }
 
 // ── WHEEL RENDER ──────────────────────────────────────────
 function getPointerSymbol() {
-    const sym = { arrow:'▼', triangle:'▽', diamond:'◆', star:'★', pin:'📍' };
+    const sym = { arrow: '▼', triangle: '▽', diamond: '◆', star: '★', pin: '📍' };
     return sym[rouletteSettings.pointerStyle] || '▼';
 }
 
 function renderWheel() {
     const canvas = document.getElementById('rouletteWheel'); if (!canvas) return;
-    const ctx    = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
-    const cx = W/2, cy = H/2;
-    const outerR = W/2 - 10, innerR = 32;
+    const cx = W / 2, cy = H / 2;
+    const outerR = W / 2 - 10, innerR = 32;
     ctx.clearRect(0, 0, W, H);
 
     if (!wheelSegments.length) return;
 
     // Outer decorative ring
-    const ringGrd = ctx.createLinearGradient(0,0,W,H);
+    const ringGrd = ctx.createLinearGradient(0, 0, W, H);
     ringGrd.addColorStop(0, rouletteSettings.borderStyle === 'neon' ? '#00ffff' : (getComputedStyle(document.documentElement).getPropertyValue('--wheel-border').trim() || '#6366f1'));
     ringGrd.addColorStop(1, rouletteSettings.borderStyle === 'neon' ? '#ff00ff' : '#8b5cf6');
-    ctx.beginPath(); ctx.arc(cx,cy, outerR+12, 0, Math.PI*2);
+    ctx.beginPath(); ctx.arc(cx, cy, outerR + 12, 0, Math.PI * 2);
     if (rouletteSettings.borderStyle === 'glow' || rouletteSettings.borderStyle === 'neon') {
         ctx.shadowColor = ringGrd; ctx.shadowBlur = 20;
     }
     ctx.strokeStyle = ringGrd; ctx.lineWidth = rouletteSettings.borderStyle === 'dashed' ? 3 : 4;
-    if (rouletteSettings.borderStyle === 'dashed') ctx.setLineDash([8,4]); else ctx.setLineDash([]);
+    if (rouletteSettings.borderStyle === 'dashed') ctx.setLineDash([8, 4]); else ctx.setLineDash([]);
     ctx.stroke(); ctx.shadowBlur = 0; ctx.setLineDash([]);
 
     // Segments
-    const segAngle = (Math.PI*2) / wheelSegments.length;
+    const segAngle = (Math.PI * 2) / wheelSegments.length;
     wheelSegments.forEach((seg, i) => {
         const sA = i * segAngle + currentWheelAngle;
         const eA = sA + segAngle;
@@ -1894,31 +1933,31 @@ function renderWheel() {
         }
 
         // Segment fill with gradient
-        const grd = ctx.createRadialGradient(cx,cy, innerR, cx,cy, outerR);
-        grd.addColorStop(0,   seg.color + 'dd');
+        const grd = ctx.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
+        grd.addColorStop(0, seg.color + 'dd');
         grd.addColorStop(0.7, seg.color + 'bb');
-        grd.addColorStop(1,   seg.color + '55');
-        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy, outerR, sA, eA); ctx.closePath();
+        grd.addColorStop(1, seg.color + '55');
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, outerR, sA, eA); ctx.closePath();
         ctx.fillStyle = grd; ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
 
         // Segment label — отдельный save/restore чтобы трансформации не накапливались
         ctx.save();
         ctx.translate(cx, cy);
-        ctx.rotate(sA + segAngle/2);
+        ctx.rotate(sA + segAngle / 2);
         ctx.fillStyle = '#fff';
         const fs = Math.max(9, rouletteSettings.fontSize);
         ctx.font = `bold ${fs}px Inter,system-ui,sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 5;
         let lbl = seg.label || seg.game || '';
-        if (lbl.length > 11) lbl = lbl.substring(0,9) + '..';
+        if (lbl.length > 11) lbl = lbl.substring(0, 9) + '..';
         const textR = outerR * 0.68;
         ctx.fillText(lbl, textR, 0);
         if (seg.isGroup) {
-            ctx.font = `${fs-2}px Inter,system-ui,sans-serif`;
+            ctx.font = `${fs - 2}px Inter,system-ui,sans-serif`;
             ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.fillText(`${seg.items?.length||0} ${t('wheel.group_tasks', {n:''}).replace(/{n}/, '')}`, textR, fs+2);
+            ctx.fillText(`${seg.items?.length || 0} ${t('wheel.group_tasks', { n: '' }).replace(/{n}/, '')}`, textR, fs + 2);
         }
         ctx.restore(); // ← восстанавливаем после лейбла
 
@@ -1928,33 +1967,33 @@ function renderWheel() {
     // Tick dots on the outer ring
     const tickCount = Math.min(wheelSegments.length * 2, 48);
     for (let i = 0; i < tickCount; i++) {
-        const a = (i/tickCount)*Math.PI*2;
-        const tx = cx + (outerR+7)*Math.cos(a), ty = cy + (outerR+7)*Math.sin(a);
-        ctx.beginPath(); ctx.arc(tx, ty, i%2===0?3:2, 0, Math.PI*2);
-        ctx.fillStyle = i%2===0 ? (COLOR_SCHEMES[rouletteSettings.colorScheme]||COLOR_SCHEMES.default)[0] : 'rgba(255,255,255,0.3)';
+        const a = (i / tickCount) * Math.PI * 2;
+        const tx = cx + (outerR + 7) * Math.cos(a), ty = cy + (outerR + 7) * Math.sin(a);
+        ctx.beginPath(); ctx.arc(tx, ty, i % 2 === 0 ? 3 : 2, 0, Math.PI * 2);
+        ctx.fillStyle = i % 2 === 0 ? (COLOR_SCHEMES[rouletteSettings.colorScheme] || COLOR_SCHEMES.default)[0] : 'rgba(255,255,255,0.3)';
         ctx.fill();
     }
 
     // Center hub
-    const hubGrd = ctx.createRadialGradient(cx,cy,0, cx,cy,innerR);
+    const hubGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerR);
     hubGrd.addColorStop(0, '#ffffff'); hubGrd.addColorStop(1, '#e2e8f0');
-    ctx.beginPath(); ctx.arc(cx,cy, innerR, 0, Math.PI*2);
+    ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 12;
     ctx.fillStyle = hubGrd; ctx.fill();
     const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--wheel-border').trim() || '#6366f1';
     ctx.strokeStyle = borderColor; ctx.lineWidth = 3; ctx.shadowBlur = 0; ctx.stroke();
 
     // Center icon
-    ctx.font = `${innerR*0.9}px serif`;
+    ctx.font = `${innerR * 0.9}px serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(rouletteSettings.centerIcon || '🎲', cx, cy+1);
+    ctx.fillText(rouletteSettings.centerIcon || '🎲', cx, cy + 1);
 }
 
 // ── SPIN LOGIC ────────────────────────────────────────────
 function setRouletteMode(mode) {
     rouletteMode = mode;
-    gameFirstState = { active:false, selectedGame:null, currentPlayerIndex:0, assignedTasks:{} };
-    if (mode !== 'task-only') {
+    gameFirstState = { active: false, selectedGame: null, currentPlayerIndex: 0, assignedTasks: {} };
+    if (mode !== 'task-only' && mode !== 'game-only') {
         taskOnlyState.selectedGame = null;
         taskOnlyState.selectedPlayer = null;
     }
@@ -1965,7 +2004,7 @@ function setRouletteMode(mode) {
 }
 
 function resetGameFirstMode() {
-    gameFirstState = { active:false, selectedGame:null, currentPlayerIndex:0, assignedTasks:{} };
+    gameFirstState = { active: false, selectedGame: null, currentPlayerIndex: 0, assignedTasks: {} };
     updateWheelSegments();
     const rd = document.getElementById('spinResult'); if (rd) rd.classList.add('hidden');
     switchTab('roulette');
@@ -1974,9 +2013,12 @@ function resetGameFirstMode() {
 
 function confirmResetSpentTasks() {
     const total = countSpentTasks();
+    let resetKey = 'roulette.spent_reset_btn';
+    if (rouletteMode === 'player-only') resetKey = 'roulette.spent_reset_players';
+    else if (rouletteMode === 'game-only') resetKey = 'roulette.spent_reset_games';
     showConfirmModal(
-        '🗑️ ' + t('settings.spent_reset', {n: total}).replace(/🔄 /, ''),
-        t('roulette.spent_reset_btn', {n: total}),
+        '🗑️ ' + t('settings.spent_reset', { n: total }).replace(/🔄 /, ''),
+        t(resetKey, { n: total }),
         t('common.reset'),
         t('common.cancel'),
         () => {
@@ -1985,7 +2027,7 @@ function confirmResetSpentTasks() {
             updateWheelSegments();
             renderWheel();
             refreshRouletteControls();
-            showNotification(t('notif.spent_reset', {n: total}), 'success');
+            showNotification(t('notif.spent_reset', { n: total }), 'success');
         }
     );
 }
@@ -2003,9 +2045,9 @@ function selectGameForTaskOnly(gameName) {
     const spinBtn = document.querySelector('.spin-btn');
     if (spinBtn && !spinning) {
         spinBtn.disabled = false;
-        spinBtn.textContent = `🎰 ${t('roulette.spinning_for', {name: gameName.toUpperCase()})}`;
+        spinBtn.textContent = `🎰 ${t('roulette.spinning_for', { name: gameName.toUpperCase() })}`;
     }
-    showNotification(t('notif.game_selected', {name: gameName}), 'info');
+    showNotification(t('notif.game_selected', { name: gameName }), 'info');
 }
 
 function updateGameSummary(gameName) {
@@ -2019,7 +2061,7 @@ function updateGameSummary(gameName) {
             taskOnlyStatus.appendChild(summaryDiv);
         }
     }
-    
+
     // Обновляем или создаем карточку с выбранной игрой — DOM API, без innerHTML
     let gameCard = document.querySelector('.selected-game-card');
     if (gameCard) {
@@ -2057,7 +2099,7 @@ function selectPlayerForTaskOnly(playerName) {
     });
 
     updatePlayerSummary(playerName);
-    showNotification(t('notif.player_selected', {name: playerName || t('roulette.any_player')}), 'info');
+    showNotification(t('notif.player_selected', { name: playerName || t('roulette.any_player') }), 'info');
 }
 
 function updatePlayerSummary(playerName) {
@@ -2087,7 +2129,7 @@ function updatePlayerSummary(playerName) {
         card.innerHTML = '<div class="status-card-icon">👤</div><div class="status-card-content"><span class="status-card-label">Выбранный игрок</span><span class="status-card-value"></span></div>';
         const val = card.querySelector('.status-card-value');
         val.textContent = playerName || 'Случайный';
-        val.style.color  = safeColor;
+        val.style.color = safeColor;
 
         const sec = document.querySelector('.selection-summary');
         if (sec) {
@@ -2104,7 +2146,7 @@ function updateSelectedPlayerInfo(playerName) {
 function startSpin() {
     if (spinning) return;
     // Gamer: bonus round check
-    if (rouletteSettings.bonusRoundEnabled && Math.random()*100 < rouletteSettings.bonusRoundChance) {
+    if (rouletteSettings.bonusRoundEnabled && Math.random() * 100 < rouletteSettings.bonusRoundChance) {
         showNotification(t('roulette.bonus_round'), 'success');
         setTimeout(() => { executeSpin(); setTimeout(executeSpin, rouletteSettings.spinDuration + 2000) }, 200);
         return;
@@ -2116,6 +2158,10 @@ function executeSpin() {
     if (spinning) return;
     // Validations
     if (rouletteMode === 'player-only' && players.length < 1) return showNotification(t('roulette.add_players'), 'error');
+    if (rouletteMode === 'game-only') {
+        const hasGames = Object.keys(games).some(g => games[g].length > 0);
+        if (!hasGames) return showNotification(t('roulette.no_games_only'), 'error');
+    }
     if (rouletteMode === 'task-only') {
         if (!taskOnlyState.selectedGame) return showNotification(t('roulette.select_game'), 'error');
         const selectedTasks = games[taskOnlyState.selectedGame];
@@ -2138,9 +2184,10 @@ function executeSpin() {
     document.getElementById('spinResult')?.classList.add('hidden');
     document.getElementById('wheelResultPopup')?.classList.add('hidden');
 
-    if (rouletteMode === 'player-only')  { spinPlayerOnly();  return }
-    if (rouletteMode === 'task-only')    { spinTaskOnly();    return }
-    if (rouletteMode === 'game-first')   {
+    if (rouletteMode === 'player-only') { spinPlayerOnly(); return }
+    if (rouletteMode === 'task-only') { spinTaskOnly(); return }
+    if (rouletteMode === 'game-only') { spinGameOnly(); return }
+    if (rouletteMode === 'game-first') {
         if (!gameFirstState.active) startGameFirstInitial();
         else startGameFirstSpin();
         return;
@@ -2149,7 +2196,7 @@ function executeSpin() {
 }
 
 function startFullRandomMode() {
-    const gamesWithTasks = Object.entries(games).filter(([,ts]) => ts.length > 0);
+    const gamesWithTasks = Object.entries(games).filter(([, ts]) => ts.length > 0);
     if (!gamesWithTasks.length) { showNotification(t('roulette.no_tasks_avail'), 'error'); finishSpin(); return }
 
     updateWheelSegments();
@@ -2176,7 +2223,7 @@ function startFullRandomMode() {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(selGame, selPlayer, selTask);
             showPopupResult(selGame, selPlayer, selTask);
             // Транслируем результат в overlay
-            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: selGame, player: selPlayer?.name || '?', task: selTask, duration: 12000 })); } catch(e) {}
+            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: selGame, player: selPlayer?.name || '?', task: selTask, duration: 12000 })); } catch (e) { }
             markTaskSpent(selGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
@@ -2195,15 +2242,84 @@ function startFullRandomMode() {
 function spinPlayerOnly() {
     if (!players.length) { finishSpin(); return }
     updateWheelSegments();
-    const ti = Math.floor(Math.random() * players.length);
+    // Если всё выпало — wheelSegments содержит заглушку
+    if (wheelSegments.length === 1 && wheelSegments[0].task === t('wheel.all_done')) {
+        showNotification(t('wheel.all_done'), 'info'); finishSpin(); return;
+    }
+    const ti = Math.floor(Math.random() * wheelSegments.length);
     spinWheel(wheelSegments, ti, () => {
-        const p = players[ti];
+        const seg = wheelSegments[ti];
+        const p = players.find(pl => pl.name === seg?.task) || { name: seg?.task || '?', color: 'indigo', stats: {} };
         setTimeout(() => {
             showPopupResult('👤 Выбор игрока', p, p.name);
             if (rouletteSettings.resultDisplay !== 'popup') showResult('Выбор игрока', p, `${p.name} выбран!`);
-            // Транслируем результат в overlay
-            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: '👤 ' + t('wheel.player_pick'), player: p?.name || '?', task: `${p?.name || '?'} ${t('results.player_picked', {name: ''}).trim()}`, duration: 10000 })); } catch(e) {}
-            playWinSound(); finishSpin();
+            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: '👤 ' + t('wheel.player_pick'), player: p?.name || '?', task: `${p?.name || '?'} ${t('results.player_picked', { name: '' }).trim()}`, duration: 10000 })); } catch (e) { }
+            if (rouletteSettings.removeAfterSpin) {
+                markTaskSpent('__players__', p.name);
+                animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
+                    updateWheelSegments();
+                    renderWheel();
+                    const spentCount = (spentTasks['__players__'] || []).length;
+                    if (spentCount >= players.length) showNotification(t('wheel.all_done'), 'success');
+                    playWinSound(); finishSpin();
+                });
+            } else {
+                playWinSound(); finishSpin();
+            }
+        }, rouletteSettings.announceDelay || 0);
+    });
+}
+
+function spinGameOnly() {
+    const gameList = Object.keys(games).filter(g => games[g].length > 0);
+    if (!gameList.length) { showNotification(t('roulette.no_games_only'), 'error'); finishSpin(); return; }
+
+    updateWheelSegments();
+    // Если всё выпало
+    if (wheelSegments.length === 1 && wheelSegments[0].task === t('wheel.all_done')) {
+        showNotification(t('wheel.all_done'), 'info'); finishSpin(); return;
+    }
+
+    const ti = Math.floor(Math.random() * wheelSegments.length);
+
+    spinWheel(wheelSegments, ti, () => {
+        const selectedGame = wheelSegments[ti]?.game;
+        if (!selectedGame) { finishSpin(); return; }
+        setTimeout(() => {
+            const fakePlayer = { name: '—', color: 'indigo' };
+            showPopupResult(t('roulette.result_game_only'), fakePlayer, selectedGame);
+            if (rouletteSettings.resultDisplay !== 'popup') {
+                const rd = document.getElementById('spinResult');
+                const rc = document.getElementById('resultContent');
+                const ra = document.getElementById('resultActions');
+                if (rd && rc) {
+                    rc.innerHTML = `<div class="result-grid">
+                        <div class="result-card-item" style="grid-column:1/-1">
+                            <div class="result-card-icon">🎮</div>
+                            <div class="result-card-label">${t('roulette.result_game_only')}</div>
+                            <div class="result-card-value task-highlight">${esc(selectedGame)}</div>
+                        </div>
+                    </div>`;
+                    if (ra) ra.innerHTML = `<br><button onclick="startSpin()" class="cyber-btn add-btn">${t('roulette.spin_again')}</button>`;
+                    rd.classList.remove('hidden');
+                    rd.style.animation = 'none'; void rd.offsetHeight; rd.style.animation = 'fadeInUp 0.5s ease';
+                }
+            }
+            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: selectedGame, player: '—', task: t('roulette.result_game_only') + ' ' + selectedGame, duration: 10000 })); } catch (e) { }
+            if (rouletteSettings.removeAfterSpin) {
+                markTaskSpent('__games__', selectedGame);
+                animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
+                    updateWheelSegments();
+                    renderWheel();
+                    const spentCount = (spentTasks['__games__'] || []).length;
+                    if (spentCount >= gameList.length) showNotification(t('wheel.all_done'), 'success');
+                    if (rouletteSettings.particleEffect) createParticles();
+                    playWinSound(); finishSpin();
+                });
+            } else {
+                if (rouletteSettings.particleEffect) createParticles();
+                playWinSound(); finishSpin();
+            }
         }, rouletteSettings.announceDelay || 0);
     });
 }
@@ -2211,20 +2327,24 @@ function spinPlayerOnly() {
 function spinTaskOnly() {
     if (!taskOnlyState.selectedGame || !games[taskOnlyState.selectedGame]) {
         showNotification('Выберите игру из списка', 'error');
-        finishSpin(); 
+        finishSpin();
         return;
     }
-    
-    const selectedTasks = games[taskOnlyState.selectedGame];
-    if (!selectedTasks.length) { 
-        showNotification('В выбранной игре нет заданий', 'error');
-        finishSpin(); 
-        return;
-    }
-    
+
+    // Используем отфильтрованный список — тот же что и на колесе
     updateWheelSegments();
-    const ti = Math.floor(Math.random() * selectedTasks.length);
-    
+
+    // Если все задания уже потрачены — wheelSegments содержит заглушку
+    const availableSegs = wheelSegments.filter(s => s.task && s.task !== t('wheel.all_done_desc'));
+    if (!availableSegs.length) {
+        showNotification('В выбранной игре нет заданий', 'error');
+        finishSpin();
+        return;
+    }
+
+    // Выбираем случайный индекс из wheelSegments (уже отфильтрованы)
+    const ti = Math.floor(Math.random() * wheelSegments.length);
+
     // Определяем игрока: выбранный конкретный или случайный
     let selectedPlayer;
     if (taskOnlyState.selectedPlayer) {
@@ -2235,14 +2355,16 @@ function spinTaskOnly() {
         // Случайный игрок или "Все" если игроков нет
         selectedPlayer = players.length ? players[Math.floor(Math.random() * players.length)] : { name: 'Все', color: 'indigo', stats: {} };
     }
-    
+
     spinWheel(wheelSegments, ti, () => {
-        const task = selectedTasks[ti];
+        // Берём задание напрямую из выигравшего сегмента wheelSegments
+        const task = wheelSegments[ti]?.task;
+        if (!task) { finishSpin(); return; }
         setTimeout(() => {
             showPopupResult(taskOnlyState.selectedGame, selectedPlayer, task);
             if (rouletteSettings.resultDisplay !== 'popup') showResult(taskOnlyState.selectedGame, selectedPlayer, task);
             // Транслируем результат в overlay
-            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: taskOnlyState.selectedGame, player: selectedPlayer?.name || '?', task: task, duration: 12000 })); } catch(e) {}
+            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: taskOnlyState.selectedGame, player: selectedPlayer?.name || '?', task: task, duration: 12000 })); } catch (e) { }
             markTaskSpent(taskOnlyState.selectedGame, task);
             if (rouletteSettings.removeAfterSpin) {
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
@@ -2259,7 +2381,7 @@ function spinTaskOnly() {
 }
 
 function startGameFirstInitial() {
-    const gamesWithTasks = Object.entries(games).filter(([,t]) => t.length > 0);
+    const gamesWithTasks = Object.entries(games).filter(([, t]) => t.length > 0);
     if (!gamesWithTasks.length) { showNotification('Нет игр с заданиями', 'error'); finishSpin(); return }
     const selGame = gamesWithTasks[Math.floor(Math.random() * gamesWithTasks.length)][0];
     updateWheelSegments();
@@ -2267,7 +2389,7 @@ function startGameFirstInitial() {
     let ti = wheelSegments.findIndex(s => s.game === selGame);
     if (ti < 0) ti = 0;
     spinWheel(wheelSegments, ti, () => {
-        gameFirstState = { active:true, selectedGame:selGame, currentPlayerIndex:0, assignedTasks:{} };
+        gameFirstState = { active: true, selectedGame: selGame, currentPlayerIndex: 0, assignedTasks: {} };
         // Обновляем сегменты под выбранную игру и перерисовываем колесо
         updateWheelSegmentsForGame(selGame);
         renderWheel();
@@ -2289,7 +2411,7 @@ function startGameFirstSpin() {
     if (!curP) { hideWheelSmoothly(); setTimeout(showFinalResults, 600); return }
     const remaining = getRemainingTasksForGame(gameFirstState.selectedGame);
     if (!remaining.length) { hideWheelSmoothly(); setTimeout(showFinalResults, 600); return }
-    const gameOnlyTasks = remaining.map(t => ({ game: gameFirstState.selectedGame, task:t }));
+    const gameOnlyTasks = remaining.map(t => ({ game: gameFirstState.selectedGame, task: t }));
     const selTask = remaining[Math.floor(Math.random() * remaining.length)];
     const ti = gameOnlyTasks.findIndex(i => i.task === selTask);
     updateWheelSegmentsForGame(gameFirstState.selectedGame); renderWheel();
@@ -2299,7 +2421,7 @@ function startGameFirstSpin() {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(gameFirstState.selectedGame, curP, selTask);
             showPopupResult(gameFirstState.selectedGame, curP, selTask);
             // Транслируем результат в overlay
-            try { localStorage.setItem('overlayState', JSON.stringify({ type:'result', game: gameFirstState.selectedGame, player: curP?.name || '?', task: selTask, duration: 12000 })); } catch(e) {}
+            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: gameFirstState.selectedGame, player: curP?.name || '?', task: selTask, duration: 12000 })); } catch (e) { }
             markTaskSpent(gameFirstState.selectedGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
@@ -2326,11 +2448,11 @@ function startGameFirstSpin() {
 
 function hideWheelSmoothly() {
     const wc = document.getElementById('wheelContainer');
-    if (wc) { wc.style.transition='all 0.6s ease'; wc.style.opacity='0'; wc.style.transform='scale(0.8)'; wc.style.maxHeight='0'; wc.style.overflow='hidden'; wc.style.margin='0'; wc.style.pointerEvents='none' }
+    if (wc) { wc.style.transition = 'all 0.6s ease'; wc.style.opacity = '0'; wc.style.transform = 'scale(0.8)'; wc.style.maxHeight = '0'; wc.style.overflow = 'hidden'; wc.style.margin = '0'; wc.style.pointerEvents = 'none' }
 }
 function showWheel() {
     const wc = document.getElementById('wheelContainer');
-    if (wc) { wc.style.transition='all 0.5s ease'; wc.style.opacity='1'; wc.style.transform='scale(1)'; wc.style.maxHeight='600px'; wc.style.margin=''; wc.style.pointerEvents='auto'; wc.style.overflow='' }
+    if (wc) { wc.style.transition = 'all 0.5s ease'; wc.style.opacity = '1'; wc.style.transform = 'scale(1)'; wc.style.maxHeight = '600px'; wc.style.margin = ''; wc.style.pointerEvents = 'auto'; wc.style.overflow = '' }
 }
 function finishSpin() {
     spinning = false;
@@ -2343,17 +2465,30 @@ function finishSpin() {
 function refreshRouletteControls() {
     const ctrl = document.querySelector('.roulette-controls');
     if (!ctrl) return;
-    // Убираем старую кнопку сброса если есть
-    ctrl.querySelectorAll('.spent-reset-btn').forEach(b => b.remove());
+    // Убираем старую кнопку сброса и все br перед ней
+    ctrl.querySelectorAll('.spent-reset-btn').forEach(b => {
+        // удаляем предшествующий br если есть
+        if (b.previousSibling && b.previousSibling.nodeName === 'BR') {
+            b.previousSibling.remove();
+        }
+        b.remove();
+    });
     // Добавляем свежую если нужна
     if (rouletteSettings.removeAfterSpin && countSpentTasks() > 0) {
         const btn = document.createElement('button');
         btn.className = 'cyber-btn danger-btn outline-btn spent-reset-btn';
         btn.style.marginTop = '8px';
-        btn.textContent = `🗑️ Сброс заданий (${countSpentTasks()} выпало)`;
+        const n = countSpentTasks();
+        if (rouletteMode === 'player-only') {
+            btn.textContent = t('roulette.spent_reset_players', { n });
+        } else if (rouletteMode === 'game-only') {
+            btn.textContent = t('roulette.spent_reset_games', { n });
+        } else {
+            btn.textContent = t('roulette.spent_reset_btn', { n });
+        }
         btn.onclick = confirmResetSpentTasks;
-        ctrl.insertBefore(document.createElement('br'), ctrl.querySelector('.spin-hint'));
-        ctrl.insertBefore(btn, ctrl.querySelector('.spin-hint'));
+        const hint = ctrl.querySelector('.spin-hint');
+        ctrl.insertBefore(btn, hint);
     }
 }
 
@@ -2361,44 +2496,44 @@ function refreshRouletteControls() {
 function spinWheel(tasks, targetIdx, callback) {
     if (!tasks.length) { if (callback) callback(); return }
     lastWinnerSegIdx = targetIdx;
-    const segAngle = (Math.PI*2) / tasks.length;
-    const targetAngle = targetIdx * segAngle + segAngle/2; // середина целевого сегмента (от угла 0)
+    const segAngle = (Math.PI * 2) / tasks.length;
+    const targetAngle = targetIdx * segAngle + segAngle / 2; // середина целевого сегмента (от угла 0)
     const POINTER = -Math.PI / 2; // указатель сверху (12 часов)
     const spins = rouletteSettings.minSpins + Math.floor(Math.random() * (rouletteSettings.maxSpins - rouletteSettings.minSpins + 1));
     // Нужно: targetAngle + currentWheelAngle + totalRot ≡ POINTER (mod 2π)
     // → totalRot = POINTER - currentWheelAngle - targetAngle + N*2π
-    const remainder = ((POINTER - currentWheelAngle - targetAngle) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
-    const totalRot = spins * Math.PI*2 + remainder;
+    const remainder = ((POINTER - currentWheelAngle - targetAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    const totalRot = spins * Math.PI * 2 + remainder;
     if (rouletteSettings.soundEnabled) playSpinSound();
     animateWheel(totalRot, callback);
 }
 
 // ── Easing functions ──────────────────────────────────────
 // easeOutQuint: очень плавное торможение без резкого останова
-function easeOutCubic(t)  { return 1 - Math.pow(1-t, 5) }
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 5) }
 function easeOutBounce(t) {
-    const n1=7.5625, d1=2.75;
-    if (t < 1/d1)      return n1*t*t;
-    if (t < 2/d1)      return n1*(t-=1.5/d1)*t+0.75;
-    if (t < 2.5/d1)    return n1*(t-=2.25/d1)*t+0.9375;
-    return n1*(t-=2.625/d1)*t+0.984375;
+    const n1 = 7.5625, d1 = 2.75;
+    if (t < 1 / d1) return n1 * t * t;
+    if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
+    if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+    return n1 * (t -= 2.625 / d1) * t + 0.984375;
 }
 function easeOutElastic(t) {
-    if (t===0||t===1) return t;
-    return Math.pow(2,-10*t)*Math.sin((t*10-0.75)*(2*Math.PI)/3)+1;
+    if (t === 0 || t === 1) return t;
+    return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI) / 3) + 1;
 }
 
 function getEaseFn() {
-    if (rouletteSettings.wheelAnimation === 'bounce')  return easeOutBounce;
+    if (rouletteSettings.wheelAnimation === 'bounce') return easeOutBounce;
     if (rouletteSettings.wheelAnimation === 'elastic') return easeOutElastic;
-    if (rouletteSettings.wheelAnimation === 'linear')  return t => t;
+    if (rouletteSettings.wheelAnimation === 'linear') return t => t;
     return easeOutCubic;
 }
 
 function animateWheel(totalRotation, callback) {
     const canvas = document.getElementById('rouletteWheel');
     if (!canvas) { if (callback) callback(); return }
-    const duration  = rouletteSettings.spinDuration;
+    const duration = rouletteSettings.spinDuration;
     const startTime = Date.now();
     const startAngle = currentWheelAngle;
     const easeFn = getEaseFn();
@@ -2406,26 +2541,26 @@ function animateWheel(totalRotation, callback) {
 
     if (rouletteSettings.visualEffects) {
         const wc = document.getElementById('wheelContainer');
-        if (wc) { wc.style.transition='all 0.3s ease'; wc.style.transform='scale(1.02)' }
+        if (wc) { wc.style.transition = 'all 0.3s ease'; wc.style.transform = 'scale(1.02)' }
     }
 
     function animate() {
-        const elapsed  = Date.now() - startTime;
+        const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        const eased    = easeFn(progress);
+        const eased = easeFn(progress);
         currentWheelAngle = startAngle + totalRotation * eased;
         renderWheel();
 
         // Tick sound on segment changes (last 30%)
         if (progress > 0.7 && rouletteSettings.soundEnabled && rouletteSettings.tickSoundEnabled) {
-            const seg = Math.floor((currentWheelAngle % (Math.PI*2)) / ((Math.PI*2)/wheelSegments.length));
+            const seg = Math.floor((currentWheelAngle % (Math.PI * 2)) / ((Math.PI * 2) / wheelSegments.length));
             if (seg !== lastTickSeg) { lastTickSeg = seg; playTickSound() }
         }
 
         // Glow effect near end — плавно нарастает с 70% прогресса
         if (rouletteSettings.visualEffects && rouletteSettings.glowEffect && progress > 0.7) {
             const t = (progress - 0.7) / 0.3;  // 0→1 в диапазоне 70–100%
-            const g = 6  + t * 22;              // 6px → 28px (мягко)
+            const g = 6 + t * 22;              // 6px → 28px (мягко)
             const o = 0.15 + t * 0.45;          // 0.15 → 0.60 (не режет глаз)
             if (canvas) canvas.style.filter = `drop-shadow(0 0 ${g.toFixed(1)}px rgba(99,102,241,${o.toFixed(2)}))`;
         }
@@ -2433,7 +2568,7 @@ function animateWheel(totalRotation, callback) {
         if (progress < 1) {
             animationId = requestAnimationFrame(animate);
         } else {
-            currentWheelAngle = (startAngle + totalRotation) % (Math.PI*2);
+            currentWheelAngle = (startAngle + totalRotation) % (Math.PI * 2);
             if (rouletteSettings.visualEffects && rouletteSettings.shakeEffect) shakeWheel(() => finalizeSpin(callback));
             else finalizeSpin(callback);
         }
@@ -2465,12 +2600,12 @@ function shakeWheel(callback) {
     function step() {
         if (i < frames.length) {
             canvas.style.transition = `transform ${i === 0 ? 80 : 70}ms ease-out`;
-            canvas.style.transform  = `rotate(${frames[i]}deg) scale(1)`;
+            canvas.style.transform = `rotate(${frames[i]}deg) scale(1)`;
             i++;
             setTimeout(step, i === 1 ? 90 : 75);
         } else {
             canvas.style.transition = 'transform 0.35s ease';
-            canvas.style.transform  = 'rotate(0deg) scale(1)';
+            canvas.style.transform = 'rotate(0deg) scale(1)';
             setTimeout(() => { if (callback) callback() }, 380);
         }
     }
@@ -2565,19 +2700,19 @@ function showResult(game, player, task) {
     const cd = playerColors[player?.color] || playerColors.indigo;
     rc.innerHTML = `<div class="result-grid">
         <div class="result-card-item"><div class="result-card-icon">🎮</div><div class="result-card-label">${t('roulette.result_game')}</div><div class="result-card-value">${esc(game)}</div></div>
-        <div class="result-card-item"><div class="result-card-icon">👤</div><div class="result-card-label">${t('roulette.result_player')}</div><div class="result-card-value" style="color:${esc(cd.name)}">${esc(player?.name||'?')}</div></div>
+        <div class="result-card-item"><div class="result-card-icon">👤</div><div class="result-card-label">${t('roulette.result_player')}</div><div class="result-card-value" style="color:${esc(cd.name)}">${esc(player?.name || '?')}</div></div>
         <div class="result-card-item"><div class="result-card-icon">⚡</div><div class="result-card-label">${t('roulette.result_task')}</div><div class="result-card-value task-highlight">${esc(task)}</div></div>
     </div>`;
     if (ra) {
         // Используем только безопасные статичные кнопки без пользовательских данных в обработчиках
         if (gameFirstState.active) {
             const nextP = players[gameFirstState.currentPlayerIndex];
-            const rem   = getRemainingTasksForGame(gameFirstState.selectedGame);
+            const rem = getRemainingTasksForGame(gameFirstState.selectedGame);
             if (nextP && rem.length > 0) {
                 const btn = document.createElement('button');
                 btn.className = 'cyber-btn add-btn';
                 btn.style.marginTop = '8px';
-                btn.textContent = t('roulette.next_player', {name: nextP.name});
+                btn.textContent = t('roulette.next_player', { name: nextP.name });
                 btn.onclick = startSpin;
                 ra.innerHTML = '<br>';
                 ra.appendChild(btn);
@@ -2588,7 +2723,7 @@ function showResult(game, player, task) {
             ra.innerHTML = `<br><button onclick="startSpin()" class="cyber-btn add-btn">${t('roulette.spin_again')}</button>`;
         }
     }
-    rd.classList.remove('hidden'); rd.style.animation='none'; void rd.offsetHeight; rd.style.animation='fadeInUp 0.5s ease';
+    rd.classList.remove('hidden'); rd.style.animation = 'none'; void rd.offsetHeight; rd.style.animation = 'fadeInUp 0.5s ease';
 }
 
 function showFinalResults() {
@@ -2608,43 +2743,43 @@ function showFinalResults() {
         <div class="final-results-list">
             <div class="final-results-title">📋 Задания (${assigned}/${players.length})</div>
             <div class="final-results-grid">
-                ${Object.entries(gameFirstState.assignedTasks).map(([pn,pt],idx) => {
-                    const pl = players.find(p => p.name===pn);
-                    const cd = playerColors[pl?.color]||playerColors.indigo;
-                    return `<div class="final-result-row"><span class="final-result-number">#${idx+1}</span><span class="final-result-player" style="color:${esc(cd.name)}">${esc(pn)}</span><span class="final-result-arrow">→</span><span class="final-result-task">${esc(pt)}</span></div>`;
-                }).join('')}
+                ${Object.entries(gameFirstState.assignedTasks).map(([pn, pt], idx) => {
+        const pl = players.find(p => p.name === pn);
+        const cd = playerColors[pl?.color] || playerColors.indigo;
+        return `<div class="final-result-row"><span class="final-result-number">#${idx + 1}</span><span class="final-result-player" style="color:${esc(cd.name)}">${esc(pn)}</span><span class="final-result-arrow">→</span><span class="final-result-task">${esc(pt)}</span></div>`;
+    }).join('')}
             </div>
         </div>
-        ${unassigned.length ? `<div class="unassigned-warning"><p class="unassigned-warning-title">⚠️ Без заданий</p><div class="unassigned-players-list">${unassigned.map(p=>`<span class="unassigned-player-tag" style="border-color:${esc(playerColors[p.color]?.name||'#818cf8')};color:${esc(playerColors[p.color]?.name||'#818cf8')}">${esc(p.name)}</span>`).join('')}</div></div>` : ''}
+        ${unassigned.length ? `<div class="unassigned-warning"><p class="unassigned-warning-title">⚠️ Без заданий</p><div class="unassigned-players-list">${unassigned.map(p => `<span class="unassigned-player-tag" style="border-color:${esc(playerColors[p.color]?.name || '#818cf8')};color:${esc(playerColors[p.color]?.name || '#818cf8')}">${esc(p.name)}</span>`).join('')}</div></div>` : ''}
     `;
     if (ra) ra.innerHTML = `<br><button onclick="resetGameFirstMode()" class="cyber-btn add-btn">${t('results.start_over')}</button><button onclick="exportResults()" class="cyber-btn export-btn">${t('results.export')}</button>`;
-    rd.classList.remove('hidden'); rd.style.animation='none'; void rd.offsetHeight; rd.style.animation='fadeInUp 0.5s ease';
+    rd.classList.remove('hidden'); rd.style.animation = 'none'; void rd.offsetHeight; rd.style.animation = 'fadeInUp 0.5s ease';
     switchTab('roulette');
 }
 
 // ── PARTICLES ─────────────────────────────────────────────
 function createParticles() {
-    const colors = ['#10b981','#6366f1','#f59e0b','#ec4899','#3b82f6','#84cc16','#f97316','#06b6d4'];
+    const colors = ['#10b981', '#6366f1', '#f59e0b', '#ec4899', '#3b82f6', '#84cc16', '#f97316', '#06b6d4'];
     const count = rouletteSettings.particleCount || 30;
     for (let i = 0; i < count; i++) {
         setTimeout(() => {
             const p = document.createElement('div');
             p.className = 'win-particle';
-            const size = Math.random()*10+6, angle = Math.random()*Math.PI*2, vel = Math.random()*220+80;
-            const sx = window.innerWidth/2, sy = window.innerHeight/2;
-            const ex = sx + Math.cos(angle)*vel, ey = sy + Math.sin(angle)*vel;
-            const dur = Math.random()*900+500;
+            const size = Math.random() * 10 + 6, angle = Math.random() * Math.PI * 2, vel = Math.random() * 220 + 80;
+            const sx = window.innerWidth / 2, sy = window.innerHeight / 2;
+            const ex = sx + Math.cos(angle) * vel, ey = sy + Math.sin(angle) * vel;
+            const dur = Math.random() * 900 + 500;
             const isStar2 = rouletteSettings.particleStyle === 'star';
-            p.style.cssText = `position:fixed;width:${size}px;height:${size}px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${isStar2?'2px':'50%'};left:${sx}px;top:${sy}px;z-index:9999;pointer-events:none;animation:particleBurst ${dur}ms ease-out forwards;--end-x:${ex-sx}px;--end-y:${ey-sy}px;${isStar2?'clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)':''}`;
+            p.style.cssText = `position:fixed;width:${size}px;height:${size}px;background:${colors[Math.floor(Math.random() * colors.length)]};border-radius:${isStar2 ? '2px' : '50%'};left:${sx}px;top:${sy}px;z-index:9999;pointer-events:none;animation:particleBurst ${dur}ms ease-out forwards;--end-x:${ex - sx}px;--end-y:${ey - sy}px;${isStar2 ? 'clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)' : ''}`;
             document.body.appendChild(p);
-            setTimeout(() => p.remove(), dur+100);
-        }, i*15);
+            setTimeout(() => p.remove(), dur + 100);
+        }, i * 15);
     }
 }
 
 function updatePlayerStats(name) {
-    const p = players.find(x => x.name===name);
-    if (p) { if(!p.stats)p.stats={gamesPlayed:0,tasksCompleted:0}; p.stats.gamesPlayed++; p.stats.tasksCompleted++; saveAll() }
+    const p = players.find(x => x.name === name);
+    if (p) { if (!p.stats) p.stats = { gamesPlayed: 0, tasksCompleted: 0 }; p.stats.gamesPlayed++; p.stats.tasksCompleted++; saveAll() }
 }
 
 // ── STREAMER TAB ──────────────────────────────────────────
@@ -2670,7 +2805,7 @@ function renderStreamerTab() {
                 <div class="overlay-status"><span class="overlay-dot"></span> ${t('streamer.obs_ready')}</div>
                 <div class="streamer-tool-actions">
                     <button onclick="openOverlayWindow()" class="cyber-btn add-btn">${t('streamer.obs_open')}</button>
-                    <button onclick="toggleChromaKey()" class="cyber-btn ${rouletteSettings.chromaKey?'primary-btn':''}">${t('streamer.obs_chroma')}</button>
+                    <button onclick="toggleChromaKey()" class="cyber-btn ${rouletteSettings.chromaKey ? 'primary-btn' : ''}">${t('streamer.obs_chroma')}</button>
                     <button onclick="showOverlaySettings()" class="cyber-btn">${t('streamer.obs_settings')}</button>
                 </div>
                 <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">
@@ -2686,11 +2821,11 @@ function renderStreamerTab() {
                 </div>
                 <div class="channel-input-group">
                     <input type="text" id="channelNameInput" placeholder="${t('streamer.channel_placeholder')}" value="${esc(streamerState.channelName)}" oninput="updateChannelName(this.value)" onkeypress="if(event.key==='Enter')twitchToggleConnect()">
-                    <button onclick="twitchToggleConnect()" class="cyber-btn ${streamerState.connected?'danger-btn':'add-btn'} channel-connect-btn" id="chatConnectBtn">
-                        ${streamerState.twitchStatus==='connected'   ? t('streamer.disconnect_btn')
-                        : streamerState.twitchStatus==='connecting'  ? t('streamer.connecting_btn')
-                        : streamerState.twitchStatus==='error'       ? t('streamer.error_btn')
-                        :                                               t('streamer.connect_btn')}
+                    <button onclick="twitchToggleConnect()" class="cyber-btn ${streamerState.connected ? 'danger-btn' : 'add-btn'} channel-connect-btn" id="chatConnectBtn">
+                        ${streamerState.twitchStatus === 'connected' ? t('streamer.disconnect_btn')
+            : streamerState.twitchStatus === 'connecting' ? t('streamer.connecting_btn')
+                : streamerState.twitchStatus === 'error' ? t('streamer.error_btn')
+                    : t('streamer.connect_btn')}
                     </button>
                 </div>
                 <div class="channel-input-group" style="margin-bottom:8px">
@@ -2699,15 +2834,14 @@ function renderStreamerTab() {
                 <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">
                     ${t('streamer.readonly_hint')}
                 </div>
-                <div id="twitchStatusBar" style="font-size:11px;margin:6px 0 10px;color:${
-                    streamerState.twitchStatus==='connected' ? 'var(--accent-success)'
-                    : streamerState.twitchStatus==='error'   ? 'var(--accent-danger)'
-                    : 'var(--text-muted)'}">
-                    ${streamerState.twitchStatus==='connected'
-                        ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> ${t('streamer.status_reading', {ch: esc(streamerState.channelName)})}</span>`
-                        : streamerState.twitchStatus==='connecting' ? t('streamer.status_connecting')
-                        : streamerState.twitchStatus==='error'      ? t('streamer.status_error')
-                        : t('streamer.status_idle')}
+                <div id="twitchStatusBar" style="font-size:11px;margin:6px 0 10px;color:${streamerState.twitchStatus === 'connected' ? 'var(--accent-success)'
+            : streamerState.twitchStatus === 'error' ? 'var(--accent-danger)'
+                : 'var(--text-muted)'}">
+                    ${streamerState.twitchStatus === 'connected'
+            ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> ${t('streamer.status_reading', { ch: esc(streamerState.channelName) })}</span>`
+            : streamerState.twitchStatus === 'connecting' ? t('streamer.status_connecting')
+                : streamerState.twitchStatus === 'error' ? t('streamer.status_error')
+                    : t('streamer.status_idle')}
                 </div>
                 <div id="voteArea">
                     ${renderVoteArea()}
@@ -2728,7 +2862,7 @@ function renderStreamerTab() {
                     <span class="streamer-tool-icon">⏱️</span>
                     <div><div class="streamer-tool-title">${t('streamer.timer_title')}</div><div class="streamer-tool-desc">${t('streamer.timer_desc')}</div></div>
                 </div>
-                <div class="timer-display" id="timerDisplay">${formatTime(streamerState.timerSeconds||0)}</div>
+                <div class="timer-display" id="timerDisplay">${formatTime(streamerState.timerSeconds || 0)}</div>
                 <div class="input-group" style="margin-bottom:10px">
                     <input type="number" id="timerMinutes" placeholder="${t('streamer.timer_min')}" min="0" max="99" value="5" style="max-width:80px">
                     <input type="number" id="timerSeconds2" placeholder="${t('streamer.timer_sec')}" min="0" max="59" value="0" style="max-width:80px">
@@ -2741,7 +2875,7 @@ function renderStreamerTab() {
                     <button onclick="addTime(60)"   class="cyber-btn">${t('streamer.timer_add1m')}</button>
                 </div>
                 <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">
-                    ${t('streamer.stats_messages')} ${streamerState.chatStats.totalMessages}, ${t('streamer.stats_unique').replace(':','')} ${streamerState.chatStats.uniqueViewers}
+                    ${t('streamer.stats_messages')} ${streamerState.chatStats.totalMessages}, ${t('streamer.stats_unique').replace(':', '')} ${streamerState.chatStats.uniqueViewers}
                 </div>
             </div>
 
@@ -2759,10 +2893,10 @@ function renderStreamerTab() {
                     <div class="sub-list" id="subList">${renderSubList()}</div>
                 </div>
                 <div class="streamer-tool-actions">
-                    <button onclick="spinSubWheel()" class="cyber-btn spin-btn" style="width:100%;font-size:12px;letter-spacing:1px;padding:12px" ${!streamerState.subWheelList.length?'disabled':''}>${t('streamer.sub_spin_btn')}</button>
+                    <button onclick="spinSubWheel()" class="cyber-btn spin-btn" style="width:100%;font-size:12px;letter-spacing:1px;padding:12px" ${!streamerState.subWheelList.length ? 'disabled' : ''}>${t('streamer.sub_spin_btn')}</button>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-                    <button onclick="addAllChattersToWheel()" class="cyber-btn primary-btn" style="flex:1;font-size:11px" ${streamerState.twitchStatus!=='connected'?'disabled':''}>${t('streamer.sub_all_chat')}</button>
+                    <button onclick="addAllChattersToWheel()" class="cyber-btn primary-btn" style="flex:1;font-size:11px" ${streamerState.twitchStatus !== 'connected' ? 'disabled' : ''}>${t('streamer.sub_all_chat')}</button>
                     ${streamerState.subWheelList.length ? `<button onclick="clearSubWheel()" class="cyber-btn danger-btn" style="flex:1;font-size:11px">${t('streamer.sub_clear')}</button>` : ''}
                 </div>
             </div>
@@ -2791,15 +2925,15 @@ function renderStreamerTab() {
                     <span class="streamer-tool-icon">💬</span>
                     <div>
                         <div class="streamer-tool-title">${t('streamer.chat_title')}</div>
-                        <div class="streamer-tool-desc">${streamerState.twitchStatus === 'connected' ? t('streamer.chat_online', {ch: streamerState.channelName}) : t('streamer.chat_real_irc')}</div>
+                        <div class="streamer-tool-desc">${streamerState.twitchStatus === 'connected' ? t('streamer.chat_online', { ch: streamerState.channelName }) : t('streamer.chat_real_irc')}</div>
                     </div>
                 </div>
                 <div class="chat-box" id="chatBox">${renderChatMessages()}</div>
                 <div class="streamer-tool-actions" style="margin-top:8px">
-                    <button onclick="sendCommandsList()" class="cyber-btn primary-btn" ${!streamerState.twitchToken || streamerState.twitchStatus!=='connected'?'disabled':''}>${t('streamer.chat_commands')}</button>
+                    <button onclick="sendCommandsList()" class="cyber-btn primary-btn" ${!streamerState.twitchToken || streamerState.twitchStatus !== 'connected' ? 'disabled' : ''}>${t('streamer.chat_commands')}</button>
                     <button onclick="clearChat()" class="cyber-btn danger-btn">${t('streamer.chat_clear')}</button>
                 </div>
-                ${streamerState.chatStats.mostActiveUser ? `<div style="margin-top:8px;font-size:10px;color:var(--text-muted)">${t('streamer.chat_most_active', {name: streamerState.chatStats.mostActiveUser})}</div>` : ''}
+                ${streamerState.chatStats.mostActiveUser ? `<div style="margin-top:8px;font-size:10px;color:var(--text-muted)">${t('streamer.chat_most_active', { name: streamerState.chatStats.mostActiveUser })}</div>` : ''}
             </div>
 
             <!-- Stream Tools -->
@@ -2811,12 +2945,12 @@ function renderStreamerTab() {
                 <div style="display:grid;gap:8px;margin-bottom:12px">
                     <div style="display:flex;gap:8px;align-items:center">
                         <label style="font-size:12px;min-width:80px">${t('streamer.sounds_label')}</label>
-                        <label class="toggle-switch"><input type="checkbox" ${streamerState.chatSounds||false?'checked':''} onchange="toggleChatSounds(this.checked)"><span class="toggle-slider"></span></label>
+                        <label class="toggle-switch"><input type="checkbox" ${streamerState.chatSounds || false ? 'checked' : ''} onchange="toggleChatSounds(this.checked)"><span class="toggle-slider"></span></label>
                         <span style="font-size:11px;color:var(--text-muted)">${t('streamer.sounds_hint')}</span>
                     </div>
                     <div style="display:flex;gap:8px;align-items:center">
                         <label style="font-size:12px;min-width:80px">${t('streamer.autospin_label')}</label>
-                        <label class="toggle-switch"><input type="checkbox" ${streamerState.autoSpin||false?'checked':''} onchange="toggleAutoSpin(this.checked)"><span class="toggle-slider"></span></label>
+                        <label class="toggle-switch"><input type="checkbox" ${streamerState.autoSpin || false ? 'checked' : ''} onchange="toggleAutoSpin(this.checked)"><span class="toggle-slider"></span></label>
                         <span style="font-size:11px;color:var(--text-muted)">${t('streamer.autospin_hint')}</span>
                     </div>
                 </div>
@@ -2838,12 +2972,12 @@ function renderVoteArea() {
         return `
             <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">
                 ${isReal
-                    ? `✅ ${t('streamer.status_reading', {ch: esc(streamerState.channelName)}).replace('Читаем чат', 'Чат подключён —')} зрители пишут <b>1–4</b> для голосования`
-                    : `⚠️ ${t('streamer.connect_first_vote')}`}
+                ? `✅ ${t('streamer.status_reading', { ch: esc(streamerState.channelName) }).replace('Читаем чат', 'Чат подключён —')} зрители пишут <b>1–4</b> для голосования`
+                : `⚠️ ${t('streamer.connect_first_vote')}`}
             </div>
             <div style="margin-bottom:10px">
                 <input type="text" id="voteTitle" placeholder="${t('streamer.vote_topic')}"
-                    value="${esc(streamerState.voteTitle||'')}"
+                    value="${esc(streamerState.voteTitle || '')}"
                     oninput="streamerState.voteTitle=this.value"
                     style="width:100%;font-size:12px;padding:8px 12px;border-radius:var(--radius-md);
                            background:var(--bg-input);color:var(--text-primary);
@@ -2856,9 +2990,9 @@ function renderVoteArea() {
                 <label style="font-size:12px;color:var(--text-secondary);min-width:auto">${t('streamer.vote_sec_label')}</label>
             </div>
             <div class="vote-options" style="margin-bottom:12px">
-                ${gameOptions.map((g,i) => `
+                ${gameOptions.map((g, i) => `
                     <div class="vote-option">
-                        <span class="vote-option-key">${i+1}</span>
+                        <span class="vote-option-key">${i + 1}</span>
                         <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g)}</span>
                     </div>`).join('')}
                 ${!gameOptions.length ? `<div style="font-size:12px;color:var(--text-muted)">${t('streamer.no_games_vote')}</div>` : ''}
@@ -2868,9 +3002,9 @@ function renderVoteArea() {
             </button>`;
     }
 
-    const opts  = streamerState.voteOptions || [];
-    const votes = streamerState.voteVotes   || {};
-    const total = Object.values(votes).reduce((s,v) => s + v.count, 0) || 1;
+    const opts = streamerState.voteOptions || [];
+    const votes = streamerState.voteVotes || {};
+    const total = Object.values(votes).reduce((s, v) => s + v.count, 0) || 1;
     const voterCount = Object.keys(streamerState.voteVoters || {}).length;
     const titleHtml = streamerState.voteTitle
         ? `<div style="font-size:13px;font-weight:700;color:var(--accent-primary);
@@ -2884,17 +3018,17 @@ function renderVoteArea() {
     return `
         ${titleHtml}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div class="vote-timer ${streamerState.voteTimer<=5?'urgent':''}" id="voteCountdown" style="font-size:24px;margin:0">${t('overlay.vote_sec', {n: streamerState.voteTimer})}</div>
+            <div class="vote-timer ${streamerState.voteTimer <= 5 ? 'urgent' : ''}" id="voteCountdown" style="font-size:24px;margin:0">${t('overlay.vote_sec', { n: streamerState.voteTimer })}</div>
             <div style="font-size:11px;color:var(--text-secondary);text-align:right">
-                👥 ${t('streamer.vote_voters', {n: voterCount})}
+                👥 ${t('streamer.vote_voters', { n: voterCount })}
             </div>
         </div>
         <div class="vote-options">
-            ${opts.map((o,i) => {
-                const cnt = votes[i+1]?.count || 0;
-                const pct = Math.round((cnt / total) * 100);
-                return `<div class="vote-option">
-                    <span class="vote-option-key">${i+1}</span>
+            ${opts.map((o, i) => {
+        const cnt = votes[i + 1]?.count || 0;
+        const pct = Math.round((cnt / total) * 100);
+        return `<div class="vote-option">
+                    <span class="vote-option-key">${i + 1}</span>
                     <div style="flex:1;min-width:0">
                         <span style="font-size:11px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o)}</span>
                         <div class="vote-option-bar">
@@ -2903,7 +3037,7 @@ function renderVoteArea() {
                     </div>
                     <span class="vote-option-count" id="vc${i}">${cnt} (${pct}%)</span>
                 </div>`;
-            }).join('')}
+    }).join('')}
         </div>
         <button onclick="stopVote()" class="cyber-btn danger-btn" style="width:100%;margin-top:10px">${t('streamer.vote_stop_btn')}</button>`;
 }
@@ -2916,33 +3050,33 @@ function startVote() {
     // Сохраняем тему из поля ввода если оно ещё в DOM
     const titleInput = document.getElementById('voteTitle');
     if (titleInput) streamerState.voteTitle = titleInput.value.trim();
-    
-    streamerState.voteOptions   = gameOptions;
-    streamerState.voteVotes     = {};
-    streamerState.voteVoters    = {};      // кто уже проголосовал
-    streamerState.voteActive    = true;
-    streamerState.voteTimer     = streamerState.voteDuration || 30;
-    gameOptions.forEach((_,i) => { streamerState.voteVotes[i+1] = { option: gameOptions[i], count: 0 } });
+
+    streamerState.voteOptions = gameOptions;
+    streamerState.voteVotes = {};
+    streamerState.voteVoters = {};      // кто уже проголосовал
+    streamerState.voteActive = true;
+    streamerState.voteTimer = streamerState.voteDuration || 30;
+    gameOptions.forEach((_, i) => { streamerState.voteVotes[i + 1] = { option: gameOptions[i], count: 0 } });
 
     const titleMsg = streamerState.voteTitle ? ` "${streamerState.voteTitle}"` : '';
-    showNotification(t('streamer.vote_started', {topic: titleMsg, n: gameOptions.length}), 'success');
+    showNotification(t('streamer.vote_started', { topic: titleMsg, n: gameOptions.length }), 'success');
 
     // Передаём данные голосования в overlay через localStorage
     try {
         localStorage.setItem('overlayState', JSON.stringify({
-            type:    'vote',
-            title:   streamerState.voteTitle || '',
+            type: 'vote',
+            title: streamerState.voteTitle || '',
             options: gameOptions.map(g => ({ name: g, count: 0 })),
-            timer:   streamerState.voteDuration || 30
+            timer: streamerState.voteDuration || 30
         }));
-    } catch(e) {}
+    } catch (e) { }
 
     streamerState.voteInterval = setInterval(() => {
         streamerState.voteTimer--;
-        
+
         // Обновляем таймер
         const cd = document.getElementById('voteCountdown');
-        if (cd) { cd.textContent = t('overlay.vote_sec', {n: streamerState.voteTimer}); cd.className = `vote-timer${streamerState.voteTimer <= 5 ? ' urgent' : ''}` }
+        if (cd) { cd.textContent = t('overlay.vote_sec', { n: streamerState.voteTimer }); cd.className = `vote-timer${streamerState.voteTimer <= 5 ? ' urgent' : ''}` }
         // Перерисовываем только бары голосов без полного ре-рендера
         _refreshVoteBars();
         if (streamerState.voteTimer <= 0) stopVote();
@@ -2953,15 +3087,15 @@ function startVote() {
 }
 
 function _refreshVoteBars() {
-    const opts   = streamerState.voteOptions || [];
-    const votes  = streamerState.voteVotes   || {};
-    const total  = Object.values(votes).reduce((s,v) => s + v.count, 0) || 1;
+    const opts = streamerState.voteOptions || [];
+    const votes = streamerState.voteVotes || {};
+    const total = Object.values(votes).reduce((s, v) => s + v.count, 0) || 1;
     opts.forEach((_, i) => {
-        const cnt = votes[i+1]?.count || 0;
+        const cnt = votes[i + 1]?.count || 0;
         const pct = Math.round((cnt / total) * 100);
         const fill = document.getElementById(`vf${i}`);
         const cnt_el = document.getElementById(`vc${i}`);
-        if (fill)   fill.style.width   = pct + '%';
+        if (fill) fill.style.width = pct + '%';
         if (cnt_el) cnt_el.textContent = cnt + ` (${pct}%)`;
     });
 }
@@ -2978,19 +3112,19 @@ function stopVote() {
     const va = document.getElementById('voteArea');
     if (va) va.innerHTML = renderVoteArea();
     if (winner && maxVotes > 0) {
-        showNotification(t('streamer.vote_winner', {name: winner, votes: maxVotes, viewers: voterCount}), 'success');
+        showNotification(t('streamer.vote_winner', { name: winner, votes: maxVotes, viewers: voterCount }), 'success');
         try {
             localStorage.setItem('overlayState', JSON.stringify({
                 type: 'winner',
                 name: winner,
-                from: t('streamer.vote_from', {n: voterCount}) + (streamerState.voteTitle ? ` · ${streamerState.voteTitle}` : '')
+                from: t('streamer.vote_from', { n: voterCount }) + (streamerState.voteTitle ? ` · ${streamerState.voteTitle}` : '')
             }));
-        } catch(e) {}
+        } catch (e) { }
     } else {
         showNotification(t('streamer.vote_no_votes'), 'info');
         try {
             localStorage.setItem('overlayState', JSON.stringify({ type: 'idle' }));
-        } catch(e) {}
+        } catch (e) { }
     }
 }
 
@@ -2998,7 +3132,7 @@ function stopVote() {
 function setTimer() {
     const m = parseInt(document.getElementById('timerMinutes')?.value) || 0;
     const s = parseInt(document.getElementById('timerSeconds2')?.value) || 0;
-    streamerState.timerSeconds = m*60 + s;
+    streamerState.timerSeconds = m * 60 + s;
     streamerState.timerInitial = streamerState.timerSeconds;
     updateTimerDisplay();
 }
@@ -3035,26 +3169,26 @@ function resetTimer() {
 function addTime(secs) {
     streamerState.timerSeconds += secs;
     updateTimerDisplay();
-    showNotification(t('streamer.timer_added', {n: secs}), 'info');
+    showNotification(t('streamer.timer_added', { n: secs }), 'info');
 }
 function updateTimerDisplay() {
     const d = document.getElementById('timerDisplay'); if (!d) return;
     const t = streamerState.timerSeconds;
     d.textContent = formatTime(t);
-    d.className = `timer-display ${t<=30&&t>10?'warning':''} ${t<=10&&t>0?'danger':''}`;
+    d.className = `timer-display ${t <= 30 && t > 10 ? 'warning' : ''} ${t <= 10 && t > 0 ? 'danger' : ''}`;
     // Транслируем состояние таймера в overlay
     try {
         localStorage.setItem('overlayTimer', JSON.stringify({
-            seconds:  streamerState.timerSeconds,
-            initial:  streamerState.timerInitial,
-            running:  streamerState.timerRunning,
-            ts:       Date.now()
+            seconds: streamerState.timerSeconds,
+            initial: streamerState.timerInitial,
+            running: streamerState.timerRunning,
+            ts: Date.now()
         }));
-    } catch(e) {}
+    } catch (e) { }
 }
 function formatTime(s) {
-    const m = Math.floor(s/60), sec = s%60;
-    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    const m = Math.floor(s / 60), sec = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
 // Subscriber wheel
@@ -3064,12 +3198,12 @@ function renderSubList() {
     if (!streamerState.subWheelList.length) {
         return `
             <span style="font-size:11px;color:var(--text-muted)">${t('streamer.sub_empty')}</span>
-            ${activeCount > 0 ? `<div style="margin-top:6px;font-size:10px;color:var(--text-secondary)">${t('streamer.sub_active_count', {n: activeCount})}</div>` : ''}
+            ${activeCount > 0 ? `<div style="margin-top:6px;font-size:10px;color:var(--text-secondary)">${t('streamer.sub_active_count', { n: activeCount })}</div>` : ''}
         `;
     }
     return `
-        ${streamerState.subWheelList.map((n,i)=>`<span class="sub-tag" data-idx="${i}" onclick="removeSubFromWheel(+this.dataset.idx)" title="${t('common.delete')}">${esc(n)} ×</span>`).join('')}
-        ${activeCount > 0 ? `<div style="margin-top:8px;font-size:10px;color:var(--text-secondary)">${t('streamer.sub_active_count', {n: activeCount})}</div>` : ''}
+        ${streamerState.subWheelList.map((n, i) => `<span class="sub-tag" data-idx="${i}" onclick="removeSubFromWheel(+this.dataset.idx)" title="${t('common.delete')}">${esc(n)} ×</span>`).join('')}
+        ${activeCount > 0 ? `<div style="margin-top:8px;font-size:10px;color:var(--text-secondary)">${t('streamer.sub_active_count', { n: activeCount })}</div>` : ''}
     `;
 }
 function addSubToWheel() {
@@ -3078,7 +3212,7 @@ function addSubToWheel() {
     streamerState.subWheelList.push(name); inp.value = '';
     const sl = document.getElementById('subList'); if (sl) sl.innerHTML = renderSubList();
     switchTab('streamer');
-    showNotification(t('streamer.sub_added', {name}), 'info');
+    showNotification(t('streamer.sub_added', { name }), 'info');
 }
 function removeSubFromWheel(i) {
     streamerState.subWheelList.splice(i, 1);
@@ -3090,17 +3224,17 @@ function clearSubWheel() {
 }
 function spinSubWheel() {
     if (!streamerState.subWheelList.length) return showNotification(t('streamer.sub_no_viewers'), 'error');
-    const winner = streamerState.subWheelList[Math.floor(Math.random()*streamerState.subWheelList.length)];
+    const winner = streamerState.subWheelList[Math.floor(Math.random() * streamerState.subWheelList.length)];
     playWinSound();
     if (rouletteSettings.particleEffect) createParticles();
-    showNotification(t('streamer.sub_winner', {name: winner}), 'success');
+    showNotification(t('streamer.sub_winner', { name: winner }), 'success');
     const modal = document.getElementById('confirmModal');
     if (modal) {
         document.getElementById('modalTitle').textContent = t('streamer.sub_winner_title');
-        document.getElementById('modalMessage').innerHTML = `<div style="text-align:center;padding:20px"><div style="font-size:48px;margin-bottom:16px">🏆</div><div style="font-size:24px;font-weight:700;color:var(--accent-primary)">${esc(winner)}</div><div style="font-size:13px;color:var(--text-muted);margin-top:8px">${t('streamer.sub_from', {n: streamerState.subWheelList.length})}</div></div>`;
+        document.getElementById('modalMessage').innerHTML = `<div style="text-align:center;padding:20px"><div style="font-size:48px;margin-bottom:16px">🏆</div><div style="font-size:24px;font-weight:700;color:var(--accent-primary)">${esc(winner)}</div><div style="font-size:13px;color:var(--text-muted);margin-top:8px">${t('streamer.sub_from', { n: streamerState.subWheelList.length })}</div></div>`;
         document.getElementById('modalConfirm').textContent = t('common.close');
         document.getElementById('modalConfirm').onclick = closeModal;
-        const cb = modal.querySelector('.cancel-btn'); if (cb) cb.style.display='none';
+        const cb = modal.querySelector('.cancel-btn'); if (cb) cb.style.display = 'none';
         modal.classList.remove('hidden');
     }
 }
@@ -3108,7 +3242,7 @@ function spinSubWheel() {
 // Chat functions
 function renderChatMessages() {
     const isReal = streamerState.twitchStatus === 'connected';
-    const msgs   = streamerState.chatMessages;
+    const msgs = streamerState.chatMessages;
     if (!msgs.length) {
         return `<div style="color:var(--text-muted);font-size:11px;padding:8px;text-align:center">
             ${isReal ? t('streamer.chat_waiting') : t('streamer.chat_connect_first')}
@@ -3124,11 +3258,11 @@ function sendChatMsg() {
     if (!text) return;
 
     // Добавляем в локальный чат как превью
-    const colors = ['#818cf8','#34d399','#fbbf24','#f472b6','#67e8f9','#a3e635'];
+    const colors = ['#818cf8', '#34d399', '#fbbf24', '#f472b6', '#67e8f9', '#a3e635'];
     const msgObj = {
         user: streamerState.channelName || 'Стример',
         text,
-        color: colors[Math.floor(Math.random()*colors.length)],
+        color: colors[Math.floor(Math.random() * colors.length)],
         badge: 'broadcaster',
         timestamp: Date.now()
     };
@@ -3187,8 +3321,8 @@ function clearChat() {
     streamerState.chatStats.uniqueViewers = 0;
     streamerState.chatStats.mostActiveUser = '';
     saveStreamerData();
-    
-    const cb = document.getElementById('chatBox'); 
+
+    const cb = document.getElementById('chatBox');
     if (cb) cb.innerHTML = renderChatMessages();
     showNotification(t('streamer.chat_cleared'), 'info');
 }
@@ -3215,16 +3349,16 @@ function quickSpin() {
 function quickCopyResult() {
     const rc = document.getElementById('resultContent');
     if (!rc || !rc.textContent.trim()) return showNotification(t('notif.no_result_copy'), 'warning');
-    navigator.clipboard.writeText(rc.innerText).then(()=>showNotification(t('notif.copied'),'success')).catch(()=>showNotification(t('notif.copy_error'),'error'));
+    navigator.clipboard.writeText(rc.innerText).then(() => showNotification(t('notif.copied'), 'success')).catch(() => showNotification(t('notif.copy_error'), 'error'));
 }
 function quickShareResult() { exportResults() }
 function quickAddFromChat() {
     const game = Object.keys(games)[0];
     if (!game) return showNotification(t('games.no_game_selected'), 'warning');
-    const chatTasks = ['Play one-handed','No sound for 5 min','Swap controls','Blindfolded for 2 min'];
-    const task = chatTasks[Math.floor(Math.random()*chatTasks.length)];
+    const chatTasks = ['Play one-handed', 'No sound for 5 min', 'Swap controls', 'Blindfolded for 2 min'];
+    const task = chatTasks[Math.floor(Math.random() * chatTasks.length)];
     games[game].push(task); saveAll();
-    showNotification(t('notif.task_added_to', {task, game}), 'success');
+    showNotification(t('notif.task_added_to', { task, game }), 'success');
 }
 function quickResetSession() {
     showConfirmModal(t('streamer.reset_confirm'), t('streamer.reset_msg'), t('streamer.reset_btn2'), t('common.cancel'), () => {
@@ -3241,8 +3375,8 @@ function getOverlayUrl() {
 }
 function copyOverlayUrl() {
     navigator.clipboard.writeText(getOverlayUrl())
-        .then(()=>showNotification(t('streamer.url_copied'),'success'))
-        .catch(()=>showNotification(t('streamer.url_copy_error'),'error'));
+        .then(() => showNotification(t('streamer.url_copied'), 'success'))
+        .catch(() => showNotification(t('streamer.url_copy_error'), 'error'));
 }
 function openOverlayWindow() {
     const url = getOverlayUrl();
@@ -3267,19 +3401,19 @@ function showOverlaySettings() {
 // ── STATS TAB ─────────────────────────────────────────────
 function renderStatsTab() {
     const gTotal = Object.keys(games).length;
-    const tTotal = Object.values(games).reduce((s,t) => s + t.length, 0);
+    const tTotal = Object.values(games).reduce((s, t) => s + t.length, 0);
     const pTotal = players.length;
-    const totalSpins = players.reduce((s,p) => s + (p.stats?.gamesPlayed||0), 0);
-    const topPlayer = players.reduce((mx,p) => (p.stats?.gamesPlayed||0) > (mx?.stats?.gamesPlayed||0) ? p : mx, null);
-    const bigGame   = Object.entries(games).reduce((mx,[g,t]) => t.length > (mx?.[1]?.length||0) ? [g,t] : mx, null);
+    const totalSpins = players.reduce((s, p) => s + (p.stats?.gamesPlayed || 0), 0);
+    const topPlayer = players.reduce((mx, p) => (p.stats?.gamesPlayed || 0) > (mx?.stats?.gamesPlayed || 0) ? p : mx, null);
+    const bigGame = Object.entries(games).reduce((mx, [g, t]) => t.length > (mx?.[1]?.length || 0) ? [g, t] : mx, null);
 
     // Три совета дня — по одному из каждой категории
-    const tipCoop   = getDailyTip('coop');
-    const tipComp   = getDailyTip('comp');
+    const tipCoop = getDailyTip('coop');
+    const tipComp = getDailyTip('comp');
     const tipOnline = getDailyTip('online');
-    const tipFact   = getDailyTip('fact');
+    const tipFact = getDailyTip('fact');
     // Показываем 3 карточки: кооп, соревн., факт — ротируются каждый день
-    const dayIdx    = Math.floor(Date.now() / 86400000);
+    const dayIdx = Math.floor(Date.now() / 86400000);
     const featuredTips = [tipCoop, tipComp, dayIdx % 2 === 0 ? tipFact : tipOnline];
 
     return `<div class="stats-panel">
@@ -3296,14 +3430,14 @@ function renderStatsTab() {
             <h3>${t('stats.top_player_title')}</h3>
             <div class="player-highlight">
                 <span class="highlight-name">${esc(topPlayer.name)}</span> —
-                <span class="highlight-stats">${t('stats.top_spins', {n: topPlayer.stats?.gamesPlayed||0})}</span>
+                <span class="highlight-stats">${t('stats.top_spins', { n: topPlayer.stats?.gamesPlayed || 0 })}</span>
             </div>
         </div>` : ''}
         ${bigGame ? `<div class="top-player" style="border-color:var(--accent-success)">
             <h3>${t('stats.top_game_title')}</h3>
             <div class="player-highlight">
                 <span class="highlight-name">${esc(bigGame[0])}</span> —
-                <span class="highlight-stats">${t('stats.top_tasks', {n: bigGame[1].length})}</span>
+                <span class="highlight-stats">${t('stats.top_tasks', { n: bigGame[1].length })}</span>
             </div>
         </div>` : ''}
 
@@ -3338,33 +3472,33 @@ function renderStatsTab() {
         <div class="players-stats">
             <h3>${t('stats.players_stats')}</h3>
             ${pTotal === 0 ? `<p class="empty-text">${t('stats.no_data')}</p>` : players.map(p => {
-                const plays = p.stats?.gamesPlayed || 0;
-                const maxP  = Math.max(...players.map(x => x.stats?.gamesPlayed||0), 1);
-                const pct   = Math.min(Math.round((plays / maxP) * 100), 100);
-                const cd    = playerColors[p.color] || playerColors.indigo;
-                return `<div class="player-stats-row">
+        const plays = p.stats?.gamesPlayed || 0;
+        const maxP = Math.max(...players.map(x => x.stats?.gamesPlayed || 0), 1);
+        const pct = Math.min(Math.round((plays / maxP) * 100), 100);
+        const cd = playerColors[p.color] || playerColors.indigo;
+        return `<div class="player-stats-row">
                     <span class="player-stats-name" style="color:${esc(cd.name)}">${esc(p.name)}</span>
                     <div class="stats-bar"><div class="stats-fill" style="width:${pct}%;background:${esc(cd.gradient)}"></div></div>
-                    <span class="player-stats-count">${t('stats.n_games', {n: plays})}</span>
+                    <span class="player-stats-count">${t('stats.n_games', { n: plays })}</span>
                 </div>`;
-            }).join('')}
+    }).join('')}
         </div>
 
         <!-- Игры по заданиям -->
         <div class="players-stats">
             <h3>${t('stats.games_stats')}</h3>
             ${gTotal === 0 ? `<p class="empty-text">${t('stats.no_data')}</p>` : Object.entries(games)
-                .sort(([,a],[,b]) => b.length - a.length)
-                .map(([g,tasks], i) => {
-                    const maxT = Math.max(...Object.values(games).map(x => x.length), 1);
-                    const pct  = Math.round((tasks.length / maxT) * 100);
-                    const col  = COLOR_SCHEMES.default[i % COLOR_SCHEMES.default.length];
-                    return `<div class="player-stats-row">
+            .sort(([, a], [, b]) => b.length - a.length)
+            .map(([g, tasks], i) => {
+                const maxT = Math.max(...Object.values(games).map(x => x.length), 1);
+                const pct = Math.round((tasks.length / maxT) * 100);
+                const col = COLOR_SCHEMES.default[i % COLOR_SCHEMES.default.length];
+                return `<div class="player-stats-row">
                         <span class="player-stats-name">${esc(g)}</span>
                         <div class="stats-bar"><div class="stats-fill" style="width:${pct}%;background:${esc(col)}"></div></div>
-                        <span class="player-stats-count">${t('stats.n_tasks_g', {n: tasks.length})}</span>
+                        <span class="player-stats-count">${t('stats.n_tasks_g', { n: tasks.length })}</span>
                     </div>`;
-                }).join('')}
+            }).join('')}
         </div>
 
     </div>`;
@@ -3396,13 +3530,13 @@ function renderSettingsTab() {
     return `<div class="settings-panel">
         <div class="settings-header"><h2>${t('settings.title')}</h2><p>${t('settings.subtitle')}</p></div>
         <div class="settings-subtabs">
-            <button onclick="switchSettingsTab('speed')"    class="settings-subtab ${settingsSubTab==='speed'?'active':''}">${t('settings.tab_speed')}</button>
-            <button onclick="switchSettingsTab('sound')"    class="settings-subtab ${settingsSubTab==='sound'?'active':''}">${t('settings.tab_sound')}</button>
-            <button onclick="switchSettingsTab('wheel')"    class="settings-subtab ${settingsSubTab==='wheel'?'active':''}">${t('settings.tab_wheel')}</button>
-            <button onclick="switchSettingsTab('effects')"  class="settings-subtab ${settingsSubTab==='effects'?'active':''}">${t('settings.tab_effects')}</button>
-            <button onclick="switchSettingsTab('gamer')"    class="settings-subtab ${settingsSubTab==='gamer'?'active':''}">${t('settings.tab_gamer')}</button>
-            <button onclick="switchSettingsTab('streamer')" class="settings-subtab ${settingsSubTab==='streamer'?'active':''}">${t('settings.tab_streamer')}</button>
-            <button onclick="switchSettingsTab('theme')"    class="settings-subtab ${settingsSubTab==='theme'?'active':''}">${t('settings.tab_theme')}</button>
+            <button onclick="switchSettingsTab('speed')"    class="settings-subtab ${settingsSubTab === 'speed' ? 'active' : ''}">${t('settings.tab_speed')}</button>
+            <button onclick="switchSettingsTab('sound')"    class="settings-subtab ${settingsSubTab === 'sound' ? 'active' : ''}">${t('settings.tab_sound')}</button>
+            <button onclick="switchSettingsTab('wheel')"    class="settings-subtab ${settingsSubTab === 'wheel' ? 'active' : ''}">${t('settings.tab_wheel')}</button>
+            <button onclick="switchSettingsTab('effects')"  class="settings-subtab ${settingsSubTab === 'effects' ? 'active' : ''}">${t('settings.tab_effects')}</button>
+            <button onclick="switchSettingsTab('gamer')"    class="settings-subtab ${settingsSubTab === 'gamer' ? 'active' : ''}">${t('settings.tab_gamer')}</button>
+            <button onclick="switchSettingsTab('streamer')" class="settings-subtab ${settingsSubTab === 'streamer' ? 'active' : ''}">${t('settings.tab_streamer')}</button>
+            <button onclick="switchSettingsTab('theme')"    class="settings-subtab ${settingsSubTab === 'theme' ? 'active' : ''}">${t('settings.tab_theme')}</button>
         </div>
         <div id="settingsContent">${renderSettingsContent()}</div>
         <div class="settings-actions">
@@ -3421,19 +3555,19 @@ function switchSettingsTab(name) {
     document.querySelectorAll('.settings-subtab').forEach(t => t.classList.toggle('active', t.textContent.includes(getSettingsTabEmoji(name))));
 }
 function getSettingsTabEmoji(n) {
-    return {speed:'🎯',sound:'🔊',wheel:'🎡',effects:'✨',gamer:'🎮',streamer:'📡',theme:'🎨'}[n]||'';
+    return { speed: '🎯', sound: '🔊', wheel: '🎡', effects: '✨', gamer: '🎮', streamer: '📡', theme: '🎨' }[n] || '';
 }
 
 function renderSettingsContent() {
-    switch(settingsSubTab) {
-        case 'speed':    return renderSpeedSettings();
-        case 'sound':    return renderSoundSettings();
-        case 'wheel':    return renderWheelSettings();
-        case 'effects':  return renderEffectsSettings();
-        case 'gamer':    return renderGamerSettings();
+    switch (settingsSubTab) {
+        case 'speed': return renderSpeedSettings();
+        case 'sound': return renderSoundSettings();
+        case 'wheel': return renderWheelSettings();
+        case 'effects': return renderEffectsSettings();
+        case 'gamer': return renderGamerSettings();
         case 'streamer': return renderStreamerSettings();
-        case 'theme':    return renderThemeSettings();
-        default:         return renderSpeedSettings();
+        case 'theme': return renderThemeSettings();
+        default: return renderSpeedSettings();
     }
 }
 
@@ -3441,19 +3575,19 @@ function renderSpeedSettings() {
     return `<div class="panel-section">
         <h3 class="section-title"><span class="neon-text">${t('settings.speed_title')}</span></h3>
         <div class="settings-group">
-            ${rangeItem('spinDuration',t('settings.spin_duration'),rouletteSettings.spinDuration,2000,15000,500,'spinDuration',v=>v/1000+'s')}
-            ${rangeItem('minSpins',t('settings.min_spins'),rouletteSettings.minSpins,1,15,1,'minSpins')}
-            ${rangeItem('maxSpins',t('settings.max_spins'),rouletteSettings.maxSpins,5,30,1,'maxSpins')}
+            ${rangeItem('spinDuration', t('settings.spin_duration'), rouletteSettings.spinDuration, 2000, 15000, 500, 'spinDuration', v => v / 1000 + 's')}
+            ${rangeItem('minSpins', t('settings.min_spins'), rouletteSettings.minSpins, 1, 15, 1, 'minSpins')}
+            ${rangeItem('maxSpins', t('settings.max_spins'), rouletteSettings.maxSpins, 5, 30, 1, 'maxSpins')}
             <div class="setting-item">
                 <label>${t('settings.animation')}</label>
                 <select onchange="updateSetting('wheelAnimation',this.value)" style="flex:1;max-width:200px">
-                    <option value="ease"    ${rouletteSettings.wheelAnimation==='ease'?'selected':''}>${t('settings.anim_ease')}</option>
-                    <option value="bounce"  ${rouletteSettings.wheelAnimation==='bounce'?'selected':''}>${t('settings.anim_bounce')}</option>
-                    <option value="elastic" ${rouletteSettings.wheelAnimation==='elastic'?'selected':''}>${t('settings.anim_elastic')}</option>
-                    <option value="linear"  ${rouletteSettings.wheelAnimation==='linear'?'selected':''}>${t('settings.anim_linear')}</option>
+                    <option value="ease"    ${rouletteSettings.wheelAnimation === 'ease' ? 'selected' : ''}>${t('settings.anim_ease')}</option>
+                    <option value="bounce"  ${rouletteSettings.wheelAnimation === 'bounce' ? 'selected' : ''}>${t('settings.anim_bounce')}</option>
+                    <option value="elastic" ${rouletteSettings.wheelAnimation === 'elastic' ? 'selected' : ''}>${t('settings.anim_elastic')}</option>
+                    <option value="linear"  ${rouletteSettings.wheelAnimation === 'linear' ? 'selected' : ''}>${t('settings.anim_linear')}</option>
                 </select>
             </div>
-            ${rangeItem('announceDelay',t('settings.announce_delay'),rouletteSettings.announceDelay,0,3000,100,'announceDelay',v=>v+'ms')}
+            ${rangeItem('announceDelay', t('settings.announce_delay'), rouletteSettings.announceDelay, 0, 3000, 100, 'announceDelay', v => v + 'ms')}
         </div>
     </div>`;
 }
@@ -3462,16 +3596,16 @@ function renderSoundSettings() {
     return `<div class="panel-section">
         <h3 class="section-title"><span class="neon-text">${t('settings.sound_title')}</span></h3>
         <div class="settings-group">
-            ${toggleItem('soundEnabled',t('settings.sound_enable'),rouletteSettings.soundEnabled)}
-            ${rangeItem('soundVolume',t('settings.sound_volume'),Math.round(rouletteSettings.soundVolume*100),0,100,5,'soundVolume',v=>v+'%')}
-            ${toggleItem('tickSoundEnabled',t('settings.tick_sound'),rouletteSettings.tickSoundEnabled)}
-            ${toggleItem('winSoundEnabled',t('settings.win_sound'),rouletteSettings.winSoundEnabled)}
+            ${toggleItem('soundEnabled', t('settings.sound_enable'), rouletteSettings.soundEnabled)}
+            ${rangeItem('soundVolume', t('settings.sound_volume'), Math.round(rouletteSettings.soundVolume * 100), 0, 100, 5, 'soundVolume', v => v + '%')}
+            ${toggleItem('tickSoundEnabled', t('settings.tick_sound'), rouletteSettings.tickSoundEnabled)}
+            ${toggleItem('winSoundEnabled', t('settings.win_sound'), rouletteSettings.winSoundEnabled)}
             <div class="setting-item">
                 <label>${t('settings.spin_sound_type')}</label>
                 <select onchange="updateSetting('spinSoundType',this.value)" style="flex:1;max-width:200px">
-                    <option value="whoosh" ${rouletteSettings.spinSoundType==='whoosh'?'selected':''}>${t('settings.sound_whoosh')}</option>
-                    <option value="drum"   ${rouletteSettings.spinSoundType==='drum'?'selected':''}>${t('settings.sound_drum')}</option>
-                    <option value="casino" ${rouletteSettings.spinSoundType==='casino'?'selected':''}>${t('settings.sound_casino')}</option>
+                    <option value="whoosh" ${rouletteSettings.spinSoundType === 'whoosh' ? 'selected' : ''}>${t('settings.sound_whoosh')}</option>
+                    <option value="drum"   ${rouletteSettings.spinSoundType === 'drum' ? 'selected' : ''}>${t('settings.sound_drum')}</option>
+                    <option value="casino" ${rouletteSettings.spinSoundType === 'casino' ? 'selected' : ''}>${t('settings.sound_casino')}</option>
                 </select>
             </div>
         </div>
@@ -3483,39 +3617,39 @@ function renderWheelSettings() {
     return `<div class="panel-section">
         <h3 class="section-title"><span class="neon-text">${t('settings.wheel_title')}</span></h3>
         <div class="settings-group">
-            ${rangeItem('wheelSize',t('settings.wheel_size'),rouletteSettings.wheelSize,280,620,20,'wheelSize',v=>v+'px')}
-            ${rangeItem('fontSize',t('settings.font_size'),rouletteSettings.fontSize,8,18,1,'fontSize',v=>v+'px')}
-            ${rangeItem('maxSegments',t('settings.max_segments'),rouletteSettings.maxSegments,4,32,2,'maxSegments')}
-            ${toggleItem('groupSegments',t('settings.group_segs'),rouletteSettings.groupSegments)}
+            ${rangeItem('wheelSize', t('settings.wheel_size'), rouletteSettings.wheelSize, 280, 620, 20, 'wheelSize', v => v + 'px')}
+            ${rangeItem('fontSize', t('settings.font_size'), rouletteSettings.fontSize, 8, 18, 1, 'fontSize', v => v + 'px')}
+            ${rangeItem('maxSegments', t('settings.max_segments'), rouletteSettings.maxSegments, 4, 32, 2, 'maxSegments')}
+            ${toggleItem('groupSegments', t('settings.group_segs'), rouletteSettings.groupSegments)}
             <div class="setting-item">
                 <label>${t('settings.center_icon')}</label>
-                <input type="text" id="centerIconInput" value="${rouletteSettings.centerIcon||'🎲'}" maxlength="2" oninput="updateSetting('centerIcon',this.value);renderWheel()" style="max-width:80px;text-align:center;font-size:20px">
+                <input type="text" id="centerIconInput" value="${rouletteSettings.centerIcon || '🎲'}" maxlength="2" oninput="updateSetting('centerIcon',this.value);renderWheel()" style="max-width:80px;text-align:center;font-size:20px">
             </div>
             <div class="setting-item">
                 <label>${t('settings.border_style')}</label>
                 <select onchange="updateSetting('borderStyle',this.value);renderWheel()" style="flex:1;max-width:200px">
-                    <option value="glow"   ${rouletteSettings.borderStyle==='glow'?'selected':''}>${t('settings.border_glow')}</option>
-                    <option value="solid"  ${rouletteSettings.borderStyle==='solid'?'selected':''}>${t('settings.border_solid')}</option>
-                    <option value="dashed" ${rouletteSettings.borderStyle==='dashed'?'selected':''}>${t('settings.border_dashed')}</option>
-                    <option value="neon"   ${rouletteSettings.borderStyle==='neon'?'selected':''}>${t('settings.border_neon')}</option>
+                    <option value="glow"   ${rouletteSettings.borderStyle === 'glow' ? 'selected' : ''}>${t('settings.border_glow')}</option>
+                    <option value="solid"  ${rouletteSettings.borderStyle === 'solid' ? 'selected' : ''}>${t('settings.border_solid')}</option>
+                    <option value="dashed" ${rouletteSettings.borderStyle === 'dashed' ? 'selected' : ''}>${t('settings.border_dashed')}</option>
+                    <option value="neon"   ${rouletteSettings.borderStyle === 'neon' ? 'selected' : ''}>${t('settings.border_neon')}</option>
                 </select>
             </div>
             <div class="setting-item">
                 <label>${t('settings.pointer_style')}</label>
                 <div class="pointer-styles">
-                    ${['arrow','triangle','diamond','star','pin'].map(s=>`<button onclick="updateSetting('pointerStyle','${s}');document.getElementById('wheelPointer').textContent=getPointerSymbol()" class="pointer-style-btn ${rouletteSettings.pointerStyle===s?'active':''}"><span class="pointer-style-symbol">${{arrow:'▼',triangle:'▽',diamond:'◆',star:'★',pin:'📍'}[s]}</span><span class="pointer-style-label">${s}</span></button>`).join('')}
+                    ${['arrow', 'triangle', 'diamond', 'star', 'pin'].map(s => `<button onclick="updateSetting('pointerStyle','${s}');document.getElementById('wheelPointer').textContent=getPointerSymbol()" class="pointer-style-btn ${rouletteSettings.pointerStyle === s ? 'active' : ''}"><span class="pointer-style-symbol">${{ arrow: '▼', triangle: '▽', diamond: '◆', star: '★', pin: '📍' }[s]}</span><span class="pointer-style-label">${s}</span></button>`).join('')}
                 </div>
             </div>
         </div>
         <h3 class="section-title" style="margin-top:16px"><span class="neon-text">${t('settings.color_schemes')}</span></h3>
         <div class="color-schemes">
-            ${schemes.map(k=>{
-                const dots = (COLOR_SCHEMES[k]||[]).slice(0,5);
-                return `<div class="color-scheme-card ${rouletteSettings.colorScheme===k?'active':''}" onclick="updateSetting('colorScheme','${k}');updateWheelSegments();renderWheel();document.querySelectorAll('.color-scheme-card').forEach(c=>c.classList.remove('active'));this.classList.add('active')">
-                    <div class="color-scheme-dots">${dots.map(c=>`<div class="color-scheme-dot" style="background:${c}"></div>`).join('')}</div>
+            ${schemes.map(k => {
+        const dots = (COLOR_SCHEMES[k] || []).slice(0, 5);
+        return `<div class="color-scheme-card ${rouletteSettings.colorScheme === k ? 'active' : ''}" onclick="updateSetting('colorScheme','${k}');updateWheelSegments();renderWheel();document.querySelectorAll('.color-scheme-card').forEach(c=>c.classList.remove('active'));this.classList.add('active')">
+                    <div class="color-scheme-dots">${dots.map(c => `<div class="color-scheme-dot" style="background:${c}"></div>`).join('')}</div>
                     <div class="color-scheme-name">${k}</div>
                 </div>`;
-            }).join('')}
+    }).join('')}
         </div>
     </div>`;
 }
@@ -3524,51 +3658,51 @@ function renderEffectsSettings() {
     return `<div class="panel-section">
         <h3 class="section-title"><span class="neon-text">${t('settings.effects_title')}</span></h3>
         <div class="settings-group">
-            ${toggleItem('visualEffects',t('settings.visual_effects'),rouletteSettings.visualEffects)}
-            ${toggleItem('highlightWinner',t('settings.highlight_win'),rouletteSettings.highlightWinner)}
-            ${toggleItem('shakeEffect',t('settings.shake_effect'),rouletteSettings.shakeEffect)}
-            ${toggleItem('glowEffect',t('settings.glow_effect'),rouletteSettings.glowEffect)}
-            ${toggleItem('particleEffect',t('settings.particle_effect'),rouletteSettings.particleEffect)}
-            ${rangeItem('particleCount',t('settings.particle_count'),rouletteSettings.particleCount,10,80,5,'particleCount')}
+            ${toggleItem('visualEffects', t('settings.visual_effects'), rouletteSettings.visualEffects)}
+            ${toggleItem('highlightWinner', t('settings.highlight_win'), rouletteSettings.highlightWinner)}
+            ${toggleItem('shakeEffect', t('settings.shake_effect'), rouletteSettings.shakeEffect)}
+            ${toggleItem('glowEffect', t('settings.glow_effect'), rouletteSettings.glowEffect)}
+            ${toggleItem('particleEffect', t('settings.particle_effect'), rouletteSettings.particleEffect)}
+            ${rangeItem('particleCount', t('settings.particle_count'), rouletteSettings.particleCount, 10, 80, 5, 'particleCount')}
             <div class="setting-item">
                 <label>${t('settings.particle_style')}</label>
                 <select onchange="updateSetting('particleStyle',this.value)" style="flex:1;max-width:200px">
-                    <option value="circle"   ${rouletteSettings.particleStyle==='circle'?'selected':''}>${t('settings.particle_circle')}</option>
-                    <option value="star"     ${rouletteSettings.particleStyle==='star'?'selected':''}>${t('settings.particle_star')}</option>
-                    <option value="confetti" ${rouletteSettings.particleStyle==='confetti'?'selected':''}>${t('settings.particle_confetti')}</option>
+                    <option value="circle"   ${rouletteSettings.particleStyle === 'circle' ? 'selected' : ''}>${t('settings.particle_circle')}</option>
+                    <option value="star"     ${rouletteSettings.particleStyle === 'star' ? 'selected' : ''}>${t('settings.particle_star')}</option>
+                    <option value="confetti" ${rouletteSettings.particleStyle === 'confetti' ? 'selected' : ''}>${t('settings.particle_confetti')}</option>
                 </select>
             </div>
             <div class="setting-item">
                 <label>${t('settings.result_display')}</label>
                 <select onchange="updateSetting('resultDisplay',this.value)" style="flex:1;max-width:200px">
-                    <option value="both"  ${rouletteSettings.resultDisplay==='both'?'selected':''}>${t('settings.result_both')}</option>
-                    <option value="popup" ${rouletteSettings.resultDisplay==='popup'?'selected':''}>${t('settings.result_popup')}</option>
-                    <option value="card"  ${rouletteSettings.resultDisplay==='card'?'selected':''}>${t('settings.result_card')}</option>
+                    <option value="both"  ${rouletteSettings.resultDisplay === 'both' ? 'selected' : ''}>${t('settings.result_both')}</option>
+                    <option value="popup" ${rouletteSettings.resultDisplay === 'popup' ? 'selected' : ''}>${t('settings.result_popup')}</option>
+                    <option value="card"  ${rouletteSettings.resultDisplay === 'card' ? 'selected' : ''}>${t('settings.result_card')}</option>
                 </select>
             </div>
-            ${toggleItem('autoClosePopup',t('settings.auto_close'),rouletteSettings.autoClosePopup)}
-            ${rangeItem('popupDuration',t('settings.popup_duration'),rouletteSettings.popupDuration,2000,15000,500,'popupDuration',v=>v/1000+'s')}
+            ${toggleItem('autoClosePopup', t('settings.auto_close'), rouletteSettings.autoClosePopup)}
+            ${rangeItem('popupDuration', t('settings.popup_duration'), rouletteSettings.popupDuration, 2000, 15000, 500, 'popupDuration', v => v / 1000 + 's')}
         </div>
     </div>`;
 }
 
 function renderGamerSettings() {
-    const spentCount = Object.values(spentTasks).reduce((s,arr) => s + arr.length, 0);
+    const spentCount = Object.values(spentTasks).reduce((s, arr) => s + arr.length, 0);
     return `<div class="panel-section">
         <h3 class="section-title"><span class="neon-text">${t('settings.gamer_title')}</span><span class="section-badge">PRO</span></h3>
         <div class="settings-group">
-            ${toggleItem('bonusRoundEnabled',t('settings.bonus_round'),rouletteSettings.bonusRoundEnabled)}
-            ${rangeItem('bonusRoundChance',t('settings.bonus_chance'),rouletteSettings.bonusRoundChance,1,50,1,'bonusRoundChance',v=>v+'%')}
-            ${toggleItem('weightedSegments',t('settings.weighted_segs'),rouletteSettings.weightedSegments)}
-            ${toggleItem('removeAfterSpin',t('settings.remove_after'),rouletteSettings.removeAfterSpin)}
+            ${toggleItem('bonusRoundEnabled', t('settings.bonus_round'), rouletteSettings.bonusRoundEnabled)}
+            ${rangeItem('bonusRoundChance', t('settings.bonus_chance'), rouletteSettings.bonusRoundChance, 1, 50, 1, 'bonusRoundChance', v => v + '%')}
+            ${toggleItem('weightedSegments', t('settings.weighted_segs'), rouletteSettings.weightedSegments)}
+            ${toggleItem('removeAfterSpin', t('settings.remove_after'), rouletteSettings.removeAfterSpin)}
             <div class="setting-item" style="flex-direction:column;align-items:flex-start;gap:6px">
                 <label style="font-size:11px;color:var(--text-muted)">${t('settings.remove_hint')}</label>
-                ${spentCount > 0 ? `<button onclick="confirmResetSpentTasks()" class="cyber-btn danger-btn" style="padding:5px 14px;font-size:12px">${t('settings.spent_reset', {n: spentCount})}</button>` : `<span style="font-size:11px;color:var(--text-muted)">${t('settings.no_spent')}</span>`}
+                ${spentCount > 0 ? `<button onclick="confirmResetSpentTasks()" class="cyber-btn danger-btn" style="padding:5px 14px;font-size:12px">${t('settings.spent_reset', { n: spentCount })}</button>` : `<span style="font-size:11px;color:var(--text-muted)">${t('settings.no_spent')}</span>`}
             </div>
-            ${toggleItem('blacklistEnabled',t('settings.blacklist'),rouletteSettings.blacklistEnabled)}
+            ${toggleItem('blacklistEnabled', t('settings.blacklist'), rouletteSettings.blacklistEnabled)}
             <div class="setting-item">
                 <label style="min-width:140px">${t('settings.blacklist')} (lines)</label>
-                <textarea id="blacklistInput" placeholder="${t('settings.blacklist_input')}" rows="4" style="flex:1">${(rouletteSettings.blacklistTasks||[]).join('\n')}</textarea>
+                <textarea id="blacklistInput" placeholder="${t('settings.blacklist_input')}" rows="4" style="flex:1">${(rouletteSettings.blacklistTasks || []).join('\n')}</textarea>
             </div>
             <div class="setting-item">
                 <label></label>
@@ -3582,16 +3716,16 @@ function renderStreamerSettings() {
     return `<div class="panel-section">
         <h3 class="section-title"><span class="neon-text">${t('settings.streamer_title')}</span><span class="section-badge">LIVE</span></h3>
         <div class="settings-group">
-            ${toggleItem('showPlayerOnWheel',t('settings.player_on_wheel'),rouletteSettings.showPlayerOnWheel)}
-            ${toggleItem('chromaKey',t('settings.chroma_key'),rouletteSettings.chromaKey)}
+            ${toggleItem('showPlayerOnWheel', t('settings.player_on_wheel'), rouletteSettings.showPlayerOnWheel)}
+            ${toggleItem('chromaKey', t('settings.chroma_key'), rouletteSettings.chromaKey)}
             <div class="setting-item">
                 <label>${t('settings.overlay_pos')}</label>
                 <select onchange="updateSetting('overlayPosition',this.value)" style="flex:1;max-width:220px">
-                    <option value="top-left"     ${rouletteSettings.overlayPosition==='top-left'?'selected':''}>${t('settings.pos_top_left')}</option>
-                    <option value="top-right"    ${rouletteSettings.overlayPosition==='top-right'?'selected':''}>${t('settings.pos_top_right')}</option>
-                    <option value="bottom-left"  ${rouletteSettings.overlayPosition==='bottom-left'?'selected':''}>${t('settings.pos_bot_left')}</option>
-                    <option value="bottom-right" ${rouletteSettings.overlayPosition==='bottom-right'?'selected':''}>${t('settings.pos_bot_right')}</option>
-                    <option value="center"       ${rouletteSettings.overlayPosition==='center'?'selected':''}>${t('settings.pos_center')}</option>
+                    <option value="top-left"     ${rouletteSettings.overlayPosition === 'top-left' ? 'selected' : ''}>${t('settings.pos_top_left')}</option>
+                    <option value="top-right"    ${rouletteSettings.overlayPosition === 'top-right' ? 'selected' : ''}>${t('settings.pos_top_right')}</option>
+                    <option value="bottom-left"  ${rouletteSettings.overlayPosition === 'bottom-left' ? 'selected' : ''}>${t('settings.pos_bot_left')}</option>
+                    <option value="bottom-right" ${rouletteSettings.overlayPosition === 'bottom-right' ? 'selected' : ''}>${t('settings.pos_bot_right')}</option>
+                    <option value="center"       ${rouletteSettings.overlayPosition === 'center' ? 'selected' : ''}>${t('settings.pos_center')}</option>
                 </select>
             </div>
         </div>
@@ -3600,16 +3734,16 @@ function renderStreamerSettings() {
 
 function renderThemeSettings() {
     const themes = [
-        { id:'dark',     icon:'🌑', nameKey:'settings.theme_dark'     },
-        { id:'neon',     icon:'💜', nameKey:'settings.theme_neon'     },
-        { id:'cyber',    icon:'🔵', nameKey:'settings.theme_cyber'    },
-        { id:'streamer', icon:'📡', nameKey:'settings.theme_streamer' },
-        { id:'pastel',   icon:'🌸', nameKey:'settings.theme_pastel'   },
+        { id: 'dark', icon: '🌑', nameKey: 'settings.theme_dark' },
+        { id: 'neon', icon: '💜', nameKey: 'settings.theme_neon' },
+        { id: 'cyber', icon: '🔵', nameKey: 'settings.theme_cyber' },
+        { id: 'streamer', icon: '📡', nameKey: 'settings.theme_streamer' },
+        { id: 'pastel', icon: '🌸', nameKey: 'settings.theme_pastel' },
     ];
     return `<div class="panel-section">
         <h3 class="section-title"><span class="neon-text">${t('settings.theme_title')}</span></h3>
         <div class="color-schemes">
-            ${themes.map(th=>`<div class="color-scheme-card ${currentTheme===th.id?'active':''}" onclick="applyTheme('${th.id}');document.querySelectorAll('.color-scheme-card').forEach(c=>c.classList.remove('active'));this.classList.add('active')">
+            ${themes.map(th => `<div class="color-scheme-card ${currentTheme === th.id ? 'active' : ''}" onclick="applyTheme('${th.id}');document.querySelectorAll('.color-scheme-card').forEach(c=>c.classList.remove('active'));this.classList.add('active')">
                 <div style="font-size:28px;margin-bottom:6px">${th.icon}</div>
                 <div class="color-scheme-name">${t(th.nameKey)}</div>
             </div>`).join('')}
@@ -3632,7 +3766,7 @@ function rangeItem(key, label, val, min, max, step, id, fmt) {
 function toggleItem(key, label, val) {
     return `<div class="setting-item toggle-item">
         <label>${label}</label>
-        <label class="toggle-switch"><input type="checkbox" ${val?'checked':''} onchange="updateSetting('${key}',this.checked)"><span class="toggle-slider"></span></label>
+        <label class="toggle-switch"><input type="checkbox" ${val ? 'checked' : ''} onchange="updateSetting('${key}',this.checked)"><span class="toggle-slider"></span></label>
     </div>`;
 }
 
@@ -3645,48 +3779,48 @@ function updateSetting(key, value) {
     rouletteSettings[key] = value; saveSettings();
     const el = document.getElementById(key);
     if (el && el.type === 'range') {
-        const rv = document.getElementById('rv_'+key) || el.parentElement?.querySelector('.range-value');
+        const rv = document.getElementById('rv_' + key) || el.parentElement?.querySelector('.range-value');
         if (rv) {
-            if (key==='spinDuration'||key==='popupDuration') rv.textContent=value/1000+'с';
-            else if (key==='soundVolume') rv.textContent=Math.round(value*100)+'%';
-            else if (key==='wheelSize'||key==='fontSize') rv.textContent=value+'px';
-            else if (key==='bonusRoundChance') rv.textContent=value+'%';
-            else if (key==='announceDelay') rv.textContent=value+'мс';
-            else rv.textContent=value;
+            if (key === 'spinDuration' || key === 'popupDuration') rv.textContent = value / 1000 + 'с';
+            else if (key === 'soundVolume') rv.textContent = Math.round(value * 100) + '%';
+            else if (key === 'wheelSize' || key === 'fontSize') rv.textContent = value + 'px';
+            else if (key === 'bonusRoundChance') rv.textContent = value + '%';
+            else if (key === 'announceDelay') rv.textContent = value + 'мс';
+            else rv.textContent = value;
         }
     }
-    if (key==='wheelSize') {
+    if (key === 'wheelSize') {
         const cv = document.getElementById('rouletteWheel');
-        if (cv) { cv.width=Number(value); cv.height=Number(value); renderWheel() }
+        if (cv) { cv.width = Number(value); cv.height = Number(value); renderWheel() }
     }
 }
 function saveBlacklist() {
     const inp = document.getElementById('blacklistInput');
     if (!inp) return;
-    rouletteSettings.blacklistTasks = inp.value.split('\n').map(tk=>tk.trim()).filter(tk=>tk);
-    saveSettings(); showNotification(t('settings.blacklist_saved', {n: rouletteSettings.blacklistTasks.length}), 'success');
+    rouletteSettings.blacklistTasks = inp.value.split('\n').map(tk => tk.trim()).filter(tk => tk);
+    saveSettings(); showNotification(t('settings.blacklist_saved', { n: rouletteSettings.blacklistTasks.length }), 'success');
 }
 function applySettings() { saveSettings(); updateWheelSegments(); renderWheel(); showNotification(t('settings.applied'), 'success') }
 function resetSettings() {
     showConfirmModal(t('settings.reset_confirm'), t('settings.reset_msg'), t('common.reset'), t('common.cancel'), () => {
-        rouletteSettings = { spinDuration:5000,minSpins:5,maxSpins:10,soundEnabled:true,soundVolume:0.5,tickSoundEnabled:true,winSoundEnabled:true,spinSoundType:'whoosh',visualEffects:true,highlightWinner:true,shakeEffect:true,glowEffect:true,particleEffect:true,particleCount:30,particleStyle:'circle',wheelSize:420,fontSize:12,groupSegments:true,maxSegments:14,colorScheme:'default',borderStyle:'glow',centerIcon:'🎲',pointerStyle:'arrow',wheelAnimation:'ease',resultDisplay:'both',autoClosePopup:true,popupDuration:6000,showPlayerOnWheel:false,announceDelay:0,overlayPosition:'top-left',chromaKey:false,bonusRoundEnabled:false,bonusRoundChance:10,weightedSegments:false,blacklistEnabled:false,blacklistTasks:[],removeAfterSpin:false };
+        rouletteSettings = { spinDuration: 5000, minSpins: 5, maxSpins: 10, soundEnabled: true, soundVolume: 0.5, tickSoundEnabled: true, winSoundEnabled: true, spinSoundType: 'whoosh', visualEffects: true, highlightWinner: true, shakeEffect: true, glowEffect: true, particleEffect: true, particleCount: 30, particleStyle: 'circle', wheelSize: 420, fontSize: 12, groupSegments: true, maxSegments: 14, colorScheme: 'default', borderStyle: 'glow', centerIcon: '🎲', pointerStyle: 'arrow', wheelAnimation: 'ease', resultDisplay: 'both', autoClosePopup: true, popupDuration: 6000, showPlayerOnWheel: false, announceDelay: 0, overlayPosition: 'top-left', chromaKey: false, bonusRoundEnabled: false, bonusRoundChance: 10, weightedSegments: false, blacklistEnabled: false, blacklistTasks: [], removeAfterSpin: false };
         saveSettings(); switchTab('settings'); showNotification(t('settings.reset_done'), 'success');
     });
 }
 function exportSettings() {
-    const blob = new Blob([JSON.stringify(rouletteSettings,null,2)],{type:'application/json'});
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='roulette-settings.json'; a.click();
+    const blob = new Blob([JSON.stringify(rouletteSettings, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'roulette-settings.json'; a.click();
     showNotification(t('settings.exported'), 'success');
 }
 function importSettings() {
-    const inp = document.createElement('input'); inp.type='file'; inp.accept='.json';
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
     inp.onchange = e => {
         const f = e.target.files[0]; if (!f) return;
         const r = new FileReader();
         r.onload = ev => {
             try {
                 const d = JSON.parse(ev.target.result);
-                rouletteSettings = {...rouletteSettings, ...d};
+                rouletteSettings = { ...rouletteSettings, ...d };
                 saveSettings(); switchTab('settings');
                 showNotification(t('settings.imported'), 'success');
             } catch { showNotification(t('settings.import_error'), 'error') }
@@ -3697,7 +3831,7 @@ function importSettings() {
 }
 
 // ── SOUND ENGINE ──────────────────────────────────────────
-function initAudio() { if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)() } catch(e){} } }
+function initAudio() { if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)() } catch (e) { } } }
 
 function playSpinSound() {
     if (!rouletteSettings.soundEnabled) return;
@@ -3705,89 +3839,89 @@ function playSpinSound() {
         initAudio(); if (!audioCtx) return;
         const type = rouletteSettings.spinSoundType || 'whoosh';
         if (type === 'casino') { playCasinoSpinSound(); return }
-        if (type === 'drum')   { playDrumSpinSound(); return }
+        if (type === 'drum') { playDrumSpinSound(); return }
         // whoosh
         const osc = audioCtx.createOscillator(), gain = audioCtx.createGain(), filter = audioCtx.createBiquadFilter();
         osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
         osc.type = 'sawtooth'; filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(2200, audioCtx.currentTime); filter.frequency.linearRampToValueAtTime(400, audioCtx.currentTime+2.5);
-        osc.frequency.setValueAtTime(500, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime+2.5);
-        gain.gain.setValueAtTime(0.06*rouletteSettings.soundVolume, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime+2.5);
-        osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+2.5);
-    } catch(e){}
+        filter.frequency.setValueAtTime(2200, audioCtx.currentTime); filter.frequency.linearRampToValueAtTime(400, audioCtx.currentTime + 2.5);
+        osc.frequency.setValueAtTime(500, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 2.5);
+        gain.gain.setValueAtTime(0.06 * rouletteSettings.soundVolume, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 2.5);
+        osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 2.5);
+    } catch (e) { }
 }
 function playCasinoSpinSound() {
     try {
         initAudio(); if (!audioCtx) return;
-        for (let i=0;i<3;i++) {
-            setTimeout(()=>{
-                const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-                o.connect(g);g.connect(audioCtx.destination);
-                o.type='triangle'; o.frequency.setValueAtTime(300+i*100,audioCtx.currentTime);
-                g.gain.setValueAtTime(0.07*rouletteSettings.soundVolume,audioCtx.currentTime); g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.3);
-                o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime+0.3);
-            },i*80);
+        for (let i = 0; i < 3; i++) {
+            setTimeout(() => {
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination);
+                o.type = 'triangle'; o.frequency.setValueAtTime(300 + i * 100, audioCtx.currentTime);
+                g.gain.setValueAtTime(0.07 * rouletteSettings.soundVolume, audioCtx.currentTime); g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + 0.3);
+            }, i * 80);
         }
-    } catch(e){}
+    } catch (e) { }
 }
 function playDrumSpinSound() {
     try {
         initAudio(); if (!audioCtx) return;
-        const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.3,audioCtx.sampleRate);
-        const d=buf.getChannelData(0);
-        for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(audioCtx.sampleRate*0.05));
-        const src=audioCtx.createBufferSource(),g=audioCtx.createGain();
-        src.buffer=buf; src.connect(g); g.connect(audioCtx.destination);
-        g.gain.setValueAtTime(0.3*rouletteSettings.soundVolume,audioCtx.currentTime);
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.3, audioCtx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.05));
+        const src = audioCtx.createBufferSource(), g = audioCtx.createGain();
+        src.buffer = buf; src.connect(g); g.connect(audioCtx.destination);
+        g.gain.setValueAtTime(0.3 * rouletteSettings.soundVolume, audioCtx.currentTime);
         src.start(audioCtx.currentTime);
-    } catch(e){}
+    } catch (e) { }
 }
 function playTickSound() {
     if (!rouletteSettings.soundEnabled || !rouletteSettings.tickSoundEnabled) return;
     try {
         initAudio(); if (!audioCtx) return;
-        const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
         o.connect(g); g.connect(audioCtx.destination);
-        o.type='sine'; o.frequency.setValueAtTime(900,audioCtx.currentTime); o.frequency.linearRampToValueAtTime(250,audioCtx.currentTime+0.07);
-        g.gain.setValueAtTime(0.07*rouletteSettings.soundVolume,audioCtx.currentTime); g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.1);
-        o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime+0.1);
-    } catch(e){}
+        o.type = 'sine'; o.frequency.setValueAtTime(900, audioCtx.currentTime); o.frequency.linearRampToValueAtTime(250, audioCtx.currentTime + 0.07);
+        g.gain.setValueAtTime(0.07 * rouletteSettings.soundVolume, audioCtx.currentTime); g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+        o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + 0.1);
+    } catch (e) { }
 }
 function playWinSound() {
     if (!rouletteSettings.soundEnabled || !rouletteSettings.winSoundEnabled) return;
     try {
         initAudio(); if (!audioCtx) return;
-        const notes=[{f:523,d:0.15,t:0},{f:659,d:0.15,t:0.15},{f:784,d:0.15,t:0.3},{f:1047,d:0.5,t:0.45}];
-        notes.forEach(({f,d,t})=>{
-            const o=audioCtx.createOscillator(),g=audioCtx.createGain(),fl=audioCtx.createBiquadFilter();
+        const notes = [{ f: 523, d: 0.15, t: 0 }, { f: 659, d: 0.15, t: 0.15 }, { f: 784, d: 0.15, t: 0.3 }, { f: 1047, d: 0.5, t: 0.45 }];
+        notes.forEach(({ f, d, t }) => {
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain(), fl = audioCtx.createBiquadFilter();
             o.connect(fl); fl.connect(g); g.connect(audioCtx.destination);
-            fl.type='lowpass'; fl.frequency.setValueAtTime(2000,audioCtx.currentTime+t);
-            o.type='triangle'; o.frequency.setValueAtTime(f,audioCtx.currentTime+t);
-            g.gain.setValueAtTime(0,audioCtx.currentTime+t); g.gain.linearRampToValueAtTime(0.12*rouletteSettings.soundVolume,audioCtx.currentTime+t+0.02); g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+t+d);
-            o.start(audioCtx.currentTime+t); o.stop(audioCtx.currentTime+t+d+0.1);
+            fl.type = 'lowpass'; fl.frequency.setValueAtTime(2000, audioCtx.currentTime + t);
+            o.type = 'triangle'; o.frequency.setValueAtTime(f, audioCtx.currentTime + t);
+            g.gain.setValueAtTime(0, audioCtx.currentTime + t); g.gain.linearRampToValueAtTime(0.12 * rouletteSettings.soundVolume, audioCtx.currentTime + t + 0.02); g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + t + d);
+            o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + d + 0.1);
         });
-    } catch(e){}
+    } catch (e) { }
 }
 
 // ── NOTIFICATIONS ─────────────────────────────────────────
-function showNotification(msg, type='info') {
+function showNotification(msg, type = 'info') {
     const c = document.getElementById('notifications'); if (!c) return;
     const n = document.createElement('div');
     n.className = `notification notification-${type}`; n.textContent = msg;
     c.appendChild(n);
-    setTimeout(()=>{ n.style.animation='slideOut 0.3s ease forwards'; setTimeout(()=>n.remove(),300) }, 3200);
+    setTimeout(() => { n.style.animation = 'slideOut 0.3s ease forwards'; setTimeout(() => n.remove(), 300) }, 3200);
 }
 
 // ── EXPORT / IMPORT ───────────────────────────────────────
 function exportData() {
-    const data = { players, games, rouletteMode, rouletteSettings, currentTheme, exportDate: new Date().toISOString(), version:'3.0' };
+    const data = { players, games, rouletteMode, rouletteSettings, currentTheme, exportDate: new Date().toISOString(), version: '3.0' };
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     a.download = `challenge-hub-v3-${Date.now()}.json`; a.click();
     showNotification('📤 ' + t('common.export'), 'success');
 }
 function importData() {
-    const inp = document.createElement('input'); inp.type='file'; inp.accept='.json';
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
     inp.onchange = e => {
         const f = e.target.files[0]; if (!f) return;
         const r = new FileReader();
@@ -3806,10 +3940,10 @@ function importData() {
                 players = d.players
                     .filter(p => p && typeof p.name === 'string' && p.name.trim())
                     .map(p => ({
-                        name:  String(p.name).trim().slice(0, 100),
+                        name: String(p.name).trim().slice(0, 100),
                         color: safeColors.includes(p.color) ? p.color : 'indigo',
                         stats: {
-                            gamesPlayed:    Number(p.stats?.gamesPlayed)    || 0,
+                            gamesPlayed: Number(p.stats?.gamesPlayed) || 0,
                             tasksCompleted: Number(p.stats?.tasksCompleted) || 0,
                         }
                     }));
@@ -3847,17 +3981,17 @@ function importData() {
 function exportResults() {
     if (!gameFirstState.selectedGame) { showNotification(t('notif.results_none'), 'warning'); return }
     let text = `🎮 RANDOM CHALLENGE HUB v3.0\n${'─'.repeat(40)}\n${t('roulette.selected_game')}: ${gameFirstState.selectedGame}\n${new Date().toLocaleString()}\n${'─'.repeat(40)}\n📋 ${t('roulette.result_task').toUpperCase()}:\n`;
-    Object.entries(gameFirstState.assignedTasks).forEach(([p,task],i) => { text += `${i+1}. ${p} → ${task}\n` });
+    Object.entries(gameFirstState.assignedTasks).forEach(([p, task], i) => { text += `${i + 1}. ${p} → ${task}\n` });
     text += `${'─'.repeat(40)}\n${Object.keys(gameFirstState.assignedTasks).length} / ${players.length}\n`;
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
     a.download = `results-${gameFirstState.selectedGame}-${Date.now()}.txt`; a.click();
     showNotification(t('notif.export_results'), 'success');
 }
 
 // ── SCROLL HELPER ─────────────────────────────────────────
 function scrollToTabs() {
-    document.getElementById('mainPanel')?.scrollIntoView({behavior:'smooth'});
+    document.getElementById('mainPanel')?.scrollIntoView({ behavior: 'smooth' });
 }
 
 // ── DEFAULT GAMES DATA ────────────────────────────────────
@@ -3877,8 +4011,8 @@ const GAMING_TIPS = new Proxy([], {
         const tips = getGamingTips();
         if (prop === 'length') return tips.length;
         if (prop === 'filter') return fn => tips.filter(fn);
-        if (prop === 'map')    return fn => tips.map(fn);
-        if (prop === 'forEach')return fn => tips.forEach(fn);
+        if (prop === 'map') return fn => tips.map(fn);
+        if (prop === 'forEach') return fn => tips.forEach(fn);
         if (prop === Symbol.iterator) return () => tips[Symbol.iterator]();
         const idx = Number(prop);
         return isNaN(idx) ? tips[prop] : tips[idx];
@@ -3896,373 +4030,373 @@ function getDailyTip(category) {
 // ── DEFAULT GAMES DATA ────────────────────────────────────
 function getDefaultGames() {
     return {
-    "Minecraft": [
-
-        "Построй самый уродливый дом и защищай его как замок",
-        "Играй без оружия одну ночь",
-        "Укради один блок из дома друга и замени другим",
-        "10 минут используй только деревянные инструменты",
-        "Играй как деревенский житель",
-        "Построй памятник самому бесполезному предмету",
-        "Сделай секретную ловушку возле базы друга",
-        "Найди алмаз, но сначала спроси разрешение",
-        "Построй ферму, которая выглядит как мем",
-        "Сделай музей своих ошибок",
-        "Засели дом только котами",
-        "Построй копию дома друга, но специально плохо",
-        "Проведи экскурсию по базе голосом ведущего ТВ",
-        "Выживи ночь без брони",
-        "Не бегай 10 минут, только ходи",
-        "Добывай ресурсы только лопатой",
-        "Построй тайную базу рядом с другом",
-        "Сделай другу сундук с бесполезным подарком",
-        "Назови всех мобов смешными именами",
-        "Построй дом только из одного типа блока",
-        "Проведи день без крафта",
-        "Построй трон для самого слабого моба",
-        "Сделай огромную статую себя",
-        "Поставь кровать в максимально опасном месте",
-        "Построй портал в странном месте",
-        "Помоги другому игроку 15 минут",
-        "Сделай ферму в форме лица",
-        "Построй секретную комнату и спрячь вход",
-        "Играй 20 минут только ночью",
-        "Сделай бесполезный механизм из редстоуна",
-        "Построй дом на дереве",
-        "Используй только найденные предметы",
-        "Построй базу под землёй",
-        "Сделай ловушку для друга без урона",
-        "Стань фермером на 20 минут",
-        "Укрась базу максимально странно",
-        "Построй мини-деревню из своих домов",
-        "Следующие 10 минут нельзя открывать инвентарь",
-        "Сделай самый маленький дом",
-        "Сделай самый высокий дом",
-        "Проведи экскурсию по миру как блогер",
-        "Построй памятник проигравшему игроку",
-        "Играй только ночью",
-        "Сделай секретный склад ресурсов",
-        "Построй базу из случайных блоков"
-
-
-    ],
-
-
-    "CS2": [
-
-        "Беги через мид первым",
-        "Играй только с Desert Eagle",
-        "Давай команде странные приказы",
-        "После смерти комментируй игру как киберспортсмен",
-        "Прыгай перед каждым контактом",
-        "Купи AWP, но используй только нож",
-        "Каждый раунд иди первым",
-        "Играй как настоящий бот",
-        "Кидай смешные флешки",
-        "После убийства делай победную речь",
-        "Первый раунд только нож",
-        "Покупай самое странное оружие",
-        "Каждый раунд говори фейковый план",
-        "Перед выходом кричи «Я легенда»",
-        "Играй раунд без брони",
-        "После смерти анализируй свою ошибку",
-        "Каждый раунд проверяй мид",
-        "Используй только пистолет",
-        "Не бери оружие врага",
-        "Играй с неудобным сенсом",
-        "Каждый килл сопровождай смешным звуком",
-        "Придумай название каждой атаке",
-        "После каждого раунда говори мотивацию",
-        "Играй как новичок специально",
-        "Попроси тиммейтов руководить тобой",
-        "Сделай вид что ты тренер",
-        "Каждый раунд выбрасывай оружие перед смертью",
-        "Иди в самое опасное место карты",
-        "Попробуй выиграть ножом",
-        "Сделай красивый фраг",
-        "Играй только с SMG",
-        "Используй только дробовик",
-        "Каждый раунд первым открывай дверь",
-        "Перед атакой говори боевой клич",
-        "Покупай оружие только после команды",
-        "Не используй гранаты",
-        "Используй только одну гранату за раунд",
-        "Играй без звука",
-        "Следи только за одним тиммейтом",
-        "После каждого килла делай отчёт",
-        "Поменяй стиль игры полностью",
-        "Сыграй раунд максимально осторожно",
-        "Сделай вид что карта новая",
-        "Играй агрессивнее всех",
-        "Попытайся стать MVP"
-
-
-    ],
-
-
-    "Apex": [
-
-        "Прыгай в самое горячее место",
-        "Используй первое найденное оружие",
-        "Играй максимально агрессивно",
-        "Используй дробовик",
-        "Будь телохранителем тиммейта",
-        "Каждый файт начинай с гранаты",
-        "Не бери любимое оружие",
-        "Комментируй игру как тренер",
-        "Стань главным героем отряда",
-        "Сделай красивую смерть",
-        "Играй легендой, которой никогда не играл",
-        "Не бери броню первые 5 минут",
-        "Лутай только первые предметы",
-        "После убийства делай речь победителя",
-        "Всегда иди первым",
-        "Будь главным медиком команды",
-        "Охраняй одного игрока всю игру",
-        "Используй только одно оружие",
-        "Не используй ультимейт 10 минут",
-        "Прыгай только за врагами",
-        "Играй максимально рискованно",
-        "После нокаута врага делай комментарий",
-        "Используй только ближний бой",
-        "Не бери золотой лут",
-        "Каждый бой начинай с прыжка",
-        "Играй как стример",
-        "Делай вид что ты капитан",
-        "Следуй только за одним игроком",
-        "Победи максимально красиво",
-        "Умри эффектно если проигрываешь",
-        "Используй легенду случайно",
-        "Не используй аптечки 5 минут",
-        "Играй только с оружием врага",
-        "Не бери щиты",
-        "Каждую минуту меняй позицию",
-        "Прыгай с высокой точки перед боем",
-        "Стань разведчиком команды",
-        "Играй максимально тихо",
-        "Сделай засаду врагам",
-        "Используй только дальнее оружие",
-        "Не бери патроны больше одного типа",
-        "Каждый бой начинай с эмоции",
-        "После смерти дай анализ",
-        "Играй без привычной тактики",
-        "Сделай эпичную победу"
-    ],
+        "Minecraft": [
+
+            "Построй самый уродливый дом и защищай его как замок",
+            "Играй без оружия одну ночь",
+            "Укради один блок из дома друга и замени другим",
+            "10 минут используй только деревянные инструменты",
+            "Играй как деревенский житель",
+            "Построй памятник самому бесполезному предмету",
+            "Сделай секретную ловушку возле базы друга",
+            "Найди алмаз, но сначала спроси разрешение",
+            "Построй ферму, которая выглядит как мем",
+            "Сделай музей своих ошибок",
+            "Засели дом только котами",
+            "Построй копию дома друга, но специально плохо",
+            "Проведи экскурсию по базе голосом ведущего ТВ",
+            "Выживи ночь без брони",
+            "Не бегай 10 минут, только ходи",
+            "Добывай ресурсы только лопатой",
+            "Построй тайную базу рядом с другом",
+            "Сделай другу сундук с бесполезным подарком",
+            "Назови всех мобов смешными именами",
+            "Построй дом только из одного типа блока",
+            "Проведи день без крафта",
+            "Построй трон для самого слабого моба",
+            "Сделай огромную статую себя",
+            "Поставь кровать в максимально опасном месте",
+            "Построй портал в странном месте",
+            "Помоги другому игроку 15 минут",
+            "Сделай ферму в форме лица",
+            "Построй секретную комнату и спрячь вход",
+            "Играй 20 минут только ночью",
+            "Сделай бесполезный механизм из редстоуна",
+            "Построй дом на дереве",
+            "Используй только найденные предметы",
+            "Построй базу под землёй",
+            "Сделай ловушку для друга без урона",
+            "Стань фермером на 20 минут",
+            "Укрась базу максимально странно",
+            "Построй мини-деревню из своих домов",
+            "Следующие 10 минут нельзя открывать инвентарь",
+            "Сделай самый маленький дом",
+            "Сделай самый высокий дом",
+            "Проведи экскурсию по миру как блогер",
+            "Построй памятник проигравшему игроку",
+            "Играй только ночью",
+            "Сделай секретный склад ресурсов",
+            "Построй базу из случайных блоков"
+
+
+        ],
+
+
+        "CS2": [
+
+            "Беги через мид первым",
+            "Играй только с Desert Eagle",
+            "Давай команде странные приказы",
+            "После смерти комментируй игру как киберспортсмен",
+            "Прыгай перед каждым контактом",
+            "Купи AWP, но используй только нож",
+            "Каждый раунд иди первым",
+            "Играй как настоящий бот",
+            "Кидай смешные флешки",
+            "После убийства делай победную речь",
+            "Первый раунд только нож",
+            "Покупай самое странное оружие",
+            "Каждый раунд говори фейковый план",
+            "Перед выходом кричи «Я легенда»",
+            "Играй раунд без брони",
+            "После смерти анализируй свою ошибку",
+            "Каждый раунд проверяй мид",
+            "Используй только пистолет",
+            "Не бери оружие врага",
+            "Играй с неудобным сенсом",
+            "Каждый килл сопровождай смешным звуком",
+            "Придумай название каждой атаке",
+            "После каждого раунда говори мотивацию",
+            "Играй как новичок специально",
+            "Попроси тиммейтов руководить тобой",
+            "Сделай вид что ты тренер",
+            "Каждый раунд выбрасывай оружие перед смертью",
+            "Иди в самое опасное место карты",
+            "Попробуй выиграть ножом",
+            "Сделай красивый фраг",
+            "Играй только с SMG",
+            "Используй только дробовик",
+            "Каждый раунд первым открывай дверь",
+            "Перед атакой говори боевой клич",
+            "Покупай оружие только после команды",
+            "Не используй гранаты",
+            "Используй только одну гранату за раунд",
+            "Играй без звука",
+            "Следи только за одним тиммейтом",
+            "После каждого килла делай отчёт",
+            "Поменяй стиль игры полностью",
+            "Сыграй раунд максимально осторожно",
+            "Сделай вид что карта новая",
+            "Играй агрессивнее всех",
+            "Попытайся стать MVP"
+
+
+        ],
+
+
+        "Apex": [
+
+            "Прыгай в самое горячее место",
+            "Используй первое найденное оружие",
+            "Играй максимально агрессивно",
+            "Используй дробовик",
+            "Будь телохранителем тиммейта",
+            "Каждый файт начинай с гранаты",
+            "Не бери любимое оружие",
+            "Комментируй игру как тренер",
+            "Стань главным героем отряда",
+            "Сделай красивую смерть",
+            "Играй легендой, которой никогда не играл",
+            "Не бери броню первые 5 минут",
+            "Лутай только первые предметы",
+            "После убийства делай речь победителя",
+            "Всегда иди первым",
+            "Будь главным медиком команды",
+            "Охраняй одного игрока всю игру",
+            "Используй только одно оружие",
+            "Не используй ультимейт 10 минут",
+            "Прыгай только за врагами",
+            "Играй максимально рискованно",
+            "После нокаута врага делай комментарий",
+            "Используй только ближний бой",
+            "Не бери золотой лут",
+            "Каждый бой начинай с прыжка",
+            "Играй как стример",
+            "Делай вид что ты капитан",
+            "Следуй только за одним игроком",
+            "Победи максимально красиво",
+            "Умри эффектно если проигрываешь",
+            "Используй легенду случайно",
+            "Не используй аптечки 5 минут",
+            "Играй только с оружием врага",
+            "Не бери щиты",
+            "Каждую минуту меняй позицию",
+            "Прыгай с высокой точки перед боем",
+            "Стань разведчиком команды",
+            "Играй максимально тихо",
+            "Сделай засаду врагам",
+            "Используй только дальнее оружие",
+            "Не бери патроны больше одного типа",
+            "Каждый бой начинай с эмоции",
+            "После смерти дай анализ",
+            "Играй без привычной тактики",
+            "Сделай эпичную победу"
+        ],
 
-    "Valorant": [
-
-        "Играй только с классическим пистолетом",
-        "Каждый раунд говори название операции",
-        "Используй способности максимально странно",
-        "Иди первым на точку",
-        "Играй агента которого не знаешь",
-        "После каждого килла делай победную речь"
+        "Valorant": [
+
+            "Играй только с классическим пистолетом",
+            "Каждый раунд говори название операции",
+            "Используй способности максимально странно",
+            "Иди первым на точку",
+            "Играй агента которого не знаешь",
+            "После каждого килла делай победную речь"
 
-    ],
+        ],
 
 
-    "Marvel Rivals": [
+        "Marvel Rivals": [
 
-        "Играй героем которого никогда не выбирал",
-        "Каждый ульт объявляй как настоящий супергерой",
-        "Спаси самого слабого игрока команды",
-        "Прыгай первым в толпу врагов",
-        "После каждого красивого момента кричи имя героя",
-        "Играй без своей любимой способности"
+            "Играй героем которого никогда не выбирал",
+            "Каждый ульт объявляй как настоящий супергерой",
+            "Спаси самого слабого игрока команды",
+            "Прыгай первым в толпу врагов",
+            "После каждого красивого момента кричи имя героя",
+            "Играй без своей любимой способности"
 
-    ],
+        ],
 
 
-    "Fortnite": [
+        "Fortnite": [
 
-        "Приземлись туда, где больше всего врагов",
-        "Используй только первое найденное оружие",
-        "Построй максимально бесполезную базу",
-        "Сделай рискованный пуш на врагов",
-        "Играй без любимого оружия",
-        "Победи используя максимально странную тактику"
+            "Приземлись туда, где больше всего врагов",
+            "Используй только первое найденное оружие",
+            "Построй максимально бесполезную базу",
+            "Сделай рискованный пуш на врагов",
+            "Играй без любимого оружия",
+            "Победи используя максимально странную тактику"
 
-    ],
+        ],
 
 
-    "League of Legends": [
+        "League of Legends": [
 
-        "Играй чемпионом которого почти не знаешь",
-        "Иди на необычную линию",
-        "Собери странный билд",
-        "После каждого убийства делай мини-речь",
-        "Играй максимально агрессивно",
-        "Помоги союзнику сделать красивый момент"
+            "Играй чемпионом которого почти не знаешь",
+            "Иди на необычную линию",
+            "Собери странный билд",
+            "После каждого убийства делай мини-речь",
+            "Играй максимально агрессивно",
+            "Помоги союзнику сделать красивый момент"
 
-    ],
+        ],
 
 
-    "Dota 2": [
+        "Dota 2": [
 
-        "Играй героем которого никогда не выбираешь",
-        "Собери максимально странные предметы",
-        "Поменяй привычный стиль игры",
-        "Каждые 5 минут делай смешной отчёт",
-        "Играй только через рискованные действия",
-        "Сделай самый необычный билд"
+            "Играй героем которого никогда не выбираешь",
+            "Собери максимально странные предметы",
+            "Поменяй привычный стиль игры",
+            "Каждые 5 минут делай смешной отчёт",
+            "Играй только через рискованные действия",
+            "Сделай самый необычный билд"
 
-    ],
+        ],
 
 
-    "Overwatch 2": [
+        "Overwatch 2": [
 
-        "Играй персонажем которого не умеешь",
-        "Каждый ульт объявляй как супергерой",
-        "Защищай одного выбранного тиммейта",
-        "Играй ролью которую обычно не выбираешь",
-        "После смерти объясняй свою ошибку",
-        "Попробуй сделать самый красивый момент игры"
+            "Играй персонажем которого не умеешь",
+            "Каждый ульт объявляй как супергерой",
+            "Защищай одного выбранного тиммейта",
+            "Играй ролью которую обычно не выбираешь",
+            "После смерти объясняй свою ошибку",
+            "Попробуй сделать самый красивый момент игры"
 
-    ],
+        ],
 
 
-    "Rainbow Six Siege": [
+        "Rainbow Six Siege": [
 
-        "Первым открывай каждую дверь",
-        "Используй гаджеты максимально странно",
-        "Играй только с пистолетом",
-        "Сделай неожиданный заход на точку",
-        "Каждый раунд меняй стиль игры",
-        "Комментируй действия как спецназовец"
+            "Первым открывай каждую дверь",
+            "Используй гаджеты максимально странно",
+            "Играй только с пистолетом",
+            "Сделай неожиданный заход на точку",
+            "Каждый раунд меняй стиль игры",
+            "Комментируй действия как спецназовец"
 
-    ],
+        ],
 
 
-    "Rocket League": [
+        "Rocket League": [
 
-        "Играй только через красивые удары",
-        "Минуту не используй ускорение",
-        "Играй роль вратаря",
-        "После каждого гола делай победную речь",
-        "Прыгай перед каждым ударом",
-        "Попытайся забить самый нелепый гол"
+            "Играй только через красивые удары",
+            "Минуту не используй ускорение",
+            "Играй роль вратаря",
+            "После каждого гола делай победную речь",
+            "Прыгай перед каждым ударом",
+            "Попытайся забить самый нелепый гол"
 
-    ],
+        ],
 
 
-    "PUBG": [
+        "PUBG": [
 
-        "Приземлись рядом с самым большим количеством игроков",
-        "Используй только первое найденное оружие",
-        "Первые 5 минут без брони",
-        "Играй максимально скрытно",
-        "Сделай самый рискованный выход из зоны",
-        "Попробуй победить без убийств"
+            "Приземлись рядом с самым большим количеством игроков",
+            "Используй только первое найденное оружие",
+            "Первые 5 минут без брони",
+            "Играй максимально скрытно",
+            "Сделай самый рискованный выход из зоны",
+            "Попробуй победить без убийств"
 
-    ],
+        ],
 
 
-    "The Finals": [
+        "The Finals": [
 
-        "Разруши всё что можешь",
-        "Играй только ближним оружием",
-        "Сделай самый безумный заход",
-        "Используй гаджеты постоянно",
-        "Будь приманкой команды",
-        "После смерти объясни свой великий план"
+            "Разруши всё что можешь",
+            "Играй только ближним оружием",
+            "Сделай самый безумный заход",
+            "Используй гаджеты постоянно",
+            "Будь приманкой команды",
+            "После смерти объясни свой великий план"
 
-    ],
+        ],
 
 
-    "Dead by Daylight": [
+        "Dead by Daylight": [
 
-        "Играй убийцей которого не знаешь",
-        "Сделай максимально странный билд",
-        "Пугай игроков вместо победы",
-        "Играй максимально рискованно",
-        "Используй только один навык",
-        "После игры расскажи историю матча"
+            "Играй убийцей которого не знаешь",
+            "Сделай максимально странный билд",
+            "Пугай игроков вместо победы",
+            "Играй максимально рискованно",
+            "Используй только один навык",
+            "После игры расскажи историю матча"
 
-    ],
+        ],
 
 
-    "Rust": [
+        "Rust": [
 
-        "Построй максимально странную базу",
-        "Поздоровайся с первым врагом",
-        "Сделай ловушку для игроков",
-        "Начни войну с ближайшим соседом",
-        "Укрась базу максимально глупо",
-        "Выживи день без оружия"
+            "Построй максимально странную базу",
+            "Поздоровайся с первым врагом",
+            "Сделай ловушку для игроков",
+            "Начни войну с ближайшим соседом",
+            "Укрась базу максимально глупо",
+            "Выживи день без оружия"
 
-    ],
+        ],
 
 
-    "Escape from Tarkov": [
+        "Escape from Tarkov": [
 
-        "Иди в самый опасный район",
-        "Возьми самое странное оружие",
-        "Играй максимально осторожно",
-        "После каждого боя делай анализ",
-        "Не используй любимую пушку",
-        "Попробуй выиграть без убийств"
+            "Иди в самый опасный район",
+            "Возьми самое странное оружие",
+            "Играй максимально осторожно",
+            "После каждого боя делай анализ",
+            "Не используй любимую пушку",
+            "Попробуй выиграть без убийств"
 
-    ],
+        ],
 
 
-    "Helldivers 2": [
+        "Helldivers 2": [
 
-        "Перед миссией кричи боевой приказ",
-        "Спаси случайного союзника",
-        "Используй стратагемы хаотично",
-        "Беги первым в толпу врагов",
-        "Сделай самый героический момент",
-        "После миссии расскажи легенду своего отряда"
+            "Перед миссией кричи боевой приказ",
+            "Спаси случайного союзника",
+            "Используй стратагемы хаотично",
+            "Беги первым в толпу врагов",
+            "Сделай самый героический момент",
+            "После миссии расскажи легенду своего отряда"
 
-    ],
+        ],
 
 
-    "Warzone": [
+        "Warzone": [
 
-        "Прыгни в самое горячее место",
-        "Используй только найденное первое оружие",
-        "Иди первым в каждый бой",
-        "Проведи игру как командир",
-        "Сделай максимально рискованный пуш",
-        "Победи с самым странным оружием"
+            "Прыгни в самое горячее место",
+            "Используй только найденное первое оружие",
+            "Иди первым в каждый бой",
+            "Проведи игру как командир",
+            "Сделай максимально рискованный пуш",
+            "Победи с самым странным оружием"
 
-    ],
+        ],
 
 
-    "Teamfight Tactics": [
+        "Teamfight Tactics": [
 
-        "Собери максимально странную комбинацию",
-        "Играй только через один класс",
-        "Не покупай привычных чемпионов",
-        "Сделай ставку на слабых героев",
-        "Каждый раунд объясняй свою стратегию",
-        "Попробуй выиграть необычным билдом"
+            "Собери максимально странную комбинацию",
+            "Играй только через один класс",
+            "Не покупай привычных чемпионов",
+            "Сделай ставку на слабых героев",
+            "Каждый раунд объясняй свою стратегию",
+            "Попробуй выиграть необычным билдом"
 
-    ],
+        ],
 
 
-    "World of Warcraft": [
+        "World of Warcraft": [
 
-        "Играй только необычным классом",
-        "Сделай странный внешний вид персонажа",
-        "Помоги случайному игроку",
-        "Исследуй место где никогда не был",
-        "Собери максимально смешной комплект",
-        "Проведи время как обычный житель Азерота"
+            "Играй только необычным классом",
+            "Сделай странный внешний вид персонажа",
+            "Помоги случайному игроку",
+            "Исследуй место где никогда не был",
+            "Собери максимально смешной комплект",
+            "Проведи время как обычный житель Азерота"
 
-    ],
+        ],
 
 
-    "Diablo IV": [
+        "Diablo IV": [
 
-        "Используй только странные навыки",
-        "Собери необычный билд",
-        "Иди в самое опасное место",
-        "Не используй любимую способность",
-        "Сражайся максимально красиво",
-        "После победы сделай речь героя"
+            "Используй только странные навыки",
+            "Собери необычный билд",
+            "Иди в самое опасное место",
+            "Не используй любимую способность",
+            "Сражайся максимально красиво",
+            "После победы сделай речь героя"
 
-    ],
+        ],
     };
 }
 
