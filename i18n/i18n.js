@@ -21,6 +21,12 @@
   const DEFAULT_LANG  = 'en';   // primary/fallback language
   const SECONDARY     = 'ru';   // second built-in language
 
+  const urlLang = new URLSearchParams(location.search).get('lang');
+
+if(urlLang && RCH_TRANSLATIONS[urlLang]){
+    setLanguage(urlLang);
+}
+
   // ── INTERNAL STATE ──────────────────────────────────────
   let _current = DEFAULT_LANG;
   let _translations = {};   // merged from window.RCH_TRANSLATIONS
