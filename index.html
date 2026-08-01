@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-    <!-- Content Security Policy: блокирует инлайн-скрипты из сторонних источников,
-         разрешает только 'self' и Twitch WebSocket. Inline-скрипты в этом файле
-         допускаются через 'unsafe-inline' т.к. страница полностью локальная
-         (file:// или localhost) — без сервера нельзя использовать nonce/hash. -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
                    script-src 'self' 'unsafe-inline';
