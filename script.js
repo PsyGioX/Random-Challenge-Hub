@@ -28,7 +28,7 @@ window.addEventListener('rch:langchange', function () {
 });
 
 // ── GLOBAL STATE ──────────────────────────────────────────
-// Безопасная загрузка из localStorage с защитой от повреждённых данных
+// Safe Loading from localStorage with Protection Against Corrupted Data
 function _safeParse(key, fallback) {
     try {
         const raw = localStorage.getItem(key);
@@ -41,7 +41,7 @@ function _safeParse(key, fallback) {
 }
 
 let players = _safeParse('challengePlayers', []);
-let games = {}; // инициализируется в init() — нормализация там
+let games = {}; // Initialized in init() — normalization is done there
 
 let currentTab = 'games';
 let spinning = false;
@@ -49,8 +49,8 @@ let wheelSegments = [];
 let currentWheelAngle = 0;
 let animationId = null;
 let rouletteMode = 'full';
-let lastWinnerSegIdx = -1;          // индекс выигравшего сегмента для анимации удаления
-let segmentScales = [];          // масштаб каждого сегмента (1 = норма, 0 = удалён)
+let lastWinnerSegIdx = -1;          // winning segment index for the removal animation
+let segmentScales = [];          // the scale of each segment (1 = normal, 0 = removed)
 let openDropdowns = {};
 let modalCallback = null;
 let audioCtx = null;
@@ -73,15 +73,15 @@ let streamerState = {
     voteDuration: 30,
     voteTimer: 0,
     voteInterval: null,
-    voteTitle: '',   // тема/название голосования
+    voteTitle: '',   // Topic/Poll Title
     subWheelList: [],
     channelName: '',
     connected: false,
-    twitchWs: null,    // реальный WebSocket к Twitch IRC
+    twitchWs: null,    // A Real WebSocket to Twitch IRC
     twitchStatus: 'idle',  // idle | connecting | connected | error
-    // УДАЛЕНО: OAuth токен для отправки сообщений
+
     overlayOpen: false,
-    // Новые данные для IndexedDB
+    // New Data for IndexedDB
     recentFollowers: [],
     recentSubscribers: [],
     chatStats: {
@@ -91,11 +91,11 @@ let streamerState = {
     }
 };
 
-// IndexedDB для сохранения данных стримера
+// IndexedDB for storing streamer data
 let streamerDB = null;
 
 // ── SECURITY UTILITIES ────────────────────────────────────
-// Экранирование HTML для безопасной вставки пользовательских данных в innerHTML
+// HTML Escaping for Safely Inserting User Data into innerHTML
 function esc(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -106,7 +106,7 @@ function esc(str) {
         .replace(/'/g, '&#x27;');
 }
 
-// Экранирование для вставки строки в onclick="..." атрибуты
+// Escaping for inserting a string into onclick="..." attributes
 function escAttr(str) {
     return esc(str).replace(/`/g, '&#x60;');
 }
@@ -120,7 +120,7 @@ function twitchConnect(channel) {
         streamerState.twitchWs = null;
     }
     if (!channel || !channel.trim()) {
-        showNotification('Введите название канала', 'error');
+        showNotification('Enter the channel name', 'error');
         return;
     }
     const ch = channel.trim().toLowerCase().replace(/^#/, '');
@@ -133,7 +133,7 @@ function twitchConnect(channel) {
     streamerState.twitchWs = ws;
 
     ws.onopen = () => {
-        // Анонимный доступ только для чтения
+        // Anonymous read-only access
         ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
         ws.send('NICK justinfan' + Math.floor(Math.random() * 80000 + 1000));
         ws.send(`JOIN #${ch}`);
@@ -186,11 +186,11 @@ function twitchDisconnect() {
     updateOverlayChatData();
 }
 
-// Отправка сообщений в чат недоступна без авторизации
+// You cannot send messages in the chat without logging in
 function sendTwitchChatMessage(text) { return false; }
 
 function _parseTwitchMsg(raw) {
-    // Формат: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :message
+    // Format: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :message
     const tagsPart = raw.startsWith('@') ? raw.slice(1, raw.indexOf(' ')) : '';
     const rest = raw.startsWith('@') ? raw.slice(raw.indexOf(' ') + 1) : raw;
     const userMatch = rest.match(/^:(\w+)!/);
@@ -200,7 +200,7 @@ function _parseTwitchMsg(raw) {
     const user = userMatch[1];
     const text = msgMatch[1].replace(/\r?\n$/, '').trim();
 
-    // Разбираем теги (цвет, badges)
+    // Understandable tags (color, badges)
     const tags = {};
     tagsPart.split(';').forEach(t => { const [k, v] = t.split('='); if (k) tags[k] = v || '' });
     const color = tags['color'] || _randomChatColor(user);
@@ -213,24 +213,24 @@ function _parseTwitchMsg(raw) {
     streamerState.chatMessages.push(msgObj);
     if (streamerState.chatMessages.length > 500) streamerState.chatMessages.shift();
 
-    // Сохраняем в IndexedDB
+    // Storing Data in IndexedDB
     saveChatMessage(msgObj);
 
-    // Обновляем чат-бокс если он виден
+    // Refresh the chat box if it's visible
     const cb = document.getElementById('chatBox');
     if (cb) { cb.insertAdjacentHTML('beforeend', _renderOneChatMsg(msgObj)); cb.scrollTop = cb.scrollHeight; }
 
-    // Воспроизводим звук уведомления
+    // Play the notification sound
     playChatNotificationSound();
 
-    // Обновляем данные для оверлея
+    // Updating data for the overlay
     updateOverlayChatData();
 
-    // Обрабатываем голосование
+    // Processing the vote
     if (streamerState.voteActive) {
         const num = parseInt(text.trim());
         if (num >= 1 && num <= streamerState.voteOptions.length) {
-            // Каждый зритель голосует один раз (по нику)
+            // Each viewer may vote once (using their username)
             if (!streamerState.voteVoters) streamerState.voteVoters = {};
             if (!streamerState.voteVoters[user]) {
                 streamerState.voteVoters[user] = num;
@@ -242,24 +242,24 @@ function _parseTwitchMsg(raw) {
         }
     }
 
-    // Проверяем команды чата
+    // Checking Chat Commands
     processChatCommand(user, text, { isBroad, isMod, isSub });
 
-    // Автоматически добавляем активных пользователей в потенциальные участники колеса
+    // We automatically add active users to the list of potential participants in the group
     addChatUserToPool(user, { isBroad, isMod, isSub });
 }
 
-// Автоматический сбор участников чата для колеса
+// Automatic selection of chat participants for the wheel
 function addChatUserToPool(user, permissions) {
-    // Инициализируем пул участников если его нет
+    // Initialize the participant pool if it doesn't exist
     if (!streamerState.chatUserPool) {
         streamerState.chatUserPool = new Set();
     }
 
-    // Добавляем пользователя в пул
+    // Add a user to the pool
     streamerState.chatUserPool.add(user);
 
-    // Обновляем активность пользователя
+    // Updating the user's activity
     if (!streamerState.userActivity) {
         streamerState.userActivity = {};
     }
@@ -277,23 +277,23 @@ function addChatUserToPool(user, permissions) {
     streamerState.userActivity[user].messages++;
     streamerState.userActivity[user].lastSeen = Date.now();
 
-    // Сохраняем данные
+    // Saving Data
     saveStreamerData();
 }
 
-// Получить список активных участников чата
+// Get a list of active chat participants
 function getChatParticipants(minMessages = 1, excludeMods = false) {
     if (!streamerState.userActivity) return [];
 
     const participants = [];
     const now = Date.now();
-    const oneHourAgo = now - (60 * 60 * 1000); // 1 час назад
+    const oneHourAgo = now - (60 * 60 * 1000); // 1 hour ago
 
     Object.entries(streamerState.userActivity).forEach(([user, data]) => {
-        // Исключаем модераторов если нужно
+        // We'll remove moderators if necessary
         if (excludeMods && (data.isMod || data.isBroadcaster)) return;
 
-        // Проверяем активность
+        // Checking Activity
         if (data.messages >= minMessages && data.lastSeen > oneHourAgo) {
             participants.push({
                 user,
@@ -305,7 +305,7 @@ function getChatParticipants(minMessages = 1, excludeMods = false) {
         }
     });
 
-    // Сортируем по активности
+    // Sort by activity
     return participants.sort((a, b) => b.messages - a.messages);
 }
 
@@ -313,7 +313,7 @@ function processChatCommand(user, text, permissions) {
     const { isBroad, isMod, isSub } = permissions;
     const isPrivileged = isBroad || isMod;
 
-    // Команды только для модераторов и стримера
+    // Commands for moderators and streamers only
     if (isPrivileged) {
         if (text.toLowerCase() === '!spin') {
             quickSpin();
@@ -345,7 +345,7 @@ function processChatCommand(user, text, permissions) {
         }
     }
 
-    // Команды для всех зрителей
+    // Teams for All Viewers
     if (text.toLowerCase() === '!join' || text.toLowerCase() === '!addme') {
         addSubToWheelFromChat(user);
         return;
@@ -357,9 +357,9 @@ function processChatCommand(user, text, permissions) {
     }
 };
 
-// Добавить всех активных участников чата в колесо
+// Add all active chat participants to the circle
 function addAllChattersToWheel() {
-    const participants = getChatParticipants(1, false); // Минимум 1 сообщение, включая всех
+    const participants = getChatParticipants(1, false); // At least 1 message, including everyone
     let added = 0;
     const addedUsers = [];
 
@@ -398,7 +398,7 @@ function setTimerFromChat(minutes) {
     showNotification(t('streamer.stats_min', { n: minutes }), 'info');
 }
 
-// Новые функции для инструментов стрима
+// New Features for Streaming Tools
 function toggleChatSounds(enabled) {
     streamerState.chatSounds = enabled;
     saveStreamerData();
@@ -441,7 +441,7 @@ function showStreamStats() {
     const uniqueViewers = streamerState.chatStats.uniqueViewers;
     const mostActive = streamerState.chatStats.mostActiveUser;
     const sessionStart = streamerState.sessionStartTime || Date.now();
-    const duration = Math.round((Date.now() - sessionStart) / (1000 * 60)); // минуты
+    const duration = Math.round((Date.now() - sessionStart) / (1000 * 60)); // minute
 
     const modal = document.getElementById('confirmModal');
     if (modal) {
@@ -508,7 +508,7 @@ function updateOverlayChatData() {
     const chatData = {
         connected: streamerState.twitchStatus === 'connected',
         channelName: streamerState.channelName,
-        messages: streamerState.chatMessages.slice(-20), // Последние 20 сообщений
+        messages: streamerState.chatMessages.slice(-20), // The Last 20 Posts
         stats: streamerState.chatStats,
         timestamp: Date.now()
     };
@@ -516,7 +516,7 @@ function updateOverlayChatData() {
     try {
         localStorage.setItem('overlayChatData', JSON.stringify(chatData));
     } catch (error) {
-        console.warn('Не удалось обновить данные чата для оверлея:', error);
+        console.warn('Failed to refresh the chat data for the overlay:', error);
     }
 }
 
@@ -559,7 +559,7 @@ function twitchToggleConnect() {
         if (channel) {
             twitchConnect(channel);
         } else {
-            showNotification('Введите название канала', 'error');
+            showNotification('Enter the channel name', 'error');
         }
     }
 }
@@ -567,31 +567,31 @@ function twitchToggleConnect() {
 function updateStreamerUIState() {
     const isConnected = streamerState.twitchStatus === 'connected';
 
-    // Обновляем кнопку "Все из чата"
+    // Updating the "All from Chat" button
     const addChattersBtn = document.querySelector('button[onclick="addAllChattersToWheel()"]');
     if (addChattersBtn) {
         addChattersBtn.disabled = !isConnected;
     }
 
-    // Обновляем кнопку "Команды"
+    // Updating the "Commands" button
     const commandsBtn = document.querySelector('button[onclick="sendCommandsList()"]');
     if (commandsBtn) {
         commandsBtn.disabled = !isConnected;
     }
 
-    // Обновляем кнопку "Голосование" в быстрых командах
+    // Updating the "Vote" button in Quick Commands
     const voteBtn = document.querySelector('.quick-cmd-btn[onclick="startVote()"]');
     if (voteBtn) {
         voteBtn.disabled = !isConnected;
     }
 
-    // Принудительно обновляем область голосования
+    // Force a refresh of the voting area
     const voteArea = document.getElementById('voteArea');
     if (voteArea) {
         voteArea.innerHTML = renderVoteArea();
     }
 
-    // Обновляем статус бар чата
+    // Updating the chat status bar
     const statusBar = document.getElementById('twitchStatusBar');
     if (statusBar) {
         const statusColor = isConnected ? 'var(--accent-success)'
@@ -612,7 +612,7 @@ function _refreshVoteUI() {
     if (va) va.innerHTML = renderVoteArea();
 }
 
-// ── INDEXEDDB для стримера ────────────────────────────────
+// ── INDEXEDDB for Streamers ────────────────────────────────
 async function initStreamerDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open('StreamerDatabase', 1);
@@ -626,7 +626,7 @@ async function initStreamerDB() {
             streamerDB = event.target.result;
             loadStreamerData();
 
-            // Инициализируем время начала сессии
+            // Let's initialize the session start time
             if (!streamerState.sessionStartTime) {
                 streamerState.sessionStartTime = Date.now();
                 saveStreamerData();
@@ -638,20 +638,20 @@ async function initStreamerDB() {
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
 
-            // Хранилище для сообщений чата
+            // Chat Message Storage
             if (!db.objectStoreNames.contains('chatMessages')) {
                 const chatStore = db.createObjectStore('chatMessages', { keyPath: 'id', autoIncrement: true });
                 chatStore.createIndex('timestamp', 'timestamp');
                 chatStore.createIndex('user', 'user');
             }
 
-            // Хранилище для подписчиков
+            // Subscriber Repository
             if (!db.objectStoreNames.contains('subscribers')) {
                 const subStore = db.createObjectStore('subscribers', { keyPath: 'user' });
                 subStore.createIndex('timestamp', 'timestamp');
             }
 
-            // Хранилище для статистики
+            // Statistics Repository
             if (!db.objectStoreNames.contains('chatStats')) {
                 db.createObjectStore('chatStats', { keyPath: 'date' });
             }
@@ -680,7 +680,7 @@ async function saveStreamerData() {
         const store = transaction.objectStore('chatStats');
 
         const data = {
-            date: 'singleton',          // keyPath — одна постоянная запись
+            date: 'singleton',          // keyPath — a single constant entry
             channelName: streamerState.channelName,
             subWheelList: streamerState.subWheelList,
             chatStats: streamerState.chatStats,
@@ -714,7 +714,7 @@ async function loadStreamerData() {
         if (saved) {
             try {
                 const data = JSON.parse(saved);
-                // Восстанавливаем основные данные, но не состояние подключения
+                // We restore the basic data, but not the connection status
                 streamerState.channelName = data.channelName || '';
                 streamerState.subWheelList = data.subWheelList || [];
                 streamerState.chatStats = data.chatStats || streamerState.chatStats;
@@ -722,7 +722,7 @@ async function loadStreamerData() {
                 streamerState.autoSpin = data.autoSpin || false;
                 streamerState.sessionStartTime = data.sessionStartTime || Date.now();
 
-                // Обновляем поля ввода при загрузке
+                // Updating Input Fields on Load
                 updateChannelInput();
                 updateTokenInput();
             } catch (e) {
@@ -748,18 +748,18 @@ async function loadStreamerData() {
                 streamerState.autoSpin = data.autoSpin || false;
                 streamerState.sessionStartTime = data.sessionStartTime || Date.now();
 
-                // Обновляем поля ввода при загрузке
+                // Updating Input Fields on Load
                 updateChannelInput();
                 updateTokenInput();
             }
         };
     } catch (error) {
-        console.warn('Ошибка загрузки из IndexedDB:', error);
+        console.warn('IndexedDB load error:', error);
     }
 }
 
 function showReconnectToast(channelName) {
-    // Убираем предыдущий тост, если есть
+    // Remove the previous toast, if there is any
     const existing = document.getElementById('reconnectToast');
     if (existing) existing.remove();
 
@@ -791,12 +791,12 @@ function showReconnectToast(channelName) {
     });
     document.getElementById('reconnectNo').addEventListener('click', dismiss);
 
-    // Автоскрытие через 8 секунд
+    // Auto-hide in 8 seconds
     setTimeout(dismiss, 8000);
 }
 
 function updateChannelInput() {
-    // Обновляем поле ввода с задержкой, чтобы UI был готов
+    // We update the input field with a delay so that the UI is ready
     setTimeout(() => {
         const input = document.getElementById('channelNameInput');
         if (input && streamerState.channelName) {
@@ -807,12 +807,12 @@ function updateChannelInput() {
 
 function updateChannelName(value) {
     streamerState.channelName = value.trim();
-    // Сохраняем сразу при изменении
+    // Save immediately upon changes
     saveStreamerData();
 }
 
 function updateTokenInput() {
-    // Обновляем поле токена с задержкой
+    // Updating the token field with a delay
     setTimeout(() => {
         const input = document.getElementById('twitchTokenInput');
         if (input && streamerState.twitchToken) {
@@ -821,12 +821,12 @@ function updateTokenInput() {
     }, 100);
 }
 
-// Функции авторизации УДАЛЕНЫ
+// Authorization features have been REMOVED
 function updateTwitchToken(value) {
-    console.warn('Функция авторизации недоступна');
+    console.warn('The authorization feature is unavailable');
 }
 
-// Авторизация Twitch удалена — только чтение чата (анонимный IRC)
+// Twitch authorization has been removed — chat is read-only (anonymous IRC)
 
 async function saveChatMessage(message) {
     if (!streamerDB) return;
@@ -843,23 +843,23 @@ async function saveChatMessage(message) {
 
         await store.add(messageData);
 
-        // Обновляем статистику
+        // Updating the statistics
         updateChatStats(message.user);
 
     } catch (error) {
-        console.warn('Ошибка сохранения сообщения:', error);
+        console.warn('Error saving the message:', error);
     }
 }
 
 function updateChatStats(user) {
     streamerState.chatStats.totalMessages++;
 
-    // Подсчет уникальных зрителей
+    // Counting Unique Viewers
     const uniqueViewers = new Set();
     streamerState.chatMessages.forEach(msg => uniqueViewers.add(msg.user));
     streamerState.chatStats.uniqueViewers = uniqueViewers.size;
 
-    // Самый активный пользователь
+    // Most Active User
     const userCounts = {};
     streamerState.chatMessages.forEach(msg => {
         userCounts[msg.user] = (userCounts[msg.user] || 0) + 1;
@@ -924,7 +924,7 @@ let rouletteSettings = _safeParse('rouletteSettings', null) || {
     blacklistEnabled: false,
     blacklistTasks: [],
     weightedSegments: false,
-    removeAfterSpin: false, // убирать задание из колеса после каждой прокрутки
+    removeAfterSpin: false, // Remove the task from the wheel after each scroll
 };
 
 // ── COLOR SCHEMES ──────────────────────────────────────────
@@ -944,15 +944,15 @@ const COLOR_SCHEMES = {
 
 // ── PLAYER COLORS ──────────────────────────────────────────
 const playerColors = {
-    indigo: { gradient: 'linear-gradient(135deg,#6366f1,#818cf8)', border: '#6366f1', name: '#818cf8', label: 'Индиго' },
-    purple: { gradient: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', border: '#8b5cf6', name: '#a78bfa', label: 'Фиолетовый' },
-    emerald: { gradient: 'linear-gradient(135deg,#10b981,#34d399)', border: '#10b981', name: '#34d399', label: 'Изумрудный' },
-    amber: { gradient: 'linear-gradient(135deg,#f59e0b,#fbbf24)', border: '#f59e0b', name: '#fbbf24', label: 'Янтарный' },
-    rose: { gradient: 'linear-gradient(135deg,#ec4899,#f472b6)', border: '#ec4899', name: '#f472b6', label: 'Розовый' },
-    cyan: { gradient: 'linear-gradient(135deg,#06b6d4,#67e8f9)', border: '#06b6d4', name: '#67e8f9', label: 'Циан' },
-    orange: { gradient: 'linear-gradient(135deg,#f97316,#fb923c)', border: '#f97316', name: '#fb923c', label: 'Оранжевый' },
-    lime: { gradient: 'linear-gradient(135deg,#84cc16,#a3e635)', border: '#84cc16', name: '#a3e635', label: 'Лайм' },
-    twitch: { gradient: 'linear-gradient(135deg,#9147ff,#bf94ff)', border: '#9147ff', name: '#bf94ff', label: 'Твич' },
+    indigo: { gradient: 'linear-gradient(135deg,#6366f1,#818cf8)', border: '#6366f1', name: '#818cf8', label: 'Indigo' },
+    purple: { gradient: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', border: '#8b5cf6', name: '#a78bfa', label: 'Purple' },
+    emerald: { gradient: 'linear-gradient(135deg,#10b981,#34d399)', border: '#10b981', name: '#34d399', label: 'Emerald' },
+    amber: { gradient: 'linear-gradient(135deg,#f59e0b,#fbbf24)', border: '#f59e0b', name: '#fbbf24', label: 'Amber' },
+    rose: { gradient: 'linear-gradient(135deg,#ec4899,#f472b6)', border: '#ec4899', name: '#f472b6', label: 'Pink' },
+    cyan: { gradient: 'linear-gradient(135deg,#06b6d4,#67e8f9)', border: '#06b6d4', name: '#67e8f9', label: 'Cyan' },
+    orange: { gradient: 'linear-gradient(135deg,#f97316,#fb923c)', border: '#f97316', name: '#fb923c', label: 'Orange' },
+    lime: { gradient: 'linear-gradient(135deg,#84cc16,#a3e635)', border: '#84cc16', name: '#a3e635', label: 'Lime' },
+    twitch: { gradient: 'linear-gradient(135deg,#9147ff,#bf94ff)', border: '#9147ff', name: '#bf94ff', label: 'Twitch color' },
 };
 
 // ── INIT ──────────────────────────────────────────────────
@@ -960,20 +960,20 @@ function init() {
     const ls = document.querySelector('.loading-screen');
     if (ls) ls.remove();
 
-    // Загружаем сохранённые данные стримера сразу из localStorage как fallback
+    // Load the streamer's saved data directly from localStorage as a fallback
     loadStreamerDataSync();
 
-    // Инициализируем IndexedDB для стримера
+    // Initialize IndexedDB for the streamer
     initStreamerDB().then(() => {
-        // После загрузки данных стримера, предлагаем переподключиться
+        // Once the streamer's data has loaded, we recommend reconnecting
         setTimeout(() => {
             if (streamerState.channelName && currentTab === 'streamer') {
                 showReconnectToast(streamerState.channelName);
             }
-        }, 1500); // Увеличили задержку для полной загрузки
+        }, 1500); // Increased the delay for a full download
     });
 
-    // Загружаем и нормализуем данные игр
+    // Loading and Normalizing Game Data
     const rawGames = JSON.parse(localStorage.getItem('challengeGames'));
     if (rawGames && typeof rawGames === 'object') {
         Object.entries(rawGames).forEach(([gameName, tasks]) => {
@@ -981,7 +981,7 @@ function init() {
             const normalized = tasks.map(t =>
                 typeof t === 'string' ? t : (t && typeof t.task === 'string' ? t.task : String(t))
             ).filter(t => t && t.trim());
-            // Убираем дубликаты заданий
+            // Removing Duplicate Tasks
             games[gameName] = [...new Set(normalized)];
         });
     }
@@ -989,7 +989,7 @@ function init() {
         games = getDefaultGames();
     }
 
-    // Загружаем состояние task-only режима
+    // Loading the task-only mode state
     const savedTaskOnlyState = localStorage.getItem('taskOnlyState');
     if (savedTaskOnlyState) {
         try {
@@ -1000,7 +1000,7 @@ function init() {
         }
     }
 
-    // Загружаем сохранённый режим рулетки
+    // Load the saved roulette mode
     const savedRouletteMode = localStorage.getItem('rouletteMode');
     if (savedRouletteMode) {
         rouletteMode = savedRouletteMode;
@@ -1014,7 +1014,7 @@ function init() {
     updateWheelSegments();
 }
 
-// Синхронная загрузка данных из localStorage
+// Synchronous Loading of Data from localStorage
 function loadStreamerDataSync() {
     const saved = localStorage.getItem('streamerState');
     if (saved) {
@@ -1027,9 +1027,9 @@ function loadStreamerDataSync() {
             streamerState.autoSpin = data.autoSpin || false;
             streamerState.sessionStartTime = data.sessionStartTime || Date.now();
 
-            console.log('Загружены данные стримера:', streamerState.channelName);
+            console.log('Streamer data has been loaded:', streamerState.channelName);
         } catch (e) {
-            console.warn('Ошибка загрузки из localStorage:', e);
+            console.warn('Error loading from localStorage:', e);
         }
     }
 }
@@ -1084,9 +1084,9 @@ function showConfirmModal(title, msg, confirmTxt, cancelTxt, onConfirm) {
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalMessage').textContent = msg;
     const btn = document.getElementById('modalConfirm');
-    btn.textContent = confirmTxt || 'ПОДТВЕРДИТЬ';
+    btn.textContent = confirmTxt || 'CONFIRM';
     const cancelBtn = modal.querySelector('.cancel-btn');
-    if (cancelBtn) cancelBtn.textContent = cancelTxt || 'ОТМЕНА';
+    if (cancelBtn) cancelBtn.textContent = cancelTxt || 'CANCEL';
     modalCallback = onConfirm;
     btn.onclick = () => { if (modalCallback) modalCallback(); closeModal() };
     modal.classList.remove('hidden');
@@ -1152,14 +1152,14 @@ function createTabs(initialTab) {
 function switchTab(name) {
     currentTab = name;
     if (name !== 'roulette') {
-        // Прерываем анимацию и сбрасываем состояние вращения
+        // Stop the animation and reset the rotation state
         if (animationId) { cancelAnimationFrame(animationId); animationId = null }
         if (spinning) {
             spinning = false;
-            // Кнопка будет пересоздана при следующем рендере рулетки — здесь просто сбрасываем флаг
+            // The button will be recreated the next time the roulette is rendered—here, we simply clear the flag
         }
         gameFirstState.active = false;
-        // Скрываем popup результата при смене вкладки
+        // Hide the results popup when switching tabs
         const popup = document.getElementById('wheelResultPopup');
         if (popup) { popup.classList.add('hidden'); popup.style.animation = '' }
     }
@@ -1184,13 +1184,13 @@ function switchTab(name) {
         },
         streamer: () => {
             content.innerHTML = renderStreamerTab();
-            // Обновляем состояние UI после рендера
+            // Updating the UI state after rendering
             setTimeout(() => {
                 updateStreamerUIState();
                 updateChannelInput();
                 updateTokenInput();
 
-                // Предлагаем переподключение если есть сохранённый канал
+                // We offer to reconnect if you have a saved channel
                 if (streamerState.channelName && streamerState.twitchStatus === 'idle') {
                     setTimeout(() => {
                         showReconnectToast(streamerState.channelName);
@@ -1696,7 +1696,7 @@ function getSegmentColor(i, total) {
 }
 
 function updateWheelSegments() {
-    segmentScales = []; // сброс масштабов при обновлении сегментов
+    segmentScales = []; // Reset scales when updating segments
     if (rouletteMode === 'player-only') {
         if (!players.length) {
             wheelSegments = [{ label: t('wheel.no_players'), task: t('wheel.add_players'), game: '', color: '#484f58' }];
@@ -1759,12 +1759,12 @@ function updateWheelSegments() {
     Object.entries(games).forEach(([g, tasks]) => {
         if (!Array.isArray(tasks)) return;
         tasks.forEach(t => {
-            // Защита от старого формата данных: задание может быть строкой или объектом
+            // Protection against the old data format: a task can be a string or an object
             const taskStr = typeof t === 'string' ? t : (t && typeof t.task === 'string' ? t.task : String(t));
             if (!taskStr) return;
             if (rouletteSettings.removeAfterSpin) {
                 const spent = spentTasks[g] || [];
-                if (spent.includes(taskStr)) return; // пропускаем выпавшие
+                if (spent.includes(taskStr)) return; // We skip the ones that fell out
             }
             allTasks.push({ game: g, task: taskStr });
         });
@@ -1777,7 +1777,7 @@ function updateWheelSegments() {
 
     const max = rouletteSettings.groupSegments ? Math.max(1, rouletteSettings.maxSegments) : 200;
     if (allTasks.length > max) {
-        // Группируем по играм: один сегмент = одна игра
+        // Group by game: one segment = one game
         const gameMap = new Map();
         allTasks.forEach(item => {
             if (!gameMap.has(item.game)) gameMap.set(item.game, []);
@@ -1808,7 +1808,7 @@ function updateWheelSegments() {
 }
 
 function updateWheelSegmentsForGame(gameName) {
-    segmentScales = []; // сброс масштабов при обновлении сегментов
+    segmentScales = []; // Reset scales when updating segments
     const remaining = getRemainingTasksForGame(gameName);
     if (!remaining.length) {
         wheelSegments = [{ label: t('wheel.all_done'), task: t('wheel.all_done_desc'), game: gameName, color: '#484f58' }];
@@ -1830,7 +1830,7 @@ function getRemainingTasksForGame(name) {
     return tasks;
 }
 
-// Записываем задание как "потраченное" для данной игры
+// Mark the task as "completed" for this game
 function markTaskSpent(gameName, task) {
     if (!rouletteSettings.removeAfterSpin || !gameName || !task) return;
     if (!spentTasks[gameName]) spentTasks[gameName] = [];
@@ -1840,19 +1840,19 @@ function markTaskSpent(gameName, task) {
     }
 }
 
-// Анимация плавного уменьшения и исчезновения сегмента
+// Animation showing a segment gradually shrinking and disappearing
 function animateSegmentRemoval(segIdx, duration, callback) {
     if (!rouletteSettings.removeAfterSpin || segIdx < 0 || segIdx >= wheelSegments.length) {
         if (callback) callback();
         return;
     }
-    // Инициализируем масштабы всех сегментов в 1 если ещё не заданы
+    // Initialize the scales of all segments to 1 if they haven't been set yet
     segmentScales = wheelSegments.map((_, i) => segmentScales[i] !== undefined ? segmentScales[i] : 1);
 
     const startTime = Date.now();
     function step() {
         const t = Math.min((Date.now() - startTime) / duration, 1);
-        // easeInOutQuad — медленно начинает И медленно заканчивает, без резкого схлопывания
+        // easeInOutQuad — starts slowly and ends slowly, without a sudden drop
         const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         segmentScales[segIdx] = 1 - eased;
         renderWheel();
@@ -1867,12 +1867,12 @@ function animateSegmentRemoval(segIdx, duration, callback) {
     animationId = requestAnimationFrame(step);
 }
 
-// Подсчёт общего числа потраченных заданий
+// Calculating the total number of completed tasks
 function countSpentTasks() {
     return Object.values(spentTasks).reduce((s, arr) => s + arr.length, 0);
 }
 
-// Уведомление когда все задания игры выпали
+// Notification when all game tasks have been completed
 function checkAllTasksSpent(gameName) {
     if (!rouletteSettings.removeAfterSpin || !gameName) return;
     const total = (games[gameName] || []).length;
@@ -1916,12 +1916,12 @@ function renderWheel() {
         const sA = i * segAngle + currentWheelAngle;
         const eA = sA + segAngle;
         const scale = (segmentScales[i] !== undefined) ? segmentScales[i] : 1;
-        if (scale <= 0) return; // полностью исчез — не рисуем
+        if (scale <= 0) return; // has completely disappeared — we don't draw it
 
-        ctx.save(); // ← сохраняем чистое состояние для каждого сегмента
+        ctx.save(); // ← We maintain a clean state for each segment
 
         if (scale < 1) {
-            // Масштабируем сегмент от его центра (сжатие к центру сегмента)
+            // Scale the segment from its center (shrink toward the center of the segment)
             const midAngle = sA + segAngle / 2;
             const midR = (innerR + outerR) / 2;
             const pivotX = cx + Math.cos(midAngle) * midR;
@@ -1941,7 +1941,7 @@ function renderWheel() {
         ctx.fillStyle = grd; ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
 
-        // Segment label — отдельный save/restore чтобы трансформации не накапливались
+        // Segment label — a separate save/restore to prevent transformations from accumulating
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(sA + segAngle / 2);
@@ -1959,9 +1959,9 @@ function renderWheel() {
             ctx.fillStyle = 'rgba(255,255,255,0.7)';
             ctx.fillText(`${seg.items?.length || 0} ${t('wheel.group_tasks', { n: '' }).replace(/{n}/, '')}`, textR, fs + 2);
         }
-        ctx.restore(); // ← восстанавливаем после лейбла
+        ctx.restore(); // ← Restore after the label
 
-        ctx.restore(); // ← восстанавливаем полностью чистое состояние
+        ctx.restore(); // ← We restore it to its original, pristine condition
     });
 
     // Tick dots on the outer ring
@@ -2053,7 +2053,7 @@ function selectGameForTaskOnly(gameName) {
 function updateGameSummary(gameName) {
     const summarySection = document.querySelector('.selection-summary');
     if (!summarySection) {
-        // Если блока summary нет, создаем его
+        // If there is no "summary" block, create one
         const taskOnlyStatus = document.querySelector('.task-only-status');
         if (taskOnlyStatus) {
             const summaryDiv = document.createElement('div');
@@ -2062,7 +2062,7 @@ function updateGameSummary(gameName) {
         }
     }
 
-    // Обновляем или создаем карточку с выбранной игрой — DOM API, без innerHTML
+    // Update or create a card for the selected game — DOM API, without innerHTML
     let gameCard = document.querySelector('.selected-game-card');
     if (gameCard) {
         const valueSpan = gameCard.querySelector('.status-card-value');
@@ -2070,13 +2070,13 @@ function updateGameSummary(gameName) {
     } else if (gameName) {
         const card = document.createElement('div');
         card.className = 'status-card selected-game-card';
-        card.innerHTML = '<div class="status-card-icon">🎮</div><div class="status-card-content"><span class="status-card-label">Выбранная игра</span><span class="status-card-value"></span></div>';
+        card.innerHTML = '<div class="status-card-icon">🎮</div><div class="status-card-content"><span class="status-card-label">Selected Game</span><span class="status-card-value"></span></div>';
         card.querySelector('.status-card-value').textContent = gameName;
         const sec = document.querySelector('.selection-summary');
         if (sec) sec.prepend(card);
     }
 
-    // Обновляем количество заданий — textContent, без innerHTML
+    // Updating the number of tasks — using textContent, not innerHTML
     const tasksStat = document.querySelector('.stat-mini .stat-mini-text');
     if (tasksStat && tasksStat.textContent.includes('Заданий:')) {
         tasksStat.textContent = `Заданий: ${games[gameName]?.length || 0}`;
@@ -2084,17 +2084,17 @@ function updateGameSummary(gameName) {
 }
 
 function selectPlayerForTaskOnly(playerName) {
-    // null означает "случайный игрок"; пустая строка из dataset — тоже null
+    // null means "random player"; an empty string from the dataset is also null
     if (playerName === '' || playerName === 'null') playerName = null;
     taskOnlyState.selectedPlayer = playerName;
     saveAll();
 
-    // Обновляем стили кнопок через dataset — безопасно
+    // Updating Button Styles Using a Dataset — Safely
     const buttons = document.querySelectorAll('.player-selector-btn');
     buttons.forEach(btn => {
         const btnPlayer = btn.dataset.playerName !== undefined
             ? (btn.dataset.playerName === '' ? null : btn.dataset.playerName)
-            : null; // кнопка "Случайный" не имеет data-player-name
+            : null; // The "Shuffle" button does not have a data-player-name attribute
         btn.classList.toggle('selected', btnPlayer === playerName);
     });
 
@@ -2103,13 +2103,13 @@ function selectPlayerForTaskOnly(playerName) {
 }
 
 function updatePlayerSummary(playerName) {
-    // Обновляем или создаем карточку с выбранным игроком
+    // Update or create a card for the selected player
     let playerCard = document.querySelector('.selected-player-card');
     if (playerCard) {
         const valueSpan = playerCard.querySelector('.status-card-value');
         if (valueSpan) {
-            valueSpan.textContent = playerName || 'Случайный';
-            // Обновляем цвет для конкретного игрока
+            valueSpan.textContent = playerName || 'Random';
+            // Update the color for a specific player
             if (playerName) {
                 const player = players.find(p => p.name === playerName);
                 const color = playerColors[player?.color]?.name || '#818cf8';
@@ -2119,16 +2119,16 @@ function updatePlayerSummary(playerName) {
             }
         }
     } else if (playerName !== null) {
-        // Создаем карточку через DOM API — без innerHTML с пользовательскими данными
+        // Creating a card using the DOM API—without `innerHTML` and with custom data
         const player = players.find(p => p.name === playerName);
-        // Цвет только из разрешённого словаря playerColors — безопасно
+        // Color must come only from the allowed playerColors dictionary — safe
         const safeColor = playerColors[player?.color]?.name || '#818cf8';
 
         const card = document.createElement('div');
         card.className = 'status-card selected-player-card';
-        card.innerHTML = '<div class="status-card-icon">👤</div><div class="status-card-content"><span class="status-card-label">Выбранный игрок</span><span class="status-card-value"></span></div>';
+        card.innerHTML = '<div class="status-card-icon">👤</div><div class="status-card-content"><span class="status-card-label">Selected Player</span><span class="status-card-value"></span></div>';
         const val = card.querySelector('.status-card-value');
-        val.textContent = playerName || 'Случайный';
+        val.textContent = playerName || 'Random';
         val.style.color = safeColor;
 
         const sec = document.querySelector('.selection-summary');
@@ -2140,7 +2140,7 @@ function updatePlayerSummary(playerName) {
 }
 
 function updateSelectedPlayerInfo(playerName) {
-    // Оставлю эту функцию пустой, так как логика перенесена в updatePlayerSummary
+    // I'll leave this function empty, since the logic has been moved to `updatePlayerSummary`
 }
 
 function startSpin() {
@@ -2201,11 +2201,11 @@ function startFullRandomMode() {
 
     updateWheelSegments();
 
-    // Выбираем случайный сегмент из тех, что реально нарисованы на колесе
+    // We select a random segment from those actually drawn on the wheel
     const ti = Math.floor(Math.random() * wheelSegments.length);
     const winSeg = wheelSegments[ti];
 
-    // Если сегмент — группа (игра), выбираем случайное задание из неё
+    // If the segment is a group (game), select a random task from it
     let selGame, selTask;
     if (winSeg.isGroup && winSeg.items && winSeg.items.length) {
         const picked = winSeg.items[Math.floor(Math.random() * winSeg.items.length)];
@@ -2222,7 +2222,7 @@ function startFullRandomMode() {
         setTimeout(() => {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(selGame, selPlayer, selTask);
             showPopupResult(selGame, selPlayer, selTask);
-            // Транслируем результат в overlay
+            // Display the result in an overlay
             try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: selGame, player: selPlayer?.name || '?', task: selTask, duration: 12000 })); } catch (e) { }
             markTaskSpent(selGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
@@ -2242,7 +2242,7 @@ function startFullRandomMode() {
 function spinPlayerOnly() {
     if (!players.length) { finishSpin(); return }
     updateWheelSegments();
-    // Если всё выпало — wheelSegments содержит заглушку
+    // If everything is missing, `wheelSegments` contains a placeholder
     if (wheelSegments.length === 1 && wheelSegments[0].task === t('wheel.all_done')) {
         showNotification(t('wheel.all_done'), 'info'); finishSpin(); return;
     }
@@ -2252,7 +2252,7 @@ function spinPlayerOnly() {
         const p = players.find(pl => pl.name === seg?.task) || { name: seg?.task || '?', color: 'indigo', stats: {} };
         setTimeout(() => {
             showPopupResult('👤 Выбор игрока', p, p.name);
-            if (rouletteSettings.resultDisplay !== 'popup') showResult('Выбор игрока', p, `${p.name} выбран!`);
+            if (rouletteSettings.resultDisplay !== 'popup') showResult('Player Selection', p, `${p.name} selected!`);
             try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: '👤 ' + t('wheel.player_pick'), player: p?.name || '?', task: `${p?.name || '?'} ${t('results.player_picked', { name: '' }).trim()}`, duration: 10000 })); } catch (e) { }
             if (rouletteSettings.removeAfterSpin) {
                 markTaskSpent('__players__', p.name);
@@ -2275,7 +2275,7 @@ function spinGameOnly() {
     if (!gameList.length) { showNotification(t('roulette.no_games_only'), 'error'); finishSpin(); return; }
 
     updateWheelSegments();
-    // Если всё выпало
+    // If everything fell out
     if (wheelSegments.length === 1 && wheelSegments[0].task === t('wheel.all_done')) {
         showNotification(t('wheel.all_done'), 'info'); finishSpin(); return;
     }
@@ -2331,10 +2331,10 @@ function spinTaskOnly() {
         return;
     }
 
-    // Используем отфильтрованный список — тот же что и на колесе
+    // Let's use the filtered list—the same one as on the wheel
     updateWheelSegments();
 
-    // Если все задания уже потрачены — wheelSegments содержит заглушку
+    // If all tasks have already been used up, `wheelSegments` contains a placeholder
     const availableSegs = wheelSegments.filter(s => s.task && s.task !== t('wheel.all_done_desc'));
     if (!availableSegs.length) {
         showNotification('В выбранной игре нет заданий', 'error');
@@ -2342,28 +2342,28 @@ function spinTaskOnly() {
         return;
     }
 
-    // Выбираем случайный индекс из wheelSegments (уже отфильтрованы)
+    // Select a random index from `wheelSegments` (already filtered)
     const ti = Math.floor(Math.random() * wheelSegments.length);
 
-    // Определяем игрока: выбранный конкретный или случайный
+    // Determining the player: specific or random
     let selectedPlayer;
     if (taskOnlyState.selectedPlayer) {
-        // Конкретный игрок выбран
+        // A specific player has been selected
         const foundPlayer = players.find(p => p.name === taskOnlyState.selectedPlayer);
         selectedPlayer = foundPlayer || { name: taskOnlyState.selectedPlayer, color: 'indigo', stats: {} };
     } else {
-        // Случайный игрок или "Все" если игроков нет
-        selectedPlayer = players.length ? players[Math.floor(Math.random() * players.length)] : { name: 'Все', color: 'indigo', stats: {} };
+        // A random player, or "All" if there are no players
+        selectedPlayer = players.length ? players[Math.floor(Math.random() * players.length)] : { name: 'All', color: 'indigo', stats: {} };
     }
 
     spinWheel(wheelSegments, ti, () => {
-        // Берём задание напрямую из выигравшего сегмента wheelSegments
+        // We retrieve the task directly from the winning segment, `wheelSegments`
         const task = wheelSegments[ti]?.task;
         if (!task) { finishSpin(); return; }
         setTimeout(() => {
             showPopupResult(taskOnlyState.selectedGame, selectedPlayer, task);
             if (rouletteSettings.resultDisplay !== 'popup') showResult(taskOnlyState.selectedGame, selectedPlayer, task);
-            // Транслируем результат в overlay
+            // Display the result in an overlay
             try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: taskOnlyState.selectedGame, player: selectedPlayer?.name || '?', task: task, duration: 12000 })); } catch (e) { }
             markTaskSpent(taskOnlyState.selectedGame, task);
             if (rouletteSettings.removeAfterSpin) {
@@ -2382,22 +2382,22 @@ function spinTaskOnly() {
 
 function startGameFirstInitial() {
     const gamesWithTasks = Object.entries(games).filter(([, t]) => t.length > 0);
-    if (!gamesWithTasks.length) { showNotification('Нет игр с заданиями', 'error'); finishSpin(); return }
+    if (!gamesWithTasks.length) { showNotification('No games with tasks', 'error'); finishSpin(); return }
     const selGame = gamesWithTasks[Math.floor(Math.random() * gamesWithTasks.length)][0];
     updateWheelSegments();
-    // Ищем сегмент с нужной игрой прямо в wheelSegments
+    // We look for the segment containing the desired game directly in `wheelSegments`
     let ti = wheelSegments.findIndex(s => s.game === selGame);
     if (ti < 0) ti = 0;
     spinWheel(wheelSegments, ti, () => {
         gameFirstState = { active: true, selectedGame: selGame, currentPlayerIndex: 0, assignedTasks: {} };
-        // Обновляем сегменты под выбранную игру и перерисовываем колесо
+        // We update the segments for the selected game and redraw the wheel
         updateWheelSegmentsForGame(selGame);
         renderWheel();
         showWheel();
-        // Обновляем только инфо-панель без скрытия колеса
+        // We're updating only the dashboard without hiding the steering wheel
         const infoArea = document.querySelector('.roulette-info');
         if (infoArea) {
-            // пересоздаём вкладку чтобы показать статус, но колесо уже стоит
+            // We're redesigning the tab to show the status, but the wheel is already in place
             switchTab('roulette');
         }
         showNotification(`🎮 ${t('roulette.selected_game')}: ${selGame}!`, 'success');
@@ -2420,7 +2420,7 @@ function startGameFirstSpin() {
         setTimeout(() => {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(gameFirstState.selectedGame, curP, selTask);
             showPopupResult(gameFirstState.selectedGame, curP, selTask);
-            // Транслируем результат в overlay
+            // Display the result in an overlay
             try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: gameFirstState.selectedGame, player: curP?.name || '?', task: selTask, duration: 12000 })); } catch (e) { }
             markTaskSpent(gameFirstState.selectedGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
@@ -2461,19 +2461,19 @@ function finishSpin() {
     refreshRouletteControls();
 }
 
-// Обновляет кнопки управления рулеткой прямо в DOM (без перерендера вкладки)
+// Updates the roulette control buttons directly in the DOM (without re-rendering the tab)
 function refreshRouletteControls() {
     const ctrl = document.querySelector('.roulette-controls');
     if (!ctrl) return;
-    // Убираем старую кнопку сброса и все br перед ней
+    // Remove the old reset button and all the `br` tags before it
     ctrl.querySelectorAll('.spent-reset-btn').forEach(b => {
-        // удаляем предшествующий br если есть
+        // Remove the preceding `br` tag, if there is one
         if (b.previousSibling && b.previousSibling.nodeName === 'BR') {
             b.previousSibling.remove();
         }
         b.remove();
     });
-    // Добавляем свежую если нужна
+    // Add fresh ones if needed
     if (rouletteSettings.removeAfterSpin && countSpentTasks() > 0) {
         const btn = document.createElement('button');
         btn.className = 'cyber-btn danger-btn outline-btn spent-reset-btn';
@@ -2497,10 +2497,10 @@ function spinWheel(tasks, targetIdx, callback) {
     if (!tasks.length) { if (callback) callback(); return }
     lastWinnerSegIdx = targetIdx;
     const segAngle = (Math.PI * 2) / tasks.length;
-    const targetAngle = targetIdx * segAngle + segAngle / 2; // середина целевого сегмента (от угла 0)
-    const POINTER = -Math.PI / 2; // указатель сверху (12 часов)
+    const targetAngle = targetIdx * segAngle + segAngle / 2; // center of the target segment (from angle 0)
+    const POINTER = -Math.PI / 2; // top index (12 o'clock)
     const spins = rouletteSettings.minSpins + Math.floor(Math.random() * (rouletteSettings.maxSpins - rouletteSettings.minSpins + 1));
-    // Нужно: targetAngle + currentWheelAngle + totalRot ≡ POINTER (mod 2π)
+    // You need to: targetAngle + currentWheelAngle + totalRot ≡ POINTER (mod 2π)
     // → totalRot = POINTER - currentWheelAngle - targetAngle + N*2π
     const remainder = ((POINTER - currentWheelAngle - targetAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
     const totalRot = spins * Math.PI * 2 + remainder;
@@ -2509,7 +2509,7 @@ function spinWheel(tasks, targetIdx, callback) {
 }
 
 // ── Easing functions ──────────────────────────────────────
-// easeOutQuint: очень плавное торможение без резкого останова
+// easeOutQuint: very smooth deceleration without a sudden stop
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 5) }
 function easeOutBounce(t) {
     const n1 = 7.5625, d1 = 2.75;
@@ -2557,11 +2557,11 @@ function animateWheel(totalRotation, callback) {
             if (seg !== lastTickSeg) { lastTickSeg = seg; playTickSound() }
         }
 
-        // Glow effect near end — плавно нарастает с 70% прогресса
+        // Glow effect near the end — gradually increases starting at 70% progress
         if (rouletteSettings.visualEffects && rouletteSettings.glowEffect && progress > 0.7) {
-            const t = (progress - 0.7) / 0.3;  // 0→1 в диапазоне 70–100%
-            const g = 6 + t * 22;              // 6px → 28px (мягко)
-            const o = 0.15 + t * 0.45;          // 0.15 → 0.60 (не режет глаз)
+            const t = (progress - 0.7) / 0.3;  // 0→1 in the range of 70–100%
+            const g = 6 + t * 22;              // 6px → 28px (soft)
+            const o = 0.15 + t * 0.45;          // 0.15 → 0.60 (not too bright)
             if (canvas) canvas.style.filter = `drop-shadow(0 0 ${g.toFixed(1)}px rgba(99,102,241,${o.toFixed(2)}))`;
         }
 
@@ -2579,7 +2579,7 @@ function animateWheel(totalRotation, callback) {
 function finalizeSpin(callback) {
     renderWheel();
     const canvas = document.getElementById('rouletteWheel');
-    // Плавно убираем glow через CSS transition
+    // Smoothly fade out the glow using a CSS transition
     if (canvas) {
         canvas.style.transition = 'filter 0.6s ease';
         canvas.style.filter = 'drop-shadow(0 8px 24px rgba(0,0,0,0.5))';
@@ -2594,7 +2594,7 @@ function finalizeSpin(callback) {
 function shakeWheel(callback) {
     const canvas = document.getElementById('rouletteWheel');
     if (!canvas) { if (callback) callback(); return }
-    // Плавная лёгкая вибрация — меньше амплитуда, дольше затухание
+    // A smooth, gentle vibration—smaller amplitude, longer decay
     const frames = [1.5, -1.2, 0.9, -0.6, 0.3, 0];
     let i = 0;
     function step() {
@@ -2633,9 +2633,9 @@ function typeWriter(el, text, speed) {
 }
 
 function showPopupResult(game, player, task) {
-    // Берём popup из body (он туда перенесён при рендере)
+    // We retrieve the popup from the body (it was moved there during rendering)
     let popup = document.getElementById('wheelResultPopup');
-    // Если popup ещё внутри wheel-container — перенесём в body
+    // If the popup is still inside the `wheel-container`, move it to the `body`
     if (popup && popup.closest('.wheel-container')) {
         document.body.appendChild(popup);
     }
@@ -2651,10 +2651,10 @@ function showPopupResult(game, player, task) {
     if (pp) { pp.textContent = ''; setTimeout(() => typeWriter(pp, `👤 ${player?.name || '?'}`, 25), 260); pp.style.color = cd.name }
     if (pt) { pt.textContent = ''; setTimeout(() => typeWriter(pt, `⚡ ${task}`, 16), 520) }
 
-    // Отправляем результат в чат
-    // Функция отправки в чат недоступна без авторизации
+    // Send the result to the chat
+    // The chat send feature is not available without logging in
 
-    // Добавляем подсказку закрытия если её нет
+    // Add a close prompt if there isn't one
     if (!popup.querySelector('.popup-close-hint')) {
         const hint = document.createElement('div');
         hint.className = 'popup-close-hint';
@@ -2671,7 +2671,7 @@ function showPopupResult(game, player, task) {
     if (rouletteSettings.visualEffects && rouletteSettings.glowEffect) popup.classList.add('win');
     if (rouletteSettings.particleEffect) createParticles();
 
-    // Закрытие по клику на затемнение
+    // Close by clicking to dim
     popup._bgClickHandler = (e) => { if (e.target === popup) closePopup(popup) };
     popup.addEventListener('click', popup._bgClickHandler);
 
@@ -2704,7 +2704,7 @@ function showResult(game, player, task) {
         <div class="result-card-item"><div class="result-card-icon">⚡</div><div class="result-card-label">${t('roulette.result_task')}</div><div class="result-card-value task-highlight">${esc(task)}</div></div>
     </div>`;
     if (ra) {
-        // Используем только безопасные статичные кнопки без пользовательских данных в обработчиках
+        // We use only secure static buttons with no user data in the handlers
         if (gameFirstState.active) {
             const nextP = players[gameFirstState.currentPlayerIndex];
             const rem = getRemainingTasksForGame(gameFirstState.selectedGame);
@@ -2728,7 +2728,7 @@ function showResult(game, player, task) {
 
 function showFinalResults() {
     const assigned = Object.keys(gameFirstState.assignedTasks).length;
-    if (!assigned && gameFirstState.active) return showNotification('Нет назначенных заданий', 'warning');
+    if (!assigned && gameFirstState.active) return showNotification('No tasks have been assigned', 'warning');
     const unassigned = players.filter(p => !gameFirstState.assignedTasks[p.name]);
     const rd = document.getElementById('spinResult'), rc = document.getElementById('resultContent'), ra = document.getElementById('resultActions');
     if (!rd || !rc) return;
@@ -2741,7 +2741,7 @@ function showFinalResults() {
             </div>
         </div>
         <div class="final-results-list">
-            <div class="final-results-title">📋 Задания (${assigned}/${players.length})</div>
+            <div class="final-results-title">📋 Assignments (${assigned}/${players.length})</div>
             <div class="final-results-grid">
                 ${Object.entries(gameFirstState.assignedTasks).map(([pn, pt], idx) => {
         const pl = players.find(p => p.name === pn);
@@ -2750,7 +2750,7 @@ function showFinalResults() {
     }).join('')}
             </div>
         </div>
-        ${unassigned.length ? `<div class="unassigned-warning"><p class="unassigned-warning-title">⚠️ Без заданий</p><div class="unassigned-players-list">${unassigned.map(p => `<span class="unassigned-player-tag" style="border-color:${esc(playerColors[p.color]?.name || '#818cf8')};color:${esc(playerColors[p.color]?.name || '#818cf8')}">${esc(p.name)}</span>`).join('')}</div></div>` : ''}
+        ${unassigned.length ? `<div class="unassigned-warning"><p class="unassigned-warning-title">⚠️ No assignments</p><div class="unassigned-players-list">${unassigned.map(p => `<span class="unassigned-player-tag" style="border-color:${esc(playerColors[p.color]?.name || '#818cf8')};color:${esc(playerColors[p.color]?.name || '#818cf8')}">${esc(p.name)}</span>`).join('')}</div></div>` : ''}
     `;
     if (ra) ra.innerHTML = `<br><button onclick="resetGameFirstMode()" class="cyber-btn add-btn">${t('results.start_over')}</button><button onclick="exportResults()" class="cyber-btn export-btn">${t('results.export')}</button>`;
     rd.classList.remove('hidden'); rd.style.animation = 'none'; void rd.offsetHeight; rd.style.animation = 'fadeInUp 0.5s ease';
@@ -2972,7 +2972,7 @@ function renderVoteArea() {
         return `
             <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">
                 ${isReal
-                ? `✅ ${t('streamer.status_reading', { ch: esc(streamerState.channelName) }).replace('Читаем чат', 'Чат подключён —')} зрители пишут <b>1–4</b> для голосования`
+                ? `✅ ${t('streamer.status_reading', { ch: esc(streamerState.channelName) }).replace('Let's Read the Chat', 'Chat is connected —')} Viewers are writing <b>1–4</b> to vote`
                 : `⚠️ ${t('streamer.connect_first_vote')}`}
             </div>
             <div style="margin-bottom:10px">
@@ -3047,13 +3047,13 @@ function startVote() {
     if (!gameOptions.length) return showNotification(t('streamer.no_games_vote'), 'error');
     if (!streamerState.connected) return showNotification(t('streamer.connect_first_vote'), 'warning');
 
-    // Сохраняем тему из поля ввода если оно ещё в DOM
+    // We retain the topic from the input field if it is still in the DOM
     const titleInput = document.getElementById('voteTitle');
     if (titleInput) streamerState.voteTitle = titleInput.value.trim();
 
     streamerState.voteOptions = gameOptions;
     streamerState.voteVotes = {};
-    streamerState.voteVoters = {};      // кто уже проголосовал
+    streamerState.voteVoters = {};      // Who has already voted?
     streamerState.voteActive = true;
     streamerState.voteTimer = streamerState.voteDuration || 30;
     gameOptions.forEach((_, i) => { streamerState.voteVotes[i + 1] = { option: gameOptions[i], count: 0 } });
@@ -3061,7 +3061,7 @@ function startVote() {
     const titleMsg = streamerState.voteTitle ? ` "${streamerState.voteTitle}"` : '';
     showNotification(t('streamer.vote_started', { topic: titleMsg, n: gameOptions.length }), 'success');
 
-    // Передаём данные голосования в overlay через localStorage
+    // We pass the voting data to the overlay via localStorage
     try {
         localStorage.setItem('overlayState', JSON.stringify({
             type: 'vote',
@@ -3077,7 +3077,7 @@ function startVote() {
         // Обновляем таймер
         const cd = document.getElementById('voteCountdown');
         if (cd) { cd.textContent = t('overlay.vote_sec', { n: streamerState.voteTimer }); cd.className = `vote-timer${streamerState.voteTimer <= 5 ? ' urgent' : ''}` }
-        // Перерисовываем только бары голосов без полного ре-рендера
+        // We redraw only the vote bars without a full re-render
         _refreshVoteBars();
         if (streamerState.voteTimer <= 0) stopVote();
     }, 1000);
@@ -3141,7 +3141,7 @@ function startTimer() {
         clearInterval(streamerState.timerInterval); streamerState.timerInterval = null;
         streamerState.timerRunning = false;
         const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = t('streamer.timer_start');
-        updateTimerDisplay(); // транслируем pause в overlay
+        updateTimerDisplay(); // We're displaying "pause" in the overlay
         return;
     }
     if (streamerState.timerSeconds <= 0) return showNotification(t('streamer.timer_set_first'), 'warning');
@@ -3176,7 +3176,7 @@ function updateTimerDisplay() {
     const t = streamerState.timerSeconds;
     d.textContent = formatTime(t);
     d.className = `timer-display ${t <= 30 && t > 10 ? 'warning' : ''} ${t <= 10 && t > 0 ? 'danger' : ''}`;
-    // Транслируем состояние таймера в overlay
+    // We display the timer status in the overlay
     try {
         localStorage.setItem('overlayTimer', JSON.stringify({
             seconds: streamerState.timerSeconds,
@@ -3257,7 +3257,7 @@ function sendChatMsg() {
     const text = inp.value.trim();
     if (!text) return;
 
-    // Добавляем в локальный чат как превью
+    // Add it to the local chat as a preview
     const colors = ['#818cf8', '#34d399', '#fbbf24', '#f472b6', '#67e8f9', '#a3e635'];
     const msgObj = {
         user: streamerState.channelName || 'Стример',
@@ -3277,22 +3277,22 @@ function sendChatMsg() {
         cb.scrollTop = cb.scrollHeight;
     }
 
-    // Обработка команд
+    // Command Processing
     if (text.startsWith('!')) {
         processChatCommand(msgObj.user, text, { isBroad: true, isMod: false, isSub: false });
     }
 }
 
-// Отправка команд в чат (список команд — только локальный превью)
+// Sending commands to the chat (command list—local preview only)
 function sendCommandsList() {
     const commands = [
-        '🎰 !spin - запустить рулетку',
-        '🗳️ !vote - начать голосование',
-        '⏱️ !timer N - установить таймер на N минут',
-        '💜 !addchatters - добавить всех активных в колесо',
-        '🗑️ !clearwheel - очистить колесо',
-        '� !join / !addme - добавиться в колесо',
-        '❓ !commands / !help - показать команды'
+        '🎰 !spin - Start the roulette wheel',
+        '🗳️ !vote - Start voting',
+        '⏱️ !timer N - Set the timer for N minutes',
+        '💜 !addchatters - Add all active users to the group',
+        '🗑️ !clearwheel - clean the wheel',
+        '� !join / !addme - join the group',
+        '❓ !commands / !help - Show commands'
     ];
 
     const msgObj = {
@@ -3369,7 +3369,7 @@ function quickResetSession() {
 
 // OBS Overlay
 function getOverlayUrl() {
-    // Формируем полный URL к overlay.html относительно текущего файла
+    // We construct the full URL to overlay.html relative to the current file
     const base = window.location.href.replace(/[^/]*$/, '');
     return base + 'overlay.html';
 }
@@ -3407,18 +3407,18 @@ function renderStatsTab() {
     const topPlayer = players.reduce((mx, p) => (p.stats?.gamesPlayed || 0) > (mx?.stats?.gamesPlayed || 0) ? p : mx, null);
     const bigGame = Object.entries(games).reduce((mx, [g, t]) => t.length > (mx?.[1]?.length || 0) ? [g, t] : mx, null);
 
-    // Три совета дня — по одному из каждой категории
+    // Three Tips of the Day—One from Each Category
     const tipCoop = getDailyTip('coop');
     const tipComp = getDailyTip('comp');
     const tipOnline = getDailyTip('online');
     const tipFact = getDailyTip('fact');
-    // Показываем 3 карточки: кооп, соревн., факт — ротируются каждый день
+    // We display 3 cards: co-op, competition, fact—they rotate every day
     const dayIdx = Math.floor(Date.now() / 86400000);
     const featuredTips = [tipCoop, tipComp, dayIdx % 2 === 0 ? tipFact : tipOnline];
 
     return `<div class="stats-panel">
 
-        <!-- Счётчики -->
+        <!-- Meters -->
         <div class="stats-grid">
             <div class="stat-card"><div class="stat-value">${gTotal}</div><div class="stat-label">${t('stats.games')}</div></div>
             <div class="stat-card"><div class="stat-value">${tTotal}</div><div class="stat-label">${t('stats.tasks')}</div></div>
@@ -3456,7 +3456,7 @@ function renderStatsTab() {
             `).join('')}
         </div>
 
-        <!-- Кнопки фильтра советов -->
+        <!-- Tips Filter Buttons -->
         <div class="tips-filter" id="tipsFilter">
             <button class="tips-filter-btn active" onclick="filterTips('all',this)">${t('stats.filter_all')}</button>
             <button class="tips-filter-btn" onclick="filterTips('coop',this)">${t('stats.filter_coop')}</button>
@@ -3468,7 +3468,7 @@ function renderStatsTab() {
             ${renderTipsList('all')}
         </div>
 
-        <!-- Статистика игроков -->
+        <!-- Player Statistics -->
         <div class="players-stats">
             <h3>${t('stats.players_stats')}</h3>
             ${pTotal === 0 ? `<p class="empty-text">${t('stats.no_data')}</p>` : players.map(p => {
@@ -3484,7 +3484,7 @@ function renderStatsTab() {
     }).join('')}
         </div>
 
-        <!-- Игры по заданиям -->
+        <!-- Task-Based Games -->
         <div class="players-stats">
             <h3>${t('stats.games_stats')}</h3>
             ${gTotal === 0 ? `<p class="empty-text">${t('stats.no_data')}</p>` : Object.entries(games)
@@ -3504,7 +3504,7 @@ function renderStatsTab() {
     </div>`;
 }
 
-// Рендер списка советов для фильтра
+// Rendering a list of tips for the filter
 function renderTipsList(category) {
     const pool = category === 'all' ? GAMING_TIPS : GAMING_TIPS.filter(t => t.cat === category);
     return pool.map(tip => `
@@ -3517,7 +3517,7 @@ function renderTipsList(category) {
         </div>`).join('');
 }
 
-// Фильтрация советов по категории (вызывается из onclick)
+// Filter tips by category (triggered by onclick)
 function filterTips(category, btn) {
     const list = document.getElementById('tipsList');
     if (list) list.innerHTML = renderTipsList(category);
@@ -3774,7 +3774,7 @@ function updateSetting(key, value) {
     const prev = rouletteSettings[key];
     if (typeof prev === 'number') value = Number(value);
     if (typeof prev === 'boolean') value = Boolean(value);
-    // soundVolume: слайдер 0–100, хранится 0–1
+    // soundVolume: slider 0–100, stored as 0–1
     if (key === 'soundVolume') value = value / 100;
     rouletteSettings[key] = value; saveSettings();
     const el = document.getElementById(key);
@@ -3958,7 +3958,7 @@ function importData() {
                             .map(tk => String(tk).trim().slice(0, 500))
                     )];
                 });
-                // Режим и тема — только допустимые значения
+                // Mode and Theme — only valid values
                 const safeModes = ['full', 'game-first', 'player-only', 'task-only'];
                 if (d.rouletteMode && safeModes.includes(d.rouletteMode)) {
                     rouletteMode = d.rouletteMode;
@@ -4019,11 +4019,11 @@ const GAMING_TIPS = new Proxy([], {
     }
 });
 
-// Возвращает совет дня (детерминированно по дате) или случайный
+// Returns the tip of the day (determined by date) or a random one
 function getDailyTip(category) {
     const pool = category ? GAMING_TIPS.filter(t => t.cat === category) : GAMING_TIPS;
     if (!pool.length) return GAMING_TIPS[0];
-    const dayIndex = Math.floor(Date.now() / 86400000); // меняется каждый день
+    const dayIndex = Math.floor(Date.now() / 86400000); // changes every day
     return pool[dayIndex % pool.length];
 }
 
