@@ -4031,373 +4031,311 @@ function getDailyTip(category) {
 function getDefaultGames() {
     return {
         "Minecraft": [
-
-            "Построй самый уродливый дом и защищай его как замок",
-            "Играй без оружия одну ночь",
-            "Укради один блок из дома друга и замени другим",
-            "10 минут используй только деревянные инструменты",
-            "Играй как деревенский житель",
-            "Построй памятник самому бесполезному предмету",
-            "Сделай секретную ловушку возле базы друга",
-            "Найди алмаз, но сначала спроси разрешение",
-            "Построй ферму, которая выглядит как мем",
-            "Сделай музей своих ошибок",
-            "Засели дом только котами",
-            "Построй копию дома друга, но специально плохо",
-            "Проведи экскурсию по базе голосом ведущего ТВ",
-            "Выживи ночь без брони",
-            "Не бегай 10 минут, только ходи",
-            "Добывай ресурсы только лопатой",
-            "Построй тайную базу рядом с другом",
-            "Сделай другу сундук с бесполезным подарком",
-            "Назови всех мобов смешными именами",
-            "Построй дом только из одного типа блока",
-            "Проведи день без крафта",
-            "Построй трон для самого слабого моба",
-            "Сделай огромную статую себя",
-            "Поставь кровать в максимально опасном месте",
-            "Построй портал в странном месте",
-            "Помоги другому игроку 15 минут",
-            "Сделай ферму в форме лица",
-            "Построй секретную комнату и спрячь вход",
-            "Играй 20 минут только ночью",
-            "Сделай бесполезный механизм из редстоуна",
-            "Построй дом на дереве",
-            "Используй только найденные предметы",
-            "Построй базу под землёй",
-            "Сделай ловушку для друга без урона",
-            "Стань фермером на 20 минут",
-            "Укрась базу максимально странно",
-            "Построй мини-деревню из своих домов",
-            "Следующие 10 минут нельзя открывать инвентарь",
-            "Сделай самый маленький дом",
-            "Сделай самый высокий дом",
-            "Проведи экскурсию по миру как блогер",
-            "Построй памятник проигравшему игроку",
-            "Играй только ночью",
-            "Сделай секретный склад ресурсов",
-            "Построй базу из случайных блоков"
-
-
-        ],
-
-
-        "CS2": [
-
-            "Беги через мид первым",
-            "Играй только с Desert Eagle",
-            "Давай команде странные приказы",
-            "После смерти комментируй игру как киберспортсмен",
-            "Прыгай перед каждым контактом",
-            "Купи AWP, но используй только нож",
-            "Каждый раунд иди первым",
-            "Играй как настоящий бот",
-            "Кидай смешные флешки",
-            "После убийства делай победную речь",
-            "Первый раунд только нож",
-            "Покупай самое странное оружие",
-            "Каждый раунд говори фейковый план",
-            "Перед выходом кричи «Я легенда»",
-            "Играй раунд без брони",
-            "После смерти анализируй свою ошибку",
-            "Каждый раунд проверяй мид",
-            "Используй только пистолет",
-            "Не бери оружие врага",
-            "Играй с неудобным сенсом",
-            "Каждый килл сопровождай смешным звуком",
-            "Придумай название каждой атаке",
-            "После каждого раунда говори мотивацию",
-            "Играй как новичок специально",
-            "Попроси тиммейтов руководить тобой",
-            "Сделай вид что ты тренер",
-            "Каждый раунд выбрасывай оружие перед смертью",
-            "Иди в самое опасное место карты",
-            "Попробуй выиграть ножом",
-            "Сделай красивый фраг",
-            "Играй только с SMG",
-            "Используй только дробовик",
-            "Каждый раунд первым открывай дверь",
-            "Перед атакой говори боевой клич",
-            "Покупай оружие только после команды",
-            "Не используй гранаты",
-            "Используй только одну гранату за раунд",
-            "Играй без звука",
-            "Следи только за одним тиммейтом",
-            "После каждого килла делай отчёт",
-            "Поменяй стиль игры полностью",
-            "Сыграй раунд максимально осторожно",
-            "Сделай вид что карта новая",
-            "Играй агрессивнее всех",
-            "Попытайся стать MVP"
-
-
-        ],
-
-
-        "Apex": [
-
-            "Прыгай в самое горячее место",
-            "Используй первое найденное оружие",
-            "Играй максимально агрессивно",
-            "Используй дробовик",
-            "Будь телохранителем тиммейта",
-            "Каждый файт начинай с гранаты",
-            "Не бери любимое оружие",
-            "Комментируй игру как тренер",
-            "Стань главным героем отряда",
-            "Сделай красивую смерть",
-            "Играй легендой, которой никогда не играл",
-            "Не бери броню первые 5 минут",
-            "Лутай только первые предметы",
-            "После убийства делай речь победителя",
-            "Всегда иди первым",
-            "Будь главным медиком команды",
-            "Охраняй одного игрока всю игру",
-            "Используй только одно оружие",
-            "Не используй ультимейт 10 минут",
-            "Прыгай только за врагами",
-            "Играй максимально рискованно",
-            "После нокаута врага делай комментарий",
-            "Используй только ближний бой",
-            "Не бери золотой лут",
-            "Каждый бой начинай с прыжка",
-            "Играй как стример",
-            "Делай вид что ты капитан",
-            "Следуй только за одним игроком",
-            "Победи максимально красиво",
-            "Умри эффектно если проигрываешь",
-            "Используй легенду случайно",
-            "Не используй аптечки 5 минут",
-            "Играй только с оружием врага",
-            "Не бери щиты",
-            "Каждую минуту меняй позицию",
-            "Прыгай с высокой точки перед боем",
-            "Стань разведчиком команды",
-            "Играй максимально тихо",
-            "Сделай засаду врагам",
-            "Используй только дальнее оружие",
-            "Не бери патроны больше одного типа",
-            "Каждый бой начинай с эмоции",
-            "После смерти дай анализ",
-            "Играй без привычной тактики",
-            "Сделай эпичную победу"
-        ],
-
-        "Valorant": [
-
-            "Играй только с классическим пистолетом",
-            "Каждый раунд говори название операции",
-            "Используй способности максимально странно",
-            "Иди первым на точку",
-            "Играй агента которого не знаешь",
-            "После каждого килла делай победную речь"
-
-        ],
-
-
-        "Marvel Rivals": [
-
-            "Играй героем которого никогда не выбирал",
-            "Каждый ульт объявляй как настоящий супергерой",
-            "Спаси самого слабого игрока команды",
-            "Прыгай первым в толпу врагов",
-            "После каждого красивого момента кричи имя героя",
-            "Играй без своей любимой способности"
-
-        ],
-
-
-        "Fortnite": [
-
-            "Приземлись туда, где больше всего врагов",
-            "Используй только первое найденное оружие",
-            "Построй максимально бесполезную базу",
-            "Сделай рискованный пуш на врагов",
-            "Играй без любимого оружия",
-            "Победи используя максимально странную тактику"
-
-        ],
-
-
-        "League of Legends": [
-
-            "Играй чемпионом которого почти не знаешь",
-            "Иди на необычную линию",
-            "Собери странный билд",
-            "После каждого убийства делай мини-речь",
-            "Играй максимально агрессивно",
-            "Помоги союзнику сделать красивый момент"
-
-        ],
-
-
-        "Dota 2": [
-
-            "Играй героем которого никогда не выбираешь",
-            "Собери максимально странные предметы",
-            "Поменяй привычный стиль игры",
-            "Каждые 5 минут делай смешной отчёт",
-            "Играй только через рискованные действия",
-            "Сделай самый необычный билд"
-
-        ],
-
-
-        "Overwatch 2": [
-
-            "Играй персонажем которого не умеешь",
-            "Каждый ульт объявляй как супергерой",
-            "Защищай одного выбранного тиммейта",
-            "Играй ролью которую обычно не выбираешь",
-            "После смерти объясняй свою ошибку",
-            "Попробуй сделать самый красивый момент игры"
-
-        ],
-
-
-        "Rainbow Six Siege": [
-
-            "Первым открывай каждую дверь",
-            "Используй гаджеты максимально странно",
-            "Играй только с пистолетом",
-            "Сделай неожиданный заход на точку",
-            "Каждый раунд меняй стиль игры",
-            "Комментируй действия как спецназовец"
-
-        ],
-
-
-        "Rocket League": [
-
-            "Играй только через красивые удары",
-            "Минуту не используй ускорение",
-            "Играй роль вратаря",
-            "После каждого гола делай победную речь",
-            "Прыгай перед каждым ударом",
-            "Попытайся забить самый нелепый гол"
-
-        ],
-
-
-        "PUBG": [
-
-            "Приземлись рядом с самым большим количеством игроков",
-            "Используй только первое найденное оружие",
-            "Первые 5 минут без брони",
-            "Играй максимально скрытно",
-            "Сделай самый рискованный выход из зоны",
-            "Попробуй победить без убийств"
-
-        ],
-
-
-        "The Finals": [
-
-            "Разруши всё что можешь",
-            "Играй только ближним оружием",
-            "Сделай самый безумный заход",
-            "Используй гаджеты постоянно",
-            "Будь приманкой команды",
-            "После смерти объясни свой великий план"
-
-        ],
-
-
-        "Dead by Daylight": [
-
-            "Играй убийцей которого не знаешь",
-            "Сделай максимально странный билд",
-            "Пугай игроков вместо победы",
-            "Играй максимально рискованно",
-            "Используй только один навык",
-            "После игры расскажи историю матча"
-
-        ],
-
-
-        "Rust": [
-
-            "Построй максимально странную базу",
-            "Поздоровайся с первым врагом",
-            "Сделай ловушку для игроков",
-            "Начни войну с ближайшим соседом",
-            "Укрась базу максимально глупо",
-            "Выживи день без оружия"
-
-        ],
-
-
-        "Escape from Tarkov": [
-
-            "Иди в самый опасный район",
-            "Возьми самое странное оружие",
-            "Играй максимально осторожно",
-            "После каждого боя делай анализ",
-            "Не используй любимую пушку",
-            "Попробуй выиграть без убийств"
-
-        ],
-
-
-        "Helldivers 2": [
-
-            "Перед миссией кричи боевой приказ",
-            "Спаси случайного союзника",
-            "Используй стратагемы хаотично",
-            "Беги первым в толпу врагов",
-            "Сделай самый героический момент",
-            "После миссии расскажи легенду своего отряда"
-
-        ],
-
-
-        "Warzone": [
-
-            "Прыгни в самое горячее место",
-            "Используй только найденное первое оружие",
-            "Иди первым в каждый бой",
-            "Проведи игру как командир",
-            "Сделай максимально рискованный пуш",
-            "Победи с самым странным оружием"
-
-        ],
-
-
-        "Teamfight Tactics": [
-
-            "Собери максимально странную комбинацию",
-            "Играй только через один класс",
-            "Не покупай привычных чемпионов",
-            "Сделай ставку на слабых героев",
-            "Каждый раунд объясняй свою стратегию",
-            "Попробуй выиграть необычным билдом"
-
-        ],
-
-
-        "World of Warcraft": [
-
-            "Играй только необычным классом",
-            "Сделай странный внешний вид персонажа",
-            "Помоги случайному игроку",
-            "Исследуй место где никогда не был",
-            "Собери максимально смешной комплект",
-            "Проведи время как обычный житель Азерота"
-
-        ],
-
-
-        "Diablo IV": [
-
-            "Используй только странные навыки",
-            "Собери необычный билд",
-            "Иди в самое опасное место",
-            "Не используй любимую способность",
-            "Сражайся максимально красиво",
-            "После победы сделай речь героя"
-
-        ],
-    };
+    "Build the ugliest house possible and defend it like a castle",
+    "Survive one night without using weapons",
+    "Steal one block from your friend's house and replace it with another",
+    "Use only wooden tools for 10 minutes",
+    "Play like a Minecraft villager",
+    "Build a monument to the most useless item",
+    "Create a secret trap near your friend's base",
+    "Find a diamond, but ask for permission first",
+    "Build a farm that looks like a meme",
+    "Create a museum of your mistakes",
+    "Fill your house only with cats",
+    "Build a bad copy of your friend's house on purpose",
+    "Give a tour of your base like a TV host",
+    "Survive the night without armor",
+    "Don't sprint for 10 minutes, only walk",
+    "Gather resources using only a shovel",
+    "Build a secret base near your friend",
+    "Make your friend a chest with a useless gift",
+    "Give every mob a funny name",
+    "Build a house using only one type of block",
+    "Spend a whole day without crafting",
+    "Build a throne for the weakest mob",
+    "Build a giant statue of yourself",
+    "Place a bed in the most dangerous location possible",
+    "Build a portal in a weird location",
+    "Help another player for 15 minutes",
+    "Build a farm shaped like a face",
+    "Build a secret room and hide the entrance",
+    "Play for 20 minutes only at night",
+    "Create a useless redstone machine",
+    "Build a treehouse",
+    "Use only items you find",
+    "Build an underground base",
+    "Create a no-damage trap for your friend",
+    "Become a farmer for 20 minutes",
+    "Decorate your base as weirdly as possible",
+    "Build a mini village using your own houses",
+    "Don't open your inventory for the next 10 minutes",
+    "Build the smallest house possible",
+    "Build the tallest house possible",
+    "Give a world tour like a content creator",
+    "Build a monument for the losing player",
+    "Play only during nighttime",
+    "Create a secret resource storage room",
+    "Build a base using random blocks"
+],
+
+"CS2": [
+    "Rush through mid first",
+    "Play only with the Desert Eagle",
+    "Give your team weird commands",
+    "After dying, commentate the game like an esports player",
+    "Jump before every engagement",
+    "Buy an AWP but only use your knife",
+    "Go first every round",
+    "Play like a real bot",
+    "Throw funny flashbangs",
+    "Give a victory speech after every kill",
+    "Use only a knife in the first round",
+    "Buy the weirdest weapon possible",
+    "Call out a fake plan every round",
+    "Shout \"I'm a legend\" before pushing",
+    "Play a round without armor",
+    "Analyze your mistake after dying",
+    "Check mid every round",
+    "Use only pistols",
+    "Don't pick up enemy weapons",
+    "Play with an uncomfortable sensitivity",
+    "Make a funny sound after every kill",
+    "Create a name for every attack strategy",
+    "Give a motivational speech after every round",
+    "Intentionally play like a beginner",
+    "Ask your teammates to lead you",
+    "Pretend you are the coach",
+    "Drop your weapon before dying every round",
+    "Go to the most dangerous spot on the map",
+    "Try to win using only a knife",
+    "Get a stylish frag",
+    "Play only with SMGs",
+    "Use only shotguns",
+    "Open the door first every round",
+    "Say a battle cry before attacking",
+    "Only buy weapons after your team tells you to",
+    "Don't use grenades",
+    "Use only one grenade per round",
+    "Play without sound",
+    "Follow only one teammate",
+    "Report after every kill",
+    "Completely change your playstyle",
+    "Play a round as carefully as possible",
+    "Pretend the map is brand new",
+    "Play more aggressively than everyone",
+    "Try to become MVP"
+],
+
+"Apex": [
+    "Drop into the hottest area",
+    "Use the first weapon you find",
+    "Play as aggressively as possible",
+    "Use a shotgun",
+    "Be your teammate's bodyguard",
+    "Start every fight with a grenade",
+    "Don't use your favorite weapon",
+    "Commentate the game like a coach",
+    "Become the main character of the squad",
+    "Create a stylish death",
+    "Play a Legend you've never used before",
+    "Don't pick up armor for the first 5 minutes",
+    "Only loot the first items you see",
+    "Give a winner's speech after every kill",
+    "Always be the first one in",
+    "Become the team's main medic",
+    "Protect one player the entire game",
+    "Use only one weapon",
+    "Don't use your ultimate for 10 minutes",
+    "Only chase enemies when dropping",
+    "Play as risky as possible",
+    "Comment after knocking an enemy",
+    "Use only close-range weapons",
+    "Don't pick up gold loot",
+    "Start every fight with a jump",
+    "Play like a streamer",
+    "Pretend you are the squad captain",
+    "Follow only one player",
+    "Win in the most stylish way possible",
+    "Die dramatically if you are losing",
+    "Pick a random Legend",
+    "Don't use healing items for 5 minutes",
+    "Use only enemy weapons",
+    "Don't pick up shields",
+    "Change your position every minute",
+    "Jump from high ground before fighting",
+    "Become the squad scout",
+    "Play as quietly as possible",
+    "Set up an ambush for enemies",
+    "Use only long-range weapons",
+    "Don't carry more than one ammo type",
+    "Start every fight with an emote",
+    "Give an analysis after dying",
+    "Play without your usual strategy",
+    "Create an epic victory"
+],
+
+"Valorant": [
+    "Play only with the Classic pistol",
+    "Say the operation name every round",
+    "Use your abilities in the weirdest ways possible",
+    "Be the first one onto the site",
+    "Play an agent you don't know",
+    "Give a victory speech after every kill"
+],
+
+"Marvel Rivals": [
+    "Play a hero you have never picked before",
+    "Announce every ultimate like a real superhero",
+    "Save the weakest player on your team",
+    "Jump into the enemy crowd first",
+    "Shout your hero's name after every epic moment",
+    "Play without using your favorite ability"
+],
+
+"Fortnite": [
+    "Land where the most enemies are",
+    "Use only the first weapon you find",
+    "Build the most useless base possible",
+    "Make a risky push against enemies",
+    "Play without your favorite weapon",
+    "Win using the weirdest strategy possible"
+],
+
+"League of Legends": [
+    "Play a champion you barely know",
+    "Go to an unusual lane",
+    "Build a weird item setup",
+    "Give a mini speech after every kill",
+    "Play as aggressively as possible",
+    "Help your teammate create an epic moment"
+],
+
+"Dota 2": [
+    "Play a hero you never pick",
+    "Build the strangest items possible",
+    "Change your usual playstyle",
+    "Give a funny report every 5 minutes",
+    "Only make risky plays",
+    "Create the most unusual build"
+],
+
+"Overwatch 2": [
+    "Play a character you are bad at",
+    "Announce every ultimate like a superhero",
+    "Protect one chosen teammate",
+    "Play a role you normally don't choose",
+    "Explain your mistake after dying",
+    "Try to create the best highlight moment of the game"
+]
+
+"Rainbow Six Siege": [
+    "Open every door first",
+    "Use gadgets in the weirdest ways possible",
+    "Play only with a pistol",
+    "Make an unexpected push onto the objective",
+    "Change your playstyle every round",
+    "Commentate your actions like a special forces operator"
+],
+
+"Rocket League": [
+    "Only go for stylish shots",
+    "Don't use boost for one minute",
+    "Play as the goalkeeper",
+    "Give a victory speech after every goal",
+    "Jump before every shot",
+    "Try to score the most ridiculous goal possible"
+],
+
+"PUBG": [
+    "Land where the most players are",
+    "Use only the first weapon you find",
+    "Go without armor for the first 5 minutes",
+    "Play as stealthily as possible",
+    "Make the riskiest zone rotation possible",
+    "Try to win without getting any kills"
+],
+
+"The Finals": [
+    "Destroy everything you can",
+    "Use only melee weapons",
+    "Make the craziest push possible",
+    "Use gadgets constantly",
+    "Be the team's bait",
+    "Explain your genius plan after dying"
+],
+
+"Dead by Daylight": [
+    "Play a killer you don't know",
+    "Create the weirdest build possible",
+    "Scare players instead of focusing on winning",
+    "Play as risky as possible",
+    "Use only one perk",
+    "Tell the story of the match after the game"
+],
+
+"Rust": [
+    "Build the weirdest base possible",
+    "Say hello to the first enemy you meet",
+    "Create a trap for other players",
+    "Start a war with your closest neighbor",
+    "Decorate your base in the dumbest way possible",
+    "Survive a day without weapons"
+],
+
+"Escape from Tarkov": [
+    "Go to the most dangerous area",
+    "Use the strangest weapon possible",
+    "Play as carefully as possible",
+    "Analyze every fight afterward",
+    "Don't use your favorite gun",
+    "Try to win without getting any kills"
+],
+
+"Helldivers 2": [
+    "Shout a battle command before the mission",
+    "Save a random teammate",
+    "Use stratagems randomly",
+    "Charge into the enemy crowd first",
+    "Create the most heroic moment possible",
+    "Tell the legend of your squad after the mission"
+],
+
+"Warzone": [
+    "Drop into the hottest area",
+    "Use only the first weapon you find",
+    "Be the first one into every fight",
+    "Lead the game like a commander",
+    "Make the riskiest push possible",
+    "Win using the weirdest weapon"
+],
+
+"Teamfight Tactics": [
+    "Create the weirdest team composition possible",
+    "Play using only one class",
+    "Don't buy your usual champions",
+    "Bet on weak champions",
+    "Explain your strategy every round",
+    "Try to win with an unusual build"
+],
+
+"World of Warcraft": [
+    "Play only an unusual class",
+    "Create the weirdest character appearance",
+    "Help a random player",
+    "Explore a place you have never visited",
+    "Create the funniest outfit possible",
+    "Spend time living like a normal citizen of Azeroth"
+],
+
+"Diablo IV": [
+    "Use only unusual skills",
+    "Create an unconventional build",
+    "Go to the most dangerous area",
+    "Don't use your favorite ability",
+    "Fight in the most stylish way possible",
+    "Give a hero speech after victory"
+]
+};
 }
 
 // ── START ─────────────────────────────────────────────────
