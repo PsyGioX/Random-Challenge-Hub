@@ -4030,8 +4030,7 @@ function getDailyTip(category) {
 // ── DEFAULT GAMES DATA ────────────────────────────────────
 function getDefaultGames() {
     return {
-        "Minecraft": [
-
+    "Minecraft": [
         "Build the ugliest house possible and defend it like a castle",
         "Survive one night without using weapons",
         "Steal one block from your friend's house and replace it with another",
@@ -4059,7 +4058,6 @@ function getDefaultGames() {
 
 
     "CS2": [
-
         "Rush through mid first",
         "Play only with the Desert Eagle",
         "Give your team weird commands",
@@ -4085,7 +4083,6 @@ function getDefaultGames() {
 
 
     "Apex": [
-
         "Drop into the hottest area",
         "Use the first weapon you find",
         "Play as aggressively as possible",
