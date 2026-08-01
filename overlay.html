@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark" dir="ltr">
+<html lang="en" data-theme="dark" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RCH Overlay — OBS Browser Source</title>
-    <meta name="description" content="Random Challenge Hub OBS overlay — Browser Source для стримов. Виджеты рулетки, таймера и результатов прямо в OBS.">
+    <meta name="description" content="Random Challenge Hub OBS overlay — Browser Source for streams.">
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="favicon/favicon.png">
     <link rel="stylesheet" href="style.css">
@@ -243,25 +243,25 @@
             <div id="owIdle">
                 <div class="ow-row">
                     <span class="ow-label">status</span>
-                    <span class="ow-value" id="owIdleText" data-i18n="overlay.waiting">Ожидание результата...</span>
+                    <span class="ow-value" id="owIdleText" data-i18n="overlay.waiting"></span>
                 </div>
             </div>
             <div id="owResult" style="display:none">
-                <div class="ow-row"><span class="ow-label" data-i18n="overlay.game_label">🎮 Игра</span><span class="ow-value game" id="owGame"></span></div>
-                <div class="ow-row"><span class="ow-label" data-i18n="overlay.player_label">👤 Игрок</span><span class="ow-value player" id="owPlayer"></span></div>
-                <div class="ow-row"><span class="ow-label" data-i18n="overlay.task_label">⚡ Задание</span><span class="ow-value task" id="owTask"></span></div>
+                <div class="ow-row"><span class="ow-label" data-i18n="overlay.game_label"></span><span class="ow-value game" id="owGame"></span></div>
+                <div class="ow-row"><span class="ow-label" data-i18n="overlay.player_label"></span><span class="ow-value player" id="owPlayer"></span></div>
+                <div class="ow-row"><span class="ow-label" data-i18n="overlay.task_label"></span><span class="ow-value task" id="owTask"></span></div>
                 <div class="ow-countdown"><div class="ow-countdown-fill" id="owCountdown" style="width:100%"></div></div>
             </div>
             <div id="owVote" style="display:none">
-                <div class="ow-vote-title" data-i18n="overlay.vote_title">🗳️ Голосование в чате</div>
+                <div class="ow-vote-title" data-i18n="overlay.vote_title"></div>
                 <div class="ow-vote-topic" id="owVoteTopic" style="display:none"></div>
-                <div class="ow-vote-timer" id="owVoteTimer">30с</div>
+                <div class="ow-vote-timer" id="owVoteTimer"></div>
                 <div id="owVoteOptions"></div>
             </div>
             <div id="owWinner" style="display:none">
                 <div class="ow-winner">
                     <span class="ow-winner-emoji">🏆</span>
-                    <div class="ow-winner-label" data-i18n="overlay.winner_label">Победитель</div>
+                    <div class="ow-winner-label" data-i18n="overlay.winner_label"></div>
                     <div class="ow-winner-name" id="owWinnerName"></div>
                     <div class="ow-winner-from" id="owWinnerFrom"></div>
                 </div>
@@ -280,7 +280,7 @@
                 <span class="ow-live-dot" id="chatLiveDot" style="display:none"></span>
             </div>
             <div class="chat-messages" id="chatMessages">
-                <div class="chat-placeholder" data-i18n="overlay.chat_empty">Чат не подключён</div>
+                <div class="chat-placeholder" data-i18n="overlay.chat_empty"></div>
             </div>
         </div>
 
@@ -292,12 +292,12 @@
             </div>
             <div class="ow-header">
                 <span class="ow-logo">⏱️</span>
-                <span class="ow-title" data-i18n="overlay.timer_title">Таймер</span>
+                <span class="ow-title" data-i18n="overlay.timer_title"></span>
                 <span class="ow-live-dot" id="timerLiveDot" style="display:none"></span>
             </div>
             <div class="ow-timer-value" id="owTimerValue">00:00</div>
             <div class="ow-timer-bar"><div class="ow-timer-bar-fill" id="owTimerFill" style="width:100%"></div></div>
-            <div class="ow-timer-status" id="owTimerStatus" data-i18n="overlay.timer_waiting">ожидание</div>
+            <div class="ow-timer-status" id="owTimerStatus" data-i18n="overlay.timer_waiting"></div>
         </div>
 
     </div>
@@ -305,16 +305,16 @@
     <!-- CONTROLS BAR -->
     <div class="ow-controls" id="owControls">
         <span class="ow-ctrl-label" data-i18n="overlay.preview">OBS Preview:</span>
-        <button class="ow-ctrl-btn" onclick="showDemo('result')" data-i18n="overlay.btn_result">🎯 Результат</button>
-        <button class="ow-ctrl-btn" onclick="showDemo('vote')" data-i18n="overlay.btn_vote">🗳️ Голосование</button>
-        <button class="ow-ctrl-btn" onclick="showDemo('winner')" data-i18n="overlay.btn_winner">🏆 Победитель</button>
-        <button class="ow-ctrl-btn" onclick="showIdle()" data-i18n="overlay.btn_idle">⏸ Ожидание</button>
-        <button class="ow-ctrl-btn" onclick="toggleWidget('chatWidget')" data-i18n="overlay.btn_chat">💬 Чат</button>
-        <button class="ow-ctrl-btn" onclick="toggleWidget('timerWidget')" data-i18n="overlay.btn_timer">⏱️ Таймер</button>
-        <button class="ow-ctrl-btn" onclick="toggleTheme()" data-i18n="overlay.btn_theme">🎨 Тема</button>
-        <button class="ow-ctrl-btn" onclick="toggleChroma()" data-i18n="overlay.btn_chroma">🟢 Chroma</button>
-        <button class="ow-ctrl-btn" onclick="resetWidgetPositions()" data-i18n="overlay.btn_reset_pos">🔄 Сброс позиций</button>
-        <button class="ow-ctrl-btn" onclick="togglePreview(this)" data-i18n="overlay.btn_hide_preview">👁️ Скрыть превью</button>
+        <button class="ow-ctrl-btn" onclick="showDemo('result')" data-i18n="overlay.btn_result"></button>
+        <button class="ow-ctrl-btn" onclick="showDemo('vote')" data-i18n="overlay.btn_vote"></button>
+        <button class="ow-ctrl-btn" onclick="showDemo('winner')" data-i18n="overlay.btn_winner"></button>
+        <button class="ow-ctrl-btn" onclick="showIdle()" data-i18n="overlay.btn_idle"></button>
+        <button class="ow-ctrl-btn" onclick="toggleWidget('chatWidget')" data-i18n="overlay.btn_chat"></button>
+        <button class="ow-ctrl-btn" onclick="toggleWidget('timerWidget')" data-i18n="overlay.btn_timer"></button>
+        <button class="ow-ctrl-btn" onclick="toggleTheme()" data-i18n="overlay.btn_theme"></button>
+        <button class="ow-ctrl-btn" onclick="toggleChroma()" data-i18n="overlay.btn_chroma"></button>
+        <button class="ow-ctrl-btn" onclick="resetWidgetPositions()" data-i18n="overlay.btn_reset_pos"></button>
+        <button class="ow-ctrl-btn" onclick="togglePreview(this)" data-i18n="overlay.btn_hide_preview"></button>
     </div>
 
 <script>
@@ -406,7 +406,7 @@ function showResult(game, player, task, duration) {
 }
 function showVote(options, timerSec, title) {
     _h('owIdle'); _h('owResult'); _h('owWinner'); _s('owVote');
-    // Показываем тему если есть
+    //
     const topicEl = document.getElementById('owVoteTopic');
     if (topicEl) {
         if (title && title.trim()) {
@@ -526,10 +526,10 @@ function startPolling() {
                 if (s.type==='winner') showWinner(s.name, s.from);
                 if (s.type==='idle')   showIdle();
             }
-            // overlayChatData — сообщения чата
+            // overlayChatData 
             const cr = localStorage.getItem('overlayChatData');
             if (cr && cr !== _lastChat) { _lastChat=cr; updateChatWidget(JSON.parse(cr)) }
-            // overlayTimer — таймер стримера
+            // overlayTimer 
             const tr = localStorage.getItem('overlayTimer');
             if (tr) { try { updateTimerWidget(JSON.parse(tr)) } catch(e){} }
         } catch(e){}
@@ -577,7 +577,7 @@ function updateTimerWidget(data) {
 
     val.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 
-    // Цвет по остатку времени
+    // 
     const cls = t <= 10 && t > 0 ? 'danger' : t <= 30 && t > 0 ? 'warning' : '';
     val.className   = 'ow-timer-value'   + (cls ? ' '+cls : '');
     if (fill) {
@@ -605,7 +605,7 @@ function showDemo(type) {
             const demoTitle = sd.voteTitle || 'Тестовое голосование';
             showVote(opts, 20, demoTitle);
         } else if (type==='winner') {
-            // chatUserPool не сохраняется — берём subWheelList или участников чата
+            //
             const pool = (sd.subWheelList && sd.subWheelList.length)
                 ? sd.subWheelList
                 : ['NightWolf99','GamerPro','TwitchViewer'];
