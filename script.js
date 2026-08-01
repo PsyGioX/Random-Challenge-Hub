@@ -2972,7 +2972,7 @@ function renderVoteArea() {
         return `
             <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">
                 ${isReal
-                ? `✅ ${t('streamer.status_reading', { ch: esc(streamerState.channelName) }).replace('Читаем чат', 'Чат подключён —')} зрители пишут <b>1–4</b> для голосования`
+                ? `✅ ${t('streamer.status_reading', { ch: esc(streamerState.channelName) }).replace('Reading chat', 'Chat connected —')} Viewers, type <b>1–4</b> to vote`
                 : `⚠️ ${t('streamer.connect_first_vote')}`}
             </div>
             <div style="margin-bottom:10px">
