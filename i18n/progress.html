@@ -8,7 +8,9 @@
   <meta name="robots" content="index, follow">
   <link rel="icon" type="image/png" href="../favicon/favicon.png">
   <link rel="canonical" href="https://random-challenge-hub.vercel.app/i18n/progress.html">
+  <link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
   <link rel="stylesheet" href="../style.css">
+  <script src="../js/icons.js"></script>
   <style>
     .progress-page { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
     .progress-hero {
@@ -150,7 +152,7 @@
   <a href="../index.html" class="back-link">← Back to app</a>
 
   <div class="progress-hero">
-    <h1>🌐 Translation Progress</h1>
+    <h1><i class="bi bi-globe2" aria-hidden="true"></i> Translation Progress</h1>
     <p>Status of all community translations for Random Challenge Hub</p>
   </div>
 
@@ -169,7 +171,7 @@
 
   <!-- How to contribute -->
   <div class="contribute-section">
-    <h2>🤝 How to Add a New Language</h2>
+    <h2><i class="bi bi-people" aria-hidden="true"></i> How to Add a New Language</h2>
     <ol class="steps-ol">
       <li>
         <span>Copy <code>i18n/en.js</code> and rename it to <code>i18n/xx.js</code>
@@ -224,7 +226,7 @@ window.RCH_TRANSLATIONS['xx'] = {
   'common.app_name': 'Random Challenge Hub',
   // ... (keep all keys from en.js)
 };</div>
-    <button class="copy-template-btn" onclick="copyTemplate()">📋 Copy Template</button>
+    <button class="copy-template-btn" onclick="copyTemplate()"><i class="bi bi-clipboard-check" aria-hidden="true"></i> Copy Template</button>
   </div>
 
   <!-- Footer nav -->
@@ -276,7 +278,7 @@ window.RCH_TRANSLATIONS['xx'] = {
         return `
           <div class="lang-card ${pct >= 100 ? 'complete' : ''}">
             <div class="lang-card-header">
-              <span class="lang-flag">${lang.flag || '🌐'}</span>
+              <span class="lang-flag">${lang.flag || '<i class="bi bi-globe2"></i>'}</span>
               <div class="lang-info">
                 <div class="lang-name">${lang.name}</div>
                 <div class="lang-native">${lang.nameNative !== lang.name ? lang.nameNative : ''}</div>
@@ -295,8 +297,8 @@ window.RCH_TRANSLATIONS['xx'] = {
               </div>
             </div>
             <div class="lang-meta">
-              <span>✍️ ${lang.author}</span>
-              <span>🏷️ v${lang.version}</span>
+              <span><i class="bi bi-pencil"></i> ${lang.author}</span>
+              <span><i class="bi bi-tag-fill"></i> v${lang.version}</span>
             </div>
           </div>`;
       }).join('');
@@ -314,10 +316,10 @@ window.RCH_TRANSLATIONS['xx'] = {
     navigator.clipboard.writeText(text)
       .then(() => {
         const btn = document.querySelector('.copy-template-btn');
-        btn.textContent = '✅ Copied!';
-        setTimeout(() => { btn.textContent = '📋 Copy Template'; }, 2000);
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy Template'; }, 2000);
       })
-      .catch(() => alert('Copy failed — please select and copy manually.'));
+      .catch(() => { const btn = document.querySelector('.copy-template-btn'); btn.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Copy failed — select the text manually'; setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy Template'; }, 3000); });
   };
 }());
 </script>

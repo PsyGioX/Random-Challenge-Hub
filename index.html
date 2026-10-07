@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
     <meta http-equiv="Content-Security-Policy"
@@ -10,7 +10,7 @@
                    script-src 'self' 'unsafe-inline';
                    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
                    font-src 'self' https://fonts.gstatic.com;
-                   connect-src 'self' wss://irc-ws.chat.twitch.tv;
+                   connect-src 'self' wss://irc-ws.chat.twitch.tv wss://sockets.streamlabs.com https://sockets.streamlabs.com wss://centrifugo.donationalerts.com https://www.donationalerts.com;
                    img-src 'self' data:;
                    object-src 'none';
                    base-uri 'self';">
@@ -20,7 +20,7 @@
 <meta name="keywords" data-i18n-meta="keywords" content="challenge roulette, streamer tools, OBS overlay, game challenges, random selection, Twitch roulette, random challenge, gaming tasks, stream tools, browser source OBS, challenge wheel">
 <meta name="author" content="Random Challenge Hub">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
-<meta name="theme-color" content="#6366f1">
+<meta name="theme-color" content="#12151d">
 <meta name="color-scheme" content="dark light">
 <meta name="language" data-i18n-meta="language" content="English">
 <meta name="revisit-after" content="7 days">
@@ -69,13 +69,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" href="style.css" as="style">
-<link rel="preload" href="script.js" as="script">
+<link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
 <link rel="stylesheet" href="style.css">
+<script src="js/icons.js"></script>
 
 <!-- i18n: load translation files BEFORE i18n.js -->
 <script src="i18n/en.js"></script>
 <script src="i18n/ru.js"></script>
 <script src="i18n/uk.js"></script>
+<script src="i18n/ext.en.js"></script>
+<script src="i18n/ext.ru.js"></script>
+<script src="i18n/ext.uk.js"></script>
 <!-- Community translations: add <script src="i18n/xx.js"></script> here -->
 <script src="i18n/i18n.js"></script>
 
@@ -98,6 +102,7 @@
         "priceCurrency": "USD"
     },
     "featureList": [
+        "Donation auction (Streamlabs, DonationAlerts, Twitch Bits)",
         "4 roulette modes",
         "OBS Browser Source overlay",
         "Twitch chat voting",
@@ -118,49 +123,52 @@
 </head>
 
 <body>
-    <!-- BG -->
-    <div class="background-decoration" id="bgDecoration"></div>
-
+    <a class="skip-link" href="#mainPanel" data-i18n="st.skip">Skip to content</a>
     <div class="container">
 
         <!-- HEADER -->
         <header class="app-header">
-            <div class="header-top-bar">
-                <div class="theme-switcher" id="themeSwitcher">
-                    <button class="theme-btn active" data-theme="dark"     title="Dark"   onclick="applyTheme('dark')">🌑</button>
-                    <button class="theme-btn"        data-theme="neon"     title="Neon"     onclick="applyTheme('neon')">💜</button>
-                    <button class="theme-btn"        data-theme="cyber"    title="Cyber"    onclick="applyTheme('cyber')">🔵</button>
-                    <button class="theme-btn"        data-theme="streamer" title="Streamer"  onclick="applyTheme('streamer')">📡</button>
-                    <button class="theme-btn"        data-theme="pastel"   title="Pastel"  onclick="applyTheme('pastel')">🌸</button>
+            <div class="brand">
+                <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="5" width="38" height="38" rx="10" fill="currentColor"/><circle cx="16" cy="16" r="3.4" fill="var(--bg-primary)"/><circle cx="32" cy="16" r="3.4" fill="var(--bg-primary)"/><circle cx="24" cy="24" r="3.4" fill="var(--bg-primary)"/><circle cx="16" cy="32" r="3.4" fill="var(--bg-primary)"/><circle cx="32" cy="32" r="3.4" fill="var(--bg-primary)"/></svg>
+                <div class="brand-text">
+                    <h1 data-i18n-html="header.title">RANDOM CHALLENGE HUB</h1>
+                    <p class="tagline" data-i18n="header.tagline"></p>
                 </div>
             </div>
-            <div class="logo-container">
-                <span class="logo-icon">🎲</span>
-                <h1 data-i18n-html="header.title">RANDOM CHALLENGE <span>HUB</span></h1>
-            </div>
-            <p class="tagline" data-i18n="header.tagline"></p>
-            <div>
-                <span class="live-badge"><span class="live-dot"></span> <span data-i18n="header.live_badge">LIVE READY</span></span>
+            <div class="header-tools">
+                <div class="conn-chips" aria-live="polite">
+                    <button type="button" class="conn-chip" data-svc="twitch" data-state="idle" onclick="switchTab('streamer')"><span class="conn-dot"></span><span class="conn-name">Twitch</span><span class="conn-label"></span></button>
+                    <button type="button" class="conn-chip" data-svc="streamlabs" data-state="idle" onclick="switchTab('auction')"><span class="conn-dot"></span><span class="conn-name">Streamlabs</span><span class="conn-label"></span></button>
+                    <button type="button" class="conn-chip" data-svc="donationalerts" data-state="idle" onclick="switchTab('auction')"><span class="conn-dot"></span><span class="conn-name">DonationAlerts</span><span class="conn-label"></span></button>
+                </div>
+                <div class="theme-switcher" id="themeSwitcher" role="group" aria-label="Theme">
+                    <button class="theme-btn active" data-theme="dark"     title="Dark"     onclick="applyTheme('dark')"><i class="bi bi-moon-stars-fill" aria-hidden="true"></i></button>
+                    <button class="theme-btn"        data-theme="neon"     title="Neon"     onclick="applyTheme('neon')"><i class="bi bi-heart-fill" aria-hidden="true"></i></button>
+                    <button class="theme-btn"        data-theme="cyber"    title="Cyber"    onclick="applyTheme('cyber')"><i class="bi bi-circle-fill" aria-hidden="true"></i></button>
+                    <button class="theme-btn"        data-theme="streamer" title="Streamer" onclick="applyTheme('streamer')"><i class="bi bi-broadcast" aria-hidden="true"></i></button>
+                    <button class="theme-btn"        data-theme="pastel"   title="Pastel"   onclick="applyTheme('pastel')"><i class="bi bi-flower1" aria-hidden="true"></i></button>
+                </div>
+                <div id="langSlot"></div>
             </div>
         </header>
 
         <!-- About project -->
-        <div class="about-project" id="aboutProject">
+        <div class="about-project" id="aboutProject" hidden>
             <div class="about-card">
-                <span class="about-icon">🎯</span>
+                <span class="about-icon"><i class="bi bi-bullseye" aria-hidden="true"></i></span>
                 <h2 data-i18n="about.title">Random Challenge Hub v3</h2>
                 <p class="about-description" data-i18n="about.description">
                     
                 </p>
                 <div class="features-grid">
-                    <div class="feature-item"><span class="feature-icon">🎡</span><span class="feature-text" data-i18n="feat.roulette_modes"></span></div>
-                    <div class="feature-item"><span class="feature-icon">🖥️</span><span class="feature-text" data-i18n="feat.obs_overlay"></span></div>
-                    <div class="feature-item"><span class="feature-icon">🗳️</span><span class="feature-text" data-i18n="feat.chat_vote"></span></div>
-                    <div class="feature-item"><span class="feature-icon">🎨</span><span class="feature-text" data-i18n="feat.themes"></span></div>
-                    <div class="feature-item"><span class="feature-icon">⏱️</span><span class="feature-text" data-i18n="feat.timer"></span></div>
-                    <div class="feature-item"><span class="feature-icon">🎮</span><span class="feature-text" data-i18n="feat.bonus"></span></div>
+                    <div class="feature-item"><span class="feature-icon"><i class="bi bi-pie-chart-fill" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.roulette_modes"></span></div>
+                    <div class="feature-item"><span class="feature-icon"><i class="bi bi-display" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.obs_overlay"></span></div>
+                    <div class="feature-item"><span class="feature-icon"><i class="bi bi-check2-square" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.chat_vote"></span></div>
+                    <div class="feature-item"><span class="feature-icon"><i class="bi bi-palette-fill" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.themes"></span></div>
+                    <div class="feature-item"><span class="feature-icon"><i class="bi bi-stopwatch-fill" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.timer"></span></div>
+                    <div class="feature-item"><span class="feature-icon"><i class="bi bi-controller" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.bonus"></span></div>
                 </div>
-                <button onclick="scrollToTabs()" class="cyber-btn start-exploring" data-i18n="about.start_btn">
+                <button onclick="dismissAbout()" class="cyber-btn start-exploring" data-i18n="about.start_btn">
                    
                 </button>
             </div>
@@ -200,17 +208,17 @@
                 <h3 data-i18n="info.streamer_title"></h3>
                 <div class="audience-grid">
                     <div class="audience-item">
-                        <span class="audience-icon">🖥️</span>
+                        <span class="audience-icon"><i class="bi bi-display" aria-hidden="true"></i></span>
                         <strong data-i18n="info.obs_label">OBS Overlay</strong>
                         <p data-i18n="info.obs_desc"></p>
                     </div>
                     <div class="audience-item">
-                        <span class="audience-icon">🗳️</span>
+                        <span class="audience-icon"><i class="bi bi-check2-square" aria-hidden="true"></i></span>
                         <strong data-i18n="info.vote_label"></strong>
                         <p data-i18n="info.vote_desc"></p>
                     </div>
                     <div class="audience-item">
-                        <span class="audience-icon">💜</span>
+                        <span class="audience-icon"><i class="bi bi-heart-fill" aria-hidden="true"></i></span>
                         <strong data-i18n="info.subs_label"></strong>
                         <p data-i18n="info.subs_desc"></p>
                     </div>
@@ -267,238 +275,42 @@
         </div>
     </footer>
 
+    <script src="js/bus.js"></script>
+    <script src="js/wheel.js"></script>
+    <script src="js/integrations.js"></script>
     <script src="script.js"></script>
+    <script src="js/streamer.js"></script>
+    <script src="js/auction.js"></script>
 
     <script>
-        // Re-render active tab when language changes
+        // Re-render the active tab when the language changes
         window.addEventListener('rch:langchange', function () {
             window.__rchLangHandled = true;
-            // Re-build tab navigation so button labels update immediately,
-            // then restore the previously active tab
-            if (typeof createTabs === 'function' && typeof currentTab !== 'undefined') {
-                createTabs(currentTab);
-            } else if (typeof switchTab === 'function' && typeof currentTab !== 'undefined') {
-                switchTab(currentTab);
-            }
-            // Re-apply theme button titles
+            if (typeof createTabs === 'function' && typeof currentTab !== 'undefined') createTabs(currentTab);
             if (typeof currentTheme !== 'undefined') {
                 document.querySelectorAll('.theme-btn').forEach(function (b) {
-                    var key = 'settings.theme_' + b.dataset.theme;
-                    if (typeof t === 'function') b.title = t(key);
+                    if (typeof t === 'function') b.title = t('settings.theme_' + b.dataset.theme);
                 });
             }
+            if (typeof refreshConnChips === 'function') refreshConnChips();
         });
-        // Bg
-        (function createBg() {
-            const c = document.getElementById('bgDecoration');
-            if (!c) return;
-            const shapes = ['circle','square','triangle'];
-            const cols   = ['#6366f1','#8b5cf6','#10b981','#f59e0b','#3b82f6','#ec4899'];
-            for (let i = 0; i < 28; i++) {
-                const s = document.createElement('div');
-                s.className = `bg-shape bg-shape-${shapes[i % shapes.length]}`;
-                const sz  = Math.random() * 50 + 20;
-                const dur = Math.random() * 22 + 14;
-                const del = Math.random() * 6;
-                const op  = Math.random() * 0.08 + 0.02;
-                s.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;background:${cols[i%cols.length]};opacity:${op};animation-duration:${dur}s;animation-delay:-${del}s`;
-                c.appendChild(s);
-            }
-        })();
 
-        // Apply theme
-        (function applyStoredTheme() {
-            const t = localStorage.getItem('appTheme') || 'dark';
-            document.documentElement.setAttribute('data-theme', t);
-            // Button theme mark after init()
-        })();
-    </script>
-
-    <!-- Script block mobile devices -->
-    <script>
+        // "About" card is shown once, then folded away
         (function () {
-            function isMobileDevice() {
-                const ua = navigator.userAgent || navigator.vendor || window.opera;
-                const mobileRe = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
-                const hasTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
-                const isSmall  = window.innerWidth <= 768;
-                return (mobileRe.test(ua) && hasTouch) || (hasTouch && isSmall);
-            }
+            var el = document.getElementById('aboutProject');
+            if (!el) return;
+            try { if (!localStorage.getItem('rch_about_seen')) el.hidden = false; } catch (e) { el.hidden = false; }
+        })();
+        function dismissAbout() {
+            try { localStorage.setItem('rch_about_seen', '1'); } catch (e) { }
+            var el = document.getElementById('aboutProject'); if (el) el.hidden = true;
+            scrollToTabs();
+        }
 
-            function addStyles() {
-                const s = document.createElement('style');
-                s.textContent = `
-                    *{margin:0;padding:0;box-sizing:border-box}
-                    body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;overflow-x:hidden}
-                    #mbs{position:relative;z-index:10;width:100%;max-width:480px}
-                    .mbw{background:rgba(30,41,59,0.92);backdrop-filter:blur(20px);border:2px solid rgba(99,102,241,0.3);border-radius:24px;padding:36px 24px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.45),0 0 40px rgba(99,102,241,0.1);animation:mbFade .6s ease}
-                    @keyframes mbFade{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
-                    .mb-ico{font-size:60px;margin-bottom:14px;display:block;animation:mbFloat 3s ease-in-out infinite}
-                    @keyframes mbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-                    .mb-title{font-size:22px;font-weight:900;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:2px;margin-bottom:6px}
-                    .mb-div{width:56px;height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6);margin:14px auto;border-radius:2px}
-                    .mb-sub{font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:14px}
-                    .mb-desc{font-size:13px;color:#94a3b8;line-height:1.65;margin-bottom:22px}
-                    .mb-desc strong{color:#cbd5e1}
-                    .mb-box{text-align:left;margin-bottom:22px;padding:18px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:14px}
-                    .mb-box h3{font-size:11px;font-weight:600;color:#818cf8;margin-bottom:14px;text-align:center;text-transform:uppercase;letter-spacing:2px}
-                    .mb-box ul{list-style:none;display:flex;flex-direction:column;gap:10px}
-                    .mb-box li{display:flex;align-items:flex-start;gap:10px;font-size:12px;color:#cbd5e1;line-height:1.5}
-                    .ri{font-size:16px;flex-shrink:0;margin-top:1px}
-                    .mb-alt h3{font-size:13px;font-weight:600;color:#f1f5f9;margin-bottom:12px}
-                    .alt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
-                    .alt-card{padding:14px 6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:11px;text-align:center}
-                    .alt-card span{font-size:22px;display:block;margin-bottom:6px}
-                    .alt-card p{font-size:10px;color:#94a3b8;line-height:1.4}
-                    .mb-foot{padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)}
-                    .mb-ver{font-size:10px;color:#64748b;margin-bottom:3px}
-                    .mb-copy{font-size:9px;color:#475569}
-                    .bgp{position:fixed;border-radius:50%;pointer-events:none;animation:bgpAnim linear infinite}
-                    @keyframes bgpAnim{0%{transform:translateY(0) scale(1);opacity:0}10%{opacity:.55}90%{opacity:.55}100%{transform:translateY(-100vh) scale(0);opacity:0}}
-                    @media(max-width:360px){.mbw{padding:22px 14px}.mb-title{font-size:18px}.mb-ico{font-size:46px}.alt-grid{grid-template-columns:1fr}}
-                `;
-                document.head.appendChild(s);
-            }
-
-            function createParticles() {
-                const cols = ['#6366f1','#8b5cf6','#10b981','#f59e0b','#3b82f6'];
-                for (let i = 0; i < 38; i++) {
-                    const p = document.createElement('div');
-                    p.className = 'bgp';
-                    const sz = Math.random()*4+2, c = cols[i%cols.length];
-                    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;background:${c};animation-duration:${Math.random()*14+9}s;animation-delay:${Math.random()*8}s;box-shadow:0 0 ${sz*2}px ${c}`;
-                    document.body.appendChild(p);
-                }
-            }
-
-            // Translate helper: use i18n engine if loaded, otherwise inline fallbacks
-            var MB_FALLBACK = {
-                'mobile.title':          'RANDOM CHALLENGE HUB',
-                'mobile.subtitle':       'Desktop Required',
-                'mobile.why_title':      'WHY DESKTOP?',
-                'mobile.why_1':          'Canvas wheel requires a large screen',
-                'mobile.why_2':          'OBS overlay needs multiple windows',
-                'mobile.why_3':          'Settings panel requires a keyboard',
-                'mobile.why_4':          'Twitch IRC chat works best on desktop',
-                'mobile.alt_title':      'What to do?',
-                'mobile.alt_pc':         'Open on PC',
-                'mobile.alt_pc_desc':    'Chrome, Firefox, Edge',
-                'mobile.alt_tablet':     'Use a Tablet',
-                'mobile.alt_tablet_desc':'Landscape mode',
-                'mobile.alt_share':      'Share Link',
-                'mobile.alt_share_desc': 'Send to desktop',
-                'mobile.url_label':      'Site address:',
-                'mobile.copy_link':      '📋 Copy Link',
-                'mobile.link_copied':    '✅ Link copied!',
-            };
-            function mbt(key) {
-                if (typeof window.t === 'function') return window.t(key);
-                return MB_FALLBACK[key] || key;
-            }
-
-            function buildLangSwitcher() {
-                if (typeof window.RCH_I18N === 'undefined') return '';
-                var langs = window.RCH_I18N.languages();
-                if (langs.length < 2) return '';
-                var btns = langs.map(function(code) {
-                    var meta = window.RCH_I18N.meta(code);
-                    var active = code === window.RCH_I18N.current ? ' mb-lang-active' : '';
-                    return '<button class="mb-lang-btn' + active + '" onclick="window._mbSetLang(\'' + code + '\')" title="' + (meta ? (meta.nameNative || meta.name) : code) + '">' + (meta ? (meta.flag || code.toUpperCase()) : code.toUpperCase()) + '</button>';
-                }).join('');
-                return '<div class="mb-lang-sw">' + btns + '</div>';
-            }
-
-            function renderBlock() {
-                var pageUrl = location.href;
-                var wrap = document.getElementById('mbs');
-                if (!wrap) return;
-                wrap.innerHTML = `
-                    <div class="mbw">
-                        ${buildLangSwitcher()}
-                        <span class="mb-ico">🖥️</span>
-                        <div class="mb-title">${mbt('mobile.title')}</div>
-                        <div class="mb-div"></div>
-                        <div class="mb-sub">${mbt('mobile.subtitle')}</div>
-                        <div class="mb-box">
-                            <h3>${mbt('mobile.why_title')}</h3>
-                            <ul>
-                                <li><span class="ri">🎮</span><span>${mbt('mobile.why_1')}</span></li>
-                                <li><span class="ri">🖥️</span><span>${mbt('mobile.why_2')}</span></li>
-                                <li><span class="ri">🎰</span><span>${mbt('mobile.why_3')}</span></li>
-                                <li><span class="ri">⚡</span><span>${mbt('mobile.why_4')}</span></li>
-                            </ul>
-                        </div>
-                        <div class="mb-alt">
-                            <h3>${mbt('mobile.alt_title')}</h3>
-                            <div class="alt-grid">
-                                <div class="alt-card"><span>💻</span><p>${mbt('mobile.alt_pc')}</p><small>${mbt('mobile.alt_pc_desc')}</small></div>
-                                <div class="alt-card"><span>📱</span><p>${mbt('mobile.alt_tablet')}</p><small>${mbt('mobile.alt_tablet_desc')}</small></div>
-                                <div class="alt-card"><span>🔗</span><p>${mbt('mobile.alt_share')}</p><small>${mbt('mobile.alt_share_desc')}</small></div>
-                            </div>
-                        </div>
-                        <div class="mb-url">
-                            <div class="mb-url-label">${mbt('mobile.url_label')}</div>
-                            <div class="mb-url-row">
-                                <span class="mb-url-text">${pageUrl}</span>
-                                <button class="mb-copy-btn" onclick="window._mbCopyLink(this)">${mbt('mobile.copy_link')}</button>
-                            </div>
-                        </div>
-                        <div class="mb-foot">
-                            <p class="mb-ver">Random Challenge Hub v3.0</p>
-                            <p class="mb-copy">© 2026 Random Challenge Hub</p>
-                        </div>
-                    </div>`;
-            }
-
-            window._mbSetLang = function(code) {
-                if (typeof window.RCH_I18N !== 'undefined') {
-                    window.RCH_I18N.set(code);
-                    renderBlock();
-                }
-            };
-
-            window._mbCopyLink = function(btn) {
-                navigator.clipboard.writeText(location.href).then(function() {
-                    btn.textContent = mbt('mobile.link_copied');
-                    setTimeout(function() { btn.textContent = mbt('mobile.copy_link'); }, 2000);
-                }).catch(function() {
-                    btn.select && btn.select();
-                });
-            };
-
-            function showBlock() {
-                document.body.innerHTML = '';
-                addStyles();
-                // Inject extra styles for new elements
-                var s2 = document.createElement('style');
-                s2.textContent = `
-                    .mb-lang-sw{display:flex;gap:8px;justify-content:center;margin-bottom:18px}
-                    .mb-lang-btn{width:34px;height:34px;border-radius:50%;border:2px solid rgba(99,102,241,0.35);background:rgba(15,23,42,0.7);color:#fff;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:transform .2s,border-color .2s}
-                    .mb-lang-btn:hover{transform:scale(1.15);border-color:rgba(99,102,241,0.8)}
-                    .mb-lang-active{border-color:#6366f1;box-shadow:0 0 10px rgba(99,102,241,0.5);transform:scale(1.08)}
-                    .mb-url{margin-bottom:18px;padding:14px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:12px}
-                    .mb-url-label{font-size:10px;color:#818cf8;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
-                    .mb-url-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-                    .mb-url-text{font-size:11px;color:#94a3b8;word-break:break-all;flex:1}
-                    .mb-copy-btn{padding:6px 12px;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);border-radius:8px;color:#a5b4fc;font-size:11px;cursor:pointer;white-space:nowrap;transition:background .2s}
-                    .mb-copy-btn:hover{background:rgba(99,102,241,0.35)}
-                    .alt-card small{font-size:9px;color:#64748b;display:block;margin-top:3px;line-height:1.3}
-                `;
-                document.head.appendChild(s2);
-                const wrap = document.createElement('div');
-                wrap.id = 'mbs';
-                document.body.appendChild(wrap);
-                renderBlock();
-                createParticles();
-            }
-
-            if (isMobileDevice()) {
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', showBlock);
-                } else {
-                    showBlock();
-                }
-            }
+        // Apply stored theme before first paint of the app
+        (function () {
+            var th = localStorage.getItem('appTheme') || 'dark';
+            document.documentElement.setAttribute('data-theme', th);
         })();
     </script>
 </body>

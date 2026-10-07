@@ -4,11 +4,11 @@
     "description": "Интерактивная рулетка заданий с OBS overlay для стримеров и геймеров",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#0d1117",
-    "theme_color": "#6366f1",
+    "background_color": "#0f1218",
+    "theme_color": "#ffb938",
     "lang": "ru",
     "dir": "ltr",
-    "orientation": "landscape",
+    "orientation": "any",
     "icons": [
         {
             "src": "favicon/favicon.png",

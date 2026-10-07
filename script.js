@@ -59,40 +59,22 @@ let settingsSubTab = 'speed';
 
 // Spent tasks — elimination mode: { gameName: [task, ...], ... }
 let spentTasks = _safeParse('spentTasks', {});
+let spinHistory = _safeParse('spinHistory', []);
+let taskDrawCount = _safeParse('taskDrawCount', {});
+let bonusPending = false;
 
-// Streamer state
-let streamerState = {
-    timerInterval: null,
-    timerSeconds: 0,
-    timerRunning: false,
-    timerInitial: 0,
-    chatMessages: [],
-    voteActive: false,
-    voteOptions: [],
-    voteVotes: {},
-    voteDuration: 30,
-    voteTimer: 0,
-    voteInterval: null,
-    voteTitle: '',   // Topic/Poll Title
-    subWheelList: [],
-    channelName: '',
-    connected: false,
-    twitchWs: null,    // A Real WebSocket to Twitch IRC
-    twitchStatus: 'idle',  // idle | connecting | connected | error
-
-    overlayOpen: false,
-    // New Data for IndexedDB
-    recentFollowers: [],
-    recentSubscribers: [],
-    chatStats: {
-        totalMessages: 0,
-        uniqueViewers: 0,
-        mostActiveUser: '',
-    }
-};
-
-// IndexedDB for storing streamer data
-let streamerDB = null;
+function activePlayers() { return players.filter(p => p.active !== false); }
+function gid(name) { let h = 5381; const s = String(name); for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return 'g' + (h >>> 0).toString(36); }
+function isBlocked(task) {
+    if (!rouletteSettings.blacklistEnabled) return false;
+    const x = String(task).trim().toLowerCase();
+    return (rouletteSettings.blacklistTasks || []).some(b => String(b).trim().toLowerCase() === x);
+}
+function taskWeight(game, task) {
+    if (!rouletteSettings.weightedSegments) return 1;
+    const c = taskDrawCount[game + '\u241f' + task] || 0;
+    return Math.max(0.2, 1 / (1 + c));
+}
 
 // ── SECURITY UTILITIES ────────────────────────────────────
 // HTML Escaping for Safely Inserting User Data into innerHTML
@@ -111,773 +93,6 @@ function escAttr(str) {
     return esc(str).replace(/`/g, '&#x60;');
 }
 
-// ── TWITCH IRC CONNECTION ─────────────────────────────────
-const TWITCH_IRC = 'wss://irc-ws.chat.twitch.tv:443';
-
-function twitchConnect(channel) {
-    if (streamerState.twitchWs) {
-        streamerState.twitchWs.close();
-        streamerState.twitchWs = null;
-    }
-    if (!channel || !channel.trim()) {
-        showNotification('Enter the channel name', 'error');
-        return;
-    }
-    const ch = channel.trim().toLowerCase().replace(/^#/, '');
-    streamerState.channelName = ch;
-    streamerState.twitchStatus = 'connecting';
-    _updateConnectBtn();
-    showNotification(t('streamer.connecting_to', { ch }), 'info');
-
-    const ws = new WebSocket(TWITCH_IRC);
-    streamerState.twitchWs = ws;
-
-    ws.onopen = () => {
-        // Anonymous read-only access
-        ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
-        ws.send('NICK justinfan' + Math.floor(Math.random() * 80000 + 1000));
-        ws.send(`JOIN #${ch}`);
-    };
-
-    ws.onmessage = (e) => {
-        const raw = e.data;
-        if (raw.startsWith('PING')) { ws.send('PONG :tmi.twitch.tv'); return; }
-        if (raw.includes('PRIVMSG')) {
-            _parseTwitchMsg(raw);
-        }
-        if (raw.includes(`JOIN #${ch}`) && streamerState.twitchStatus !== 'connected') {
-            streamerState.twitchStatus = 'connected';
-            streamerState.connected = true;
-            _updateConnectBtn();
-            showNotification(t('streamer.connected_msg', { ch }), 'success');
-            saveStreamerData();
-            updateOverlayChatData();
-        }
-    };
-
-    ws.onerror = () => {
-        streamerState.twitchStatus = 'error';
-        streamerState.connected = false;
-        _updateConnectBtn();
-        showNotification(t('streamer.connect_error'), 'error');
-        updateOverlayChatData();
-    };
-
-    ws.onclose = () => {
-        if (streamerState.twitchStatus !== 'idle') {
-            streamerState.twitchStatus = 'idle';
-            streamerState.connected = false;
-            _updateConnectBtn();
-            updateOverlayChatData();
-        }
-    };
-}
-
-
-function twitchDisconnect() {
-    if (streamerState.twitchWs) {
-        streamerState.twitchWs.close();
-        streamerState.twitchWs = null;
-    }
-    streamerState.twitchStatus = 'idle';
-    streamerState.connected = false;
-    _updateConnectBtn();
-    showNotification(t('streamer.disconnected'), 'info');
-    updateOverlayChatData();
-}
-
-// You cannot send messages in the chat without logging in
-function sendTwitchChatMessage(text) { return false; }
-
-function _parseTwitchMsg(raw) {
-    // Format: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :message
-    const tagsPart = raw.startsWith('@') ? raw.slice(1, raw.indexOf(' ')) : '';
-    const rest = raw.startsWith('@') ? raw.slice(raw.indexOf(' ') + 1) : raw;
-    const userMatch = rest.match(/^:(\w+)!/);
-    const msgMatch = rest.match(/PRIVMSG #\S+ :(.+)/s);
-    if (!userMatch || !msgMatch) return;
-
-    const user = userMatch[1];
-    const text = msgMatch[1].replace(/\r?\n$/, '').trim();
-
-    // Understandable tags (color, badges)
-    const tags = {};
-    tagsPart.split(';').forEach(t => { const [k, v] = t.split('='); if (k) tags[k] = v || '' });
-    const color = tags['color'] || _randomChatColor(user);
-    const isSub = tags['subscriber'] === '1';
-    const isMod = tags['mod'] === '1';
-    const isBroad = tags['badges'] && tags['badges'].includes('broadcaster');
-    const badge = isBroad ? 'broadcaster' : isMod ? 'mod' : isSub ? 'sub' : '';
-
-    const msgObj = { user, text, color, badge, timestamp: Date.now() };
-    streamerState.chatMessages.push(msgObj);
-    if (streamerState.chatMessages.length > 500) streamerState.chatMessages.shift();
-
-    // Storing Data in IndexedDB
-    saveChatMessage(msgObj);
-
-    // Refresh the chat box if it's visible
-    const cb = document.getElementById('chatBox');
-    if (cb) { cb.insertAdjacentHTML('beforeend', _renderOneChatMsg(msgObj)); cb.scrollTop = cb.scrollHeight; }
-
-    // Play the notification sound
-    playChatNotificationSound();
-
-    // Updating data for the overlay
-    updateOverlayChatData();
-
-    // Processing the vote
-    if (streamerState.voteActive) {
-        const num = parseInt(text.trim());
-        if (num >= 1 && num <= streamerState.voteOptions.length) {
-            // Each viewer may vote once (using their username)
-            if (!streamerState.voteVoters) streamerState.voteVoters = {};
-            if (!streamerState.voteVoters[user]) {
-                streamerState.voteVoters[user] = num;
-                if (streamerState.voteVotes[num]) {
-                    streamerState.voteVotes[num].count++;
-                    _refreshVoteUI();
-                }
-            }
-        }
-    }
-
-    // Checking Chat Commands
-    processChatCommand(user, text, { isBroad, isMod, isSub });
-
-    // We automatically add active users to the list of potential participants in the group
-    addChatUserToPool(user, { isBroad, isMod, isSub });
-}
-
-// Automatic selection of chat participants for the wheel
-function addChatUserToPool(user, permissions) {
-    // Initialize the participant pool if it doesn't exist
-    if (!streamerState.chatUserPool) {
-        streamerState.chatUserPool = new Set();
-    }
-
-    // Add a user to the pool
-    streamerState.chatUserPool.add(user);
-
-    // Updating the user's activity
-    if (!streamerState.userActivity) {
-        streamerState.userActivity = {};
-    }
-
-    if (!streamerState.userActivity[user]) {
-        streamerState.userActivity[user] = {
-            messages: 0,
-            lastSeen: Date.now(),
-            isSub: permissions.isSub,
-            isMod: permissions.isMod,
-            isBroadcaster: permissions.isBroad
-        };
-    }
-
-    streamerState.userActivity[user].messages++;
-    streamerState.userActivity[user].lastSeen = Date.now();
-
-    // Saving Data
-    saveStreamerData();
-}
-
-// Get a list of active chat participants
-function getChatParticipants(minMessages = 1, excludeMods = false) {
-    if (!streamerState.userActivity) return [];
-
-    const participants = [];
-    const now = Date.now();
-    const oneHourAgo = now - (60 * 60 * 1000); // 1 hour ago
-
-    Object.entries(streamerState.userActivity).forEach(([user, data]) => {
-        // We'll remove moderators if necessary
-        if (excludeMods && (data.isMod || data.isBroadcaster)) return;
-
-        // Checking Activity
-        if (data.messages >= minMessages && data.lastSeen > oneHourAgo) {
-            participants.push({
-                user,
-                messages: data.messages,
-                isSub: data.isSub,
-                isMod: data.isMod,
-                lastSeen: data.lastSeen
-            });
-        }
-    });
-
-    // Sort by activity
-    return participants.sort((a, b) => b.messages - a.messages);
-}
-
-function processChatCommand(user, text, permissions) {
-    const { isBroad, isMod, isSub } = permissions;
-    const isPrivileged = isBroad || isMod;
-
-    // Commands for moderators and streamers only
-    if (isPrivileged) {
-        if (text.toLowerCase() === '!spin') {
-            quickSpin();
-            return;
-        }
-
-        if (text.toLowerCase() === '!vote') {
-            startVote();
-            return;
-        }
-
-        if (text.toLowerCase().startsWith('!timer ')) {
-            const timeMatch = text.match(/!timer (\d+)/);
-            if (timeMatch) {
-                const minutes = parseInt(timeMatch[1]);
-                setTimerFromChat(minutes);
-                return;
-            }
-        }
-
-        if (text.toLowerCase() === '!addchatters') {
-            addAllChattersToWheel();
-            return;
-        }
-
-        if (text.toLowerCase() === '!clearwheel') {
-            clearSubWheel();
-            return;
-        }
-    }
-
-    // Teams for All Viewers
-    if (text.toLowerCase() === '!join' || text.toLowerCase() === '!addme') {
-        addSubToWheelFromChat(user);
-        return;
-    }
-
-    if (text.toLowerCase() === '!commands' || text.toLowerCase() === '!help') {
-        sendCommandsList();
-        return;
-    }
-};
-
-// Add all active chat participants to the circle
-function addAllChattersToWheel() {
-    const participants = getChatParticipants(1, false); // At least 1 message, including everyone
-    let added = 0;
-    const addedUsers = [];
-
-    participants.forEach(p => {
-        if (!streamerState.subWheelList.includes(p.user)) {
-            streamerState.subWheelList.push(p.user);
-            addedUsers.push(p.user);
-            added++;
-        }
-    });
-
-    if (added > 0) {
-        saveStreamerData();
-        if (currentTab === 'streamer') switchTab('streamer');
-        showNotification(t('streamer.all_chatters_added', { n: added }), 'success');
-    } else {
-        showNotification(t('streamer.all_already_in_wheel'), 'info');
-    }
-}
-
-function addSubToWheelFromChat(user) {
-    if (!streamerState.subWheelList.includes(user)) {
-        streamerState.subWheelList.push(user);
-        saveStreamerData();
-        if (currentTab === 'streamer') switchTab('streamer');
-        showNotification(t('streamer.sub_added', { name: user }), 'success');
-    } else {
-        showNotification(t('streamer.sub_active_count', { n: streamerState.subWheelList.length }), 'info');
-    }
-}
-
-function setTimerFromChat(minutes) {
-    streamerState.timerSeconds = minutes * 60;
-    streamerState.timerInitial = streamerState.timerSeconds;
-    updateTimerDisplay();
-    showNotification(t('streamer.stats_min', { n: minutes }), 'info');
-}
-
-// New Features for Streaming Tools
-function toggleChatSounds(enabled) {
-    streamerState.chatSounds = enabled;
-    saveStreamerData();
-    showNotification(enabled ? t('streamer.chat_sounds_on') : t('streamer.chat_sounds_off'), 'info');
-}
-
-function toggleAutoSpin(enabled) {
-    streamerState.autoSpin = enabled;
-    saveStreamerData();
-    showNotification(enabled ? t('streamer.autospin_on') : t('streamer.autospin_off'), 'info');
-}
-
-function playChatNotificationSound() {
-    if (!streamerState.chatSounds) return;
-
-    try {
-        initAudio();
-        if (!audioCtx) return;
-
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-        osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.1);
-
-        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
-
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 0.15);
-    } catch (e) { }
-}
-
-function showStreamStats() {
-    const participants = getChatParticipants(1);
-    const totalMessages = streamerState.chatStats.totalMessages;
-    const uniqueViewers = streamerState.chatStats.uniqueViewers;
-    const mostActive = streamerState.chatStats.mostActiveUser;
-    const sessionStart = streamerState.sessionStartTime || Date.now();
-    const duration = Math.round((Date.now() - sessionStart) / (1000 * 60)); // minute
-
-    const modal = document.getElementById('confirmModal');
-    if (modal) {
-        document.getElementById('modalTitle').textContent = t('streamer.stats_title');
-        document.getElementById('modalMessage').innerHTML = `
-            <div style="text-align:left;font-size:13px;line-height:1.6">
-                <div style="margin-bottom:12px"><strong>${t('streamer.stats_session')}</strong> ${t('streamer.stats_min', { n: duration })}</div>
-                <div style="margin-bottom:12px"><strong>${t('streamer.stats_messages')}</strong> ${totalMessages}</div>
-                <div style="margin-bottom:12px"><strong>${t('streamer.stats_unique')}</strong> ${uniqueViewers}</div>
-                <div style="margin-bottom:12px"><strong>${t('streamer.stats_most_active')}</strong> ${mostActive || t('streamer.stats_no_data')}</div>
-                <div style="margin-bottom:12px"><strong>${t('streamer.stats_in_wheel')}</strong> ${streamerState.subWheelList.length}</div>
-                <div style="margin-bottom:12px"><strong>${t('streamer.stats_participants')}</strong> ${t('streamer.stats_active', { n: participants.length })}</div>
-                ${streamerState.voteActive ? `<div style="color:var(--accent-warning)">${t('streamer.stats_vote_active')}</div>` : ''}
-            </div>
-        `;
-        document.getElementById('modalConfirm').textContent = t('streamer.stats_close');
-        document.getElementById('modalConfirm').onclick = closeModal;
-        const cancelBtn = modal.querySelector('.cancel-btn');
-        if (cancelBtn) cancelBtn.style.display = 'none';
-        modal.classList.remove('hidden');
-    }
-}
-
-function exportStreamData() {
-    const data = {
-        sessionInfo: {
-            channelName: streamerState.channelName,
-            startTime: streamerState.sessionStartTime || Date.now(),
-            endTime: Date.now(),
-            duration: Math.round((Date.now() - (streamerState.sessionStartTime || Date.now())) / (1000 * 60))
-        },
-        chatStats: streamerState.chatStats,
-        participants: getChatParticipants(1),
-        subWheelList: streamerState.subWheelList,
-        userActivity: streamerState.userActivity || {},
-        recentMessages: streamerState.chatMessages.slice(-50),
-        exportDate: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `stream-data-${streamerState.channelName}-${Date.now()}.json`;
-    a.click();
-
-    showNotification(t('streamer.export_done'), 'success');
-}
-
-function resetStreamSession() {
-    showConfirmModal(t('streamer.reset_confirm'), t('streamer.reset_msg'), t('streamer.reset_btn2'), t('common.cancel'), () => {
-        streamerState.chatMessages = [];
-        streamerState.chatStats = { totalMessages: 0, uniqueViewers: 0, mostActiveUser: '' };
-        streamerState.userActivity = {};
-        streamerState.chatUserPool = new Set();
-        streamerState.sessionStartTime = Date.now();
-        saveStreamerData();
-        if (currentTab === 'streamer') switchTab('streamer');
-        showNotification(t('streamer.session_reset'), 'success');
-    });
-}
-
-// ── OVERLAY CHAT DATA ─────────────────────────────────────
-function updateOverlayChatData() {
-    const chatData = {
-        connected: streamerState.twitchStatus === 'connected',
-        channelName: streamerState.channelName,
-        messages: streamerState.chatMessages.slice(-20), // The Last 20 Posts
-        stats: streamerState.chatStats,
-        timestamp: Date.now()
-    };
-
-    try {
-        localStorage.setItem('overlayChatData', JSON.stringify(chatData));
-    } catch (error) {
-        console.warn('Failed to refresh the chat data for the overlay:', error);
-    }
-}
-
-function _randomChatColor(name) {
-    const palette = ['#818cf8', '#34d399', '#fbbf24', '#f472b6', '#67e8f9', '#a3e635', '#fb923c', '#e879f9'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return palette[Math.abs(hash) % palette.length];
-}
-
-function _renderOneChatMsg(m) {
-    const badgeHtml = m.badge ? `<span class="chat-badge ${esc(m.badge)}">${esc(m.badge)}</span>` : '';
-    const safeColor = /^#[0-9a-fA-F]{3,6}$/.test(m.color) ? m.color : '#818cf8';
-    return `<div class="chat-msg"><span class="chat-user" style="color:${safeColor}">${badgeHtml}${esc(m.user)}</span><span class="chat-text">: ${esc(m.text)}</span></div>`;
-}
-
-function _updateConnectBtn() {
-    const btn = document.getElementById('chatConnectBtn');
-    if (!btn) return;
-    const s = streamerState.twitchStatus;
-    btn.textContent = s === 'connected' ? t('streamer.disconnect_btn')
-        : s === 'connecting' ? t('streamer.connecting_btn')
-            : s === 'error' ? t('streamer.error_btn')
-                : t('streamer.connect_btn');
-    btn.className = `cyber-btn channel-connect-btn ${s === 'connected' ? 'danger-btn' : 'add-btn'}`;
-    btn.disabled = s === 'connecting';
-    updateStreamerUIState();
-}
-
-function updateChannelName(name) {
-    streamerState.channelName = name.trim().toLowerCase().replace(/^#/, '');
-    saveStreamerData();
-}
-
-function twitchToggleConnect() {
-    if (streamerState.connected) {
-        twitchDisconnect();
-    } else {
-        const channel = document.getElementById('channelNameInput')?.value?.trim();
-        if (channel) {
-            twitchConnect(channel);
-        } else {
-            showNotification('Enter the channel name', 'error');
-        }
-    }
-}
-
-function updateStreamerUIState() {
-    const isConnected = streamerState.twitchStatus === 'connected';
-
-    // Updating the "All from Chat" button
-    const addChattersBtn = document.querySelector('button[onclick="addAllChattersToWheel()"]');
-    if (addChattersBtn) {
-        addChattersBtn.disabled = !isConnected;
-    }
-
-    // Updating the "Commands" button
-    const commandsBtn = document.querySelector('button[onclick="sendCommandsList()"]');
-    if (commandsBtn) {
-        commandsBtn.disabled = !isConnected;
-    }
-
-    // Updating the "Vote" button in Quick Commands
-    const voteBtn = document.querySelector('.quick-cmd-btn[onclick="startVote()"]');
-    if (voteBtn) {
-        voteBtn.disabled = !isConnected;
-    }
-
-    // Force a refresh of the voting area
-    const voteArea = document.getElementById('voteArea');
-    if (voteArea) {
-        voteArea.innerHTML = renderVoteArea();
-    }
-
-    // Updating the chat status bar
-    const statusBar = document.getElementById('twitchStatusBar');
-    if (statusBar) {
-        const statusColor = isConnected ? 'var(--accent-success)'
-            : streamerState.twitchStatus === 'error' ? 'var(--accent-danger)'
-                : 'var(--text-muted)';
-        statusBar.style.color = statusColor;
-
-        statusBar.innerHTML = isConnected
-            ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> ${t('streamer.status_reading', { ch: esc(streamerState.channelName) })}</span>`
-            : streamerState.twitchStatus === 'connecting' ? t('streamer.status_connecting')
-                : streamerState.twitchStatus === 'error' ? t('streamer.status_error')
-                    : t('streamer.status_idle');
-    }
-}
-
-function _refreshVoteUI() {
-    const va = document.getElementById('voteArea');
-    if (va) va.innerHTML = renderVoteArea();
-}
-
-// ── INDEXEDDB for Streamers ────────────────────────────────
-async function initStreamerDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('StreamerDatabase', 1);
-
-        request.onerror = () => {
-            console.warn('IndexedDB недоступна, используем localStorage');
-            resolve();
-        };
-
-        request.onsuccess = (event) => {
-            streamerDB = event.target.result;
-            loadStreamerData();
-
-            // Let's initialize the session start time
-            if (!streamerState.sessionStartTime) {
-                streamerState.sessionStartTime = Date.now();
-                saveStreamerData();
-            }
-
-            resolve();
-        };
-
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-
-            // Chat Message Storage
-            if (!db.objectStoreNames.contains('chatMessages')) {
-                const chatStore = db.createObjectStore('chatMessages', { keyPath: 'id', autoIncrement: true });
-                chatStore.createIndex('timestamp', 'timestamp');
-                chatStore.createIndex('user', 'user');
-            }
-
-            // Subscriber Repository
-            if (!db.objectStoreNames.contains('subscribers')) {
-                const subStore = db.createObjectStore('subscribers', { keyPath: 'user' });
-                subStore.createIndex('timestamp', 'timestamp');
-            }
-
-            // Statistics Repository
-            if (!db.objectStoreNames.contains('chatStats')) {
-                db.createObjectStore('chatStats', { keyPath: 'date' });
-            }
-        };
-    });
-}
-
-async function saveStreamerData() {
-    if (!streamerDB) {
-        // Fallback to localStorage
-        const dataToSave = {
-            channelName: streamerState.channelName,
-            subWheelList: streamerState.subWheelList,
-            chatStats: streamerState.chatStats,
-            chatSounds: streamerState.chatSounds,
-            autoSpin: streamerState.autoSpin,
-            sessionStartTime: streamerState.sessionStartTime,
-            lastSaved: Date.now()
-        };
-        localStorage.setItem('streamerState', JSON.stringify(dataToSave));
-        return;
-    }
-
-    try {
-        const transaction = streamerDB.transaction(['chatStats'], 'readwrite');
-        const store = transaction.objectStore('chatStats');
-
-        const data = {
-            date: 'singleton',          // keyPath — a single constant entry
-            channelName: streamerState.channelName,
-            subWheelList: streamerState.subWheelList,
-            chatStats: streamerState.chatStats,
-            chatSounds: streamerState.chatSounds,
-            autoSpin: streamerState.autoSpin,
-            sessionStartTime: streamerState.sessionStartTime,
-            lastUpdated: Date.now()
-        };
-
-        await store.put(data);
-    } catch (error) {
-        console.warn('Ошибка сохранения в IndexedDB:', error);
-        // Fallback to localStorage
-        const dataToSave = {
-            channelName: streamerState.channelName,
-            subWheelList: streamerState.subWheelList,
-            chatStats: streamerState.chatStats,
-            chatSounds: streamerState.chatSounds,
-            autoSpin: streamerState.autoSpin,
-            sessionStartTime: streamerState.sessionStartTime,
-            lastSaved: Date.now()
-        };
-        localStorage.setItem('streamerState', JSON.stringify(dataToSave));
-    }
-}
-
-async function loadStreamerData() {
-    if (!streamerDB) {
-        // Fallback to localStorage
-        const saved = localStorage.getItem('streamerState');
-        if (saved) {
-            try {
-                const data = JSON.parse(saved);
-                // We restore the basic data, but not the connection status
-                streamerState.channelName = data.channelName || '';
-                streamerState.subWheelList = data.subWheelList || [];
-                streamerState.chatStats = data.chatStats || streamerState.chatStats;
-                streamerState.chatSounds = data.chatSounds || false;
-                streamerState.autoSpin = data.autoSpin || false;
-                streamerState.sessionStartTime = data.sessionStartTime || Date.now();
-
-                // Updating Input Fields on Load
-                updateChannelInput();
-                updateTokenInput();
-            } catch (e) {
-                console.warn('Ошибка загрузки из localStorage:', e);
-            }
-        }
-        return;
-    }
-
-    try {
-        const transaction = streamerDB.transaction(['chatStats'], 'readonly');
-        const store = transaction.objectStore('chatStats');
-        const request = store.getAll();
-
-        request.onsuccess = () => {
-            const results = request.result;
-            if (results.length > 0) {
-                const data = results[0];
-                streamerState.channelName = data.channelName || '';
-                streamerState.subWheelList = data.subWheelList || [];
-                streamerState.chatStats = data.chatStats || streamerState.chatStats;
-                streamerState.chatSounds = data.chatSounds || false;
-                streamerState.autoSpin = data.autoSpin || false;
-                streamerState.sessionStartTime = data.sessionStartTime || Date.now();
-
-                // Updating Input Fields on Load
-                updateChannelInput();
-                updateTokenInput();
-            }
-        };
-    } catch (error) {
-        console.warn('IndexedDB load error:', error);
-    }
-}
-
-function showReconnectToast(channelName) {
-    // Remove the previous toast, if there is any
-    const existing = document.getElementById('reconnectToast');
-    if (existing) existing.remove();
-
-    const group = document.querySelector('.channel-input-group');
-    if (!group) return;
-
-    const toast = document.createElement('div');
-    toast.id = 'reconnectToast';
-    toast.className = 'reconnect-toast';
-    toast.innerHTML = `
-        <span>${t('streamer.reconnect_msg', { ch: channelName })}</span>
-        <div class="reconnect-toast-actions">
-            <button class="reconnect-toast-yes" id="reconnectYes">${t('common.yes')}</button>
-            <button class="reconnect-toast-no"  id="reconnectNo">${t('common.no')}</button>
-        </div>
-    `;
-    group.insertAdjacentElement('afterend', toast);
-
-    const dismiss = () => {
-        toast.style.transition = 'opacity 0.2s, transform 0.2s';
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-4px) scale(0.97)';
-        setTimeout(() => toast.remove(), 220);
-    };
-
-    document.getElementById('reconnectYes').addEventListener('click', () => {
-        dismiss();
-        twitchConnect(channelName);
-    });
-    document.getElementById('reconnectNo').addEventListener('click', dismiss);
-
-    // Auto-hide in 8 seconds
-    setTimeout(dismiss, 8000);
-}
-
-function updateChannelInput() {
-    // We update the input field with a delay so that the UI is ready
-    setTimeout(() => {
-        const input = document.getElementById('channelNameInput');
-        if (input && streamerState.channelName) {
-            input.value = streamerState.channelName;
-        }
-    }, 100);
-}
-
-function updateChannelName(value) {
-    streamerState.channelName = value.trim();
-    // Save immediately upon changes
-    saveStreamerData();
-}
-
-function updateTokenInput() {
-    // Updating the token field with a delay
-    setTimeout(() => {
-        const input = document.getElementById('twitchTokenInput');
-        if (input && streamerState.twitchToken) {
-            input.value = streamerState.twitchToken;
-        }
-    }, 100);
-}
-
-// Authorization features have been REMOVED
-function updateTwitchToken(value) {
-    console.warn('The authorization feature is unavailable');
-}
-
-// Twitch authorization has been removed — chat is read-only (anonymous IRC)
-
-async function saveChatMessage(message) {
-    if (!streamerDB) return;
-
-    try {
-        const transaction = streamerDB.transaction(['chatMessages'], 'readwrite');
-        const store = transaction.objectStore('chatMessages');
-
-        const messageData = {
-            ...message,
-            timestamp: Date.now(),
-            channelName: streamerState.channelName
-        };
-
-        await store.add(messageData);
-
-        // Updating the statistics
-        updateChatStats(message.user);
-
-    } catch (error) {
-        console.warn('Error saving the message:', error);
-    }
-}
-
-function updateChatStats(user) {
-    streamerState.chatStats.totalMessages++;
-
-    // Counting Unique Viewers
-    const uniqueViewers = new Set();
-    streamerState.chatMessages.forEach(msg => uniqueViewers.add(msg.user));
-    streamerState.chatStats.uniqueViewers = uniqueViewers.size;
-
-    // Most Active User
-    const userCounts = {};
-    streamerState.chatMessages.forEach(msg => {
-        userCounts[msg.user] = (userCounts[msg.user] || 0) + 1;
-    });
-
-    let maxCount = 0;
-    let mostActive = '';
-    Object.entries(userCounts).forEach(([user, count]) => {
-        if (count > maxCount) {
-            maxCount = count;
-            mostActive = user;
-        }
-    });
-
-    streamerState.chatStats.mostActiveUser = mostActive;
-    saveStreamerData();
-}
-
 let gameFirstState = {
     active: false, selectedGame: null,
     currentPlayerIndex: 0, assignedTasks: {}
@@ -889,7 +104,7 @@ let taskOnlyState = {
 };
 
 // ── SETTINGS ──────────────────────────────────────────────
-let rouletteSettings = _safeParse('rouletteSettings', null) || {
+const ROULETTE_DEFAULTS = {
     // Speed
     spinDuration: 5000, minSpins: 5, maxSpins: 10,
     // Sound
@@ -905,7 +120,7 @@ let rouletteSettings = _safeParse('rouletteSettings', null) || {
     groupSegments: true, maxSegments: 14,
     colorScheme: 'default',
     borderStyle: 'glow',     // glow | solid | dashed | neon
-    centerIcon: '🎲',
+    centerIcon: 'dice-3-fill',
     showSegmentIcons: false,
     pointerStyle: 'arrow',   // arrow | triangle | diamond | star
     wheelAnimation: 'ease',  // ease | bounce | linear
@@ -925,7 +140,10 @@ let rouletteSettings = _safeParse('rouletteSettings', null) || {
     blacklistTasks: [],
     weightedSegments: false,
     removeAfterSpin: false, // Remove the task from the wheel after each scroll
+    wheelBulbs: true,       // marquee bulb ring
+    overlayWheel: true,     // replay the spin in the OBS overlay
 };
+let rouletteSettings = Object.assign({}, ROULETTE_DEFAULTS, _safeParse('rouletteSettings', {}));
 
 // ── COLOR SCHEMES ──────────────────────────────────────────
 const COLOR_SCHEMES = {
@@ -960,18 +178,7 @@ function init() {
     const ls = document.querySelector('.loading-screen');
     if (ls) ls.remove();
 
-    // Load the streamer's saved data directly from localStorage as a fallback
-    loadStreamerDataSync();
-
-    // Initialize IndexedDB for the streamer
-    initStreamerDB().then(() => {
-        // Once the streamer's data has loaded, we recommend reconnecting
-        setTimeout(() => {
-            if (streamerState.channelName && currentTab === 'streamer') {
-                showReconnectToast(streamerState.channelName);
-            }
-        }, 1500); // Increased the delay for a full download
-    });
+    initStreamer();
 
     // Loading and Normalizing Game Data
     const rawGames = JSON.parse(localStorage.getItem('challengeGames'));
@@ -1012,26 +219,7 @@ function init() {
     document.addEventListener('click', e => { if (e.target.classList.contains('modal')) closeModal() });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal() });
     updateWheelSegments();
-}
-
-// Synchronous Loading of Data from localStorage
-function loadStreamerDataSync() {
-    const saved = localStorage.getItem('streamerState');
-    if (saved) {
-        try {
-            const data = JSON.parse(saved);
-            streamerState.channelName = data.channelName || '';
-            streamerState.subWheelList = data.subWheelList || [];
-            streamerState.chatStats = data.chatStats || streamerState.chatStats;
-            streamerState.chatSounds = data.chatSounds || false;
-            streamerState.autoSpin = data.autoSpin || false;
-            streamerState.sessionStartTime = data.sessionStartTime || Date.now();
-
-            console.log('Streamer data has been loaded:', streamerState.channelName);
-        } catch (e) {
-            console.warn('Error loading from localStorage:', e);
-        }
-    }
+    if (location.hash === '#auction') switchTab('auction');
 }
 
 // ── THEME ──────────────────────────────────────────────────
@@ -1050,13 +238,14 @@ function createFloatingButton() {
     if (ex) ex.remove();
     document.body.insertAdjacentHTML('beforeend', `
         <div class="floating-actions">
-            <button class="floating-btn main-btn" onclick="toggleFloatingMenu()" title="${t('floating.settings')}">⚙️</button>
+            <button class="floating-btn main-btn" onclick="toggleFloatingMenu()" title="${t('floating.settings')}"><i class="bi bi-gear-fill" aria-hidden="true"></i></button>
             <div class="floating-menu hidden" id="floatingMenu">
                 <button onclick="confirmClearCache()"  class="floating-menu-btn">${t('floating.clear_cache')}</button>
                 <button onclick="confirmResetAll()"    class="floating-menu-btn">${t('floating.reset_all')}</button>
                 <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="floating-menu-btn">${t('floating.scroll_top')}</button>
                 <button onclick="switchTab('settings')"  class="floating-menu-btn">${t('floating.settings')}</button>
                 <button onclick="switchTab('roulette')"  class="floating-menu-btn">${t('floating.roulette')}</button>
+                <button onclick="switchTab('auction')"   class="floating-menu-btn"><i class="bi bi-hammer" aria-hidden="true"></i> ${t('tab.auction')}</button>
                 <button onclick="switchTab('streamer')"  class="floating-menu-btn">${t('floating.streamer')}</button>
                 <button onclick="openOverlayWindow()"    class="floating-menu-btn">${t('floating.overlay')}</button>
             </div>
@@ -1091,8 +280,48 @@ function showConfirmModal(title, msg, confirmTxt, cancelTxt, onConfirm) {
     btn.onclick = () => { if (modalCallback) modalCallback(); closeModal() };
     modal.classList.remove('hidden');
 }
+/** Text-input dialog in the project's modal style (replaces window.prompt). */
+function showPromptModal(title, msg, value, onOk, okTxt) {
+    let m = document.getElementById('promptModal');
+    if (!m) {
+        m = document.createElement('div'); m.id = 'promptModal'; m.className = 'modal hidden';
+        m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+        m.innerHTML = '<div class="modal-content"><h3 id="pmTitle"></h3><p id="pmMsg"></p><input type="text" id="pmInput" maxlength="80" autocomplete="off"><div class="modal-actions"><button type="button" class="cyber-btn cancel-btn" id="pmCancel"></button><button type="button" class="cyber-btn primary-btn" id="pmOk"></button></div></div>';
+        document.body.appendChild(m);
+        m.addEventListener('click', e => { if (e.target === m || e.target.closest('#pmCancel')) m.classList.add('hidden'); });
+        m.addEventListener('keydown', e => {
+            if (e.key === 'Escape') m.classList.add('hidden');
+            if (e.key === 'Enter' && e.target.id === 'pmInput') { e.preventDefault(); document.getElementById('pmOk').click(); }
+        });
+    }
+    document.getElementById('pmTitle').textContent = title || '';
+    document.getElementById('pmMsg').textContent = msg || '';
+    document.getElementById('pmMsg').hidden = !msg;
+    const inp = document.getElementById('pmInput'); inp.value = value || '';
+    document.getElementById('pmCancel').textContent = t('common.cancel');
+    const ok = document.getElementById('pmOk'); ok.textContent = okTxt || t('common.confirm');
+    ok.onclick = () => { const v = inp.value; m.classList.add('hidden'); if (onOk) onOk(v); };
+    m.classList.remove('hidden'); setTimeout(() => { inp.focus(); inp.select(); }, 30);
+}
+/** Message dialog in the project's modal style (replaces window.alert). */
+function showAlertModal(title, msg) {
+    let m = document.getElementById('alertModal');
+    if (!m) {
+        m = document.createElement('div'); m.id = 'alertModal'; m.className = 'modal hidden';
+        m.setAttribute('role', 'alertdialog'); m.setAttribute('aria-modal', 'true');
+        m.innerHTML = '<div class="modal-content"><h3 id="amTitle"></h3><p id="amMsg"></p><div class="modal-actions"><button type="button" class="cyber-btn primary-btn" id="amOk"></button></div></div>';
+        document.body.appendChild(m);
+        m.addEventListener('click', e => { if (e.target === m || e.target.id === 'amOk') m.classList.add('hidden'); });
+        m.addEventListener('keydown', e => { if (e.key === 'Escape') m.classList.add('hidden'); });
+    }
+    document.getElementById('amTitle').textContent = title || '';
+    document.getElementById('amMsg').textContent = msg || '';
+    document.getElementById('amOk').textContent = t('common.ok') === 'common.ok' ? 'OK' : t('common.ok');
+    m.classList.remove('hidden'); setTimeout(() => document.getElementById('amOk').focus(), 30);
+}
 function closeModal() {
     document.getElementById('confirmModal')?.classList.add('hidden');
+    document.getElementById('promptModal')?.classList.add('hidden');
     document.getElementById('wheelCustomModal')?.classList.add('hidden');
     modalCallback = null;
 }
@@ -1113,6 +342,7 @@ function confirmClearCache() {
 }
 function clearCache() {
     localStorage.removeItem('challengePlayers'); localStorage.removeItem('challengeGames'); sessionStorage.clear();
+    spinHistory = []; taskDrawCount = {}; localStorage.removeItem('spinHistory'); localStorage.removeItem('taskDrawCount');
     players = []; games = getDefaultGames();
     gameFirstState = { active: false, selectedGame: null, currentPlayerIndex: 0, assignedTasks: {} };
     saveAll(); updateWheelSegments(); switchTab('games');
@@ -1137,12 +367,13 @@ function createTabs(initialTab) {
     const tab = initialTab || 'games';
     mp.innerHTML = `
         <div class="cyber-tabs">
-            <button class="cyber-tab${tab === 'games' ? ' active' : ''}"    data-tab="games"    onclick="switchTab('games')">   <span class="tab-icon">🎮</span> ${t('tab.games')}</button>
-            <button class="cyber-tab${tab === 'players' ? ' active' : ''}"  data-tab="players"  onclick="switchTab('players')"> <span class="tab-icon">👥</span> ${t('tab.players')} <span class="tab-badge" id="playersBadge">${players.length}</span></button>
-            <button class="cyber-tab${tab === 'roulette' ? ' active' : ''}" data-tab="roulette" onclick="switchTab('roulette')"><span class="tab-icon">🎰</span> ${t('tab.roulette')}</button>
-            <button class="cyber-tab${tab === 'streamer' ? ' active' : ''}" data-tab="streamer" onclick="switchTab('streamer')"><span class="tab-icon">📡</span> ${t('tab.streamer')}</button>
-            <button class="cyber-tab${tab === 'stats' ? ' active' : ''}"    data-tab="stats"    onclick="switchTab('stats')">   <span class="tab-icon">📊</span> ${t('tab.stats')}</button>
-            <button class="cyber-tab${tab === 'settings' ? ' active' : ''}" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> ${t('tab.settings')}</button>
+            <button class="cyber-tab${tab === 'games' ? ' active' : ''}"    data-tab="games"    onclick="switchTab('games')">   <span class="tab-icon"><i class="bi bi-controller" aria-hidden="true"></i></span> ${t('tab.games')}</button>
+            <button class="cyber-tab${tab === 'players' ? ' active' : ''}"  data-tab="players"  onclick="switchTab('players')"> <span class="tab-icon"><i class="bi bi-people-fill" aria-hidden="true"></i></span> ${t('tab.players')} <span class="tab-badge" id="playersBadge">${players.length}</span></button>
+            <button class="cyber-tab${tab === 'roulette' ? ' active' : ''}" data-tab="roulette" onclick="switchTab('roulette')"><span class="tab-icon"><i class="bi bi-dice-5-fill" aria-hidden="true"></i></span> ${t('tab.roulette')}</button>
+            <button class="cyber-tab${tab === 'auction' ? ' active' : ''}"  data-tab="auction"  onclick="switchTab('auction')"><span class="tab-icon"><i class="bi bi-hammer" aria-hidden="true"></i></span> <span class="tab-label">${t('tab.auction')}</span></button>
+            <button class="cyber-tab${tab === 'streamer' ? ' active' : ''}" data-tab="streamer" onclick="switchTab('streamer')"><span class="tab-icon"><i class="bi bi-broadcast" aria-hidden="true"></i></span> ${t('tab.streamer')}</button>
+            <button class="cyber-tab${tab === 'stats' ? ' active' : ''}"    data-tab="stats"    onclick="switchTab('stats')">   <span class="tab-icon"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i></span> ${t('tab.stats')}</button>
+            <button class="cyber-tab${tab === 'settings' ? ' active' : ''}" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon"><i class="bi bi-gear-fill" aria-hidden="true"></i></span> ${t('tab.settings')}</button>
         </div>
         <div class="tab-content" id="tabContent"></div>
     `;
@@ -1182,22 +413,8 @@ function switchTab(name) {
                 refreshRouletteControls();
             }, 80);
         },
-        streamer: () => {
-            content.innerHTML = renderStreamerTab();
-            // Updating the UI state after rendering
-            setTimeout(() => {
-                updateStreamerUIState();
-                updateChannelInput();
-                updateTokenInput();
-
-                // We offer to reconnect if you have a saved channel
-                if (streamerState.channelName && streamerState.twitchStatus === 'idle') {
-                    setTimeout(() => {
-                        showReconnectToast(streamerState.channelName);
-                    }, 500);
-                }
-            }, 100);
-        },
+        streamer: () => { content.innerHTML = renderStreamerTab(); setTimeout(afterStreamerRender, 30); },
+        auction: () => { content.innerHTML = renderAuctionTab(); setTimeout(afterAuctionRender, 30); },
         stats: () => { content.innerHTML = renderStatsTab() },
         settings: () => { content.innerHTML = renderSettingsTab() },
     };
@@ -1220,20 +437,20 @@ function restoreDropdownState() {
         if (!open) return;
         const dd = document.getElementById(`dropdown_${id}`);
         const ar = document.getElementById(`arrow_${id}`);
-        if (dd) { dd.classList.remove('hidden'); if (ar) ar.textContent = '▼' }
+        if (dd) { dd.classList.remove('hidden'); if (ar) ar.textContent = biChar('caret-down-fill') }
     });
 }
 function toggleGameDropdown(gameName) {
-    const sid = gameName.replace(/[^a-zA-Z0-9]/g, '_');
+    const sid = gid(gameName);
     const dd = document.getElementById(`dropdown_${sid}`);
     const ar = document.getElementById(`arrow_${sid}`);
     if (!dd) return;
     const hidden = dd.classList.contains('hidden');
     if (hidden) {
         document.querySelectorAll('.tasks-dropdown').forEach(d => { if (d.id !== `dropdown_${sid}`) d.classList.add('hidden') });
-        document.querySelectorAll('.dropdown-arrow').forEach(a => { if (a.id !== `arrow_${sid}`) a.textContent = '▶' });
-        dd.classList.remove('hidden'); if (ar) ar.textContent = '▼'; openDropdowns[sid] = true;
-    } else { dd.classList.add('hidden'); if (ar) ar.textContent = '▶'; openDropdowns[sid] = false }
+        document.querySelectorAll('.dropdown-arrow').forEach(a => { if (a.id !== `arrow_${sid}`) a.textContent = biChar('caret-right-fill') });
+        dd.classList.remove('hidden'); if (ar) ar.textContent = biChar('caret-down-fill'); openDropdowns[sid] = true;
+    } else { dd.classList.add('hidden'); if (ar) ar.textContent = biChar('caret-right-fill'); openDropdowns[sid] = false }
 }
 
 // ── GAMES TAB ─────────────────────────────────────────────
@@ -1262,8 +479,8 @@ function renderGamesTab() {
             <div id="gamesList" class="games-list">${renderGamesList()}</div>
         </div>
         <div class="panel-actions">
-            <button onclick="exportData()" class="cyber-btn export-btn">📤 ${t('common.export')}</button>
-            <button onclick="importData()" class="cyber-btn import-btn">📥 ${t('common.import')}</button>
+            <button onclick="exportData()" class="cyber-btn export-btn"><i class="bi bi-box-arrow-up" aria-hidden="true"></i> ${t('common.export')}</button>
+            <button onclick="importData()" class="cyber-btn import-btn"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> ${t('common.import')}</button>
             <button onclick="showBulkAddModal()" class="cyber-btn primary-btn">${t('games.bulk_add')}</button>
         </div>
     </div>`;
@@ -1272,17 +489,17 @@ function renderGamesTab() {
 function renderGamesList() {
     if (!Object.keys(games).length) return `<p class="empty-text">${t('games.empty_games')}</p>`;
     return Object.entries(games).map(([game, tasks]) => {
-        const sid = game.replace(/[^a-zA-Z0-9]/g, '_');
+        const sid = gid(game);
         const escGame = esc(game);
         return `<div class="game-card">
             <div class="game-header" data-game="${escGame}" onclick="toggleGameDropdown(this.dataset.game)">
                 <div class="game-header-left">
-                    <span class="dropdown-arrow" id="arrow_${sid}">▶</span>
-                    <h4 class="game-name">🎮 ${escGame}</h4>
+                    <span class="dropdown-arrow" id="arrow_${sid}"><i class="bi bi-caret-right-fill" aria-hidden="true"></i></span>
+                    <h4 class="game-name"><i class="bi bi-controller" aria-hidden="true"></i> ${escGame}</h4>
                 </div>
                 <div class="game-header-right">
                     <span class="task-count">${t('games.tasks_count', { n: tasks.length })}</span>
-                    <button data-game="${escGame}" onclick="event.stopPropagation();deleteGame(this.dataset.game)" class="delete-btn">🗑️</button>
+                    <button data-game="${escGame}" onclick="event.stopPropagation();deleteGame(this.dataset.game)" class="delete-btn"><i class="bi bi-trash3" aria-hidden="true"></i></button>
                 </div>
             </div>
             <div class="tasks-dropdown hidden" id="dropdown_${sid}">
@@ -1324,7 +541,7 @@ function addTask() {
     showNotification(t('games.task_added'), 'success');
 }
 function quickAddTask(gameName) {
-    const sid = gameName.replace(/[^a-zA-Z0-9]/g, '_');
+    const sid = gid(gameName);
     const inp = document.getElementById(`quickTask_${sid}`); if (!inp) return;
     const task = inp.value.trim();
     if (!task) return showNotification(t('games.no_task_desc'), 'error');
@@ -1405,14 +622,15 @@ function renderPlayersTab() {
                 ${players.length === 0 ? `<p class="empty-text">${t('players.empty')}</p>` :
             players.map((p, i) => {
                 const cd = playerColors[p.color] || playerColors.indigo;
-                return `<div class="player-card" style="border-color:${esc(cd.name)}">
-                            <div class="player-avatar" style="background:${esc(cd.gradient)}">${esc(p.name[0].toUpperCase())}</div>
+                return `<div class="player-card ${p.active === false ? 'inactive' : ''}" style="border-color:${esc(cd.name)}">
+                            <div class="player-avatar" style="background:${esc(cd.gradient)}">${esc(Array.from(p.name)[0].toUpperCase())}</div>
                             <div class="player-info">
                                 <span class="player-name" style="color:${esc(cd.name)}">${esc(p.name)}</span>
                                 <span class="player-color">${t('color.' + p.color) || esc(cd.label)}</span>
                                 <span class="player-stats-mini">${t('players.stats_mini', { g: p.stats?.gamesPlayed || 0, t: p.stats?.tasksCompleted || 0 })}</span>
                             </div>
-                            <button onclick="deletePlayer(${i})" class="delete-btn" title="${t('common.delete')}">🗑️</button>
+                            <button onclick="togglePlayerActive(${i})" class="icon-btn ${p.active === false ? '' : 'on'}" title="${esc(t('players.toggle_active'))}" aria-pressed="${p.active !== false}">${p.active === false ? bi('pause-fill') : bi('check-lg')}</button>
+                            <button onclick="deletePlayer(${i})" class="delete-btn" title="${t('common.delete')}"><i class="bi bi-trash3" aria-hidden="true"></i></button>
                         </div>`;
             }).join('')}
             </div>
@@ -1463,10 +681,10 @@ function renderRouletteTab() {
     let spinTxt = t('roulette.spin_btn');
 
     if (gameFirstState.active && gameFirstState.selectedGame) {
-        const curP = players[gameFirstState.currentPlayerIndex];
+        const curP = activePlayers()[gameFirstState.currentPlayerIndex];
         const remaining = getRemainingTasksForGame(gameFirstState.selectedGame);
         const assigned = Object.keys(gameFirstState.assignedTasks).length;
-        const total = players.length;
+        const total = activePlayers().length;
         const done = total > 0 && (assigned >= total || remaining.length === 0);
         const pct = total > 0 ? Math.round((assigned / total) * 100) : 0;
         if (done) {
@@ -1486,24 +704,24 @@ function renderRouletteTab() {
                 <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
             </div>
             <div class="status-card selected-game-card">
-                <div class="status-card-icon">🎮</div>
+                <div class="status-card-icon"><i class="bi bi-controller" aria-hidden="true"></i></div>
                 <div class="status-card-content"><span class="status-card-label">${t('roulette.selected_game')}</span><span class="status-card-value">${esc(gameFirstState.selectedGame)}</span></div>
             </div>
             ${curP && !done ? `<div class="status-card current-player-card">
-                <div class="status-card-icon">👤</div>
+                <div class="status-card-icon"><i class="bi bi-person-fill" aria-hidden="true"></i></div>
                 <div class="status-card-content"><span class="status-card-label">${t('roulette.now_spinning')}</span><span class="status-card-value" style="color:${esc(playerColors[curP.color]?.name || '#818cf8')}">${esc(curP.name)}</span></div>
             </div>` : ''}
             <div class="stats-row">
-                <div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">${t('roulette.remaining', { n: remaining.length })}</span></div>
-                <div class="stat-mini"><span class="stat-mini-icon">✅</span><span class="stat-mini-text">${t('roulette.assigned', { n: assigned })}</span></div>
+                <div class="stat-mini"><span class="stat-mini-icon"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span><span class="stat-mini-text">${t('roulette.remaining', { n: remaining.length })}</span></div>
+                <div class="stat-mini"><span class="stat-mini-icon"><i class="bi bi-check-circle-fill" aria-hidden="true"></i></span><span class="stat-mini-text">${t('roulette.assigned', { n: assigned })}</span></div>
             </div>
             ${assigned > 0 ? `<div class="assigned-tasks-section">
                 <div class="section-subtitle" onclick="toggleAssignedTasks()">
-                    <span class="dropdown-arrow" id="assignedArrow">▶</span><span>${t('roulette.assigned_count', { n: assigned })}</span>
+                    <span class="dropdown-arrow" id="assignedArrow"><i class="bi bi-caret-right-fill" aria-hidden="true"></i></span><span>${t('roulette.assigned_count', { n: assigned })}</span>
                 </div>
                 <div class="assigned-tasks-list hidden" id="assignedTasksList">
                     ${Object.entries(gameFirstState.assignedTasks).map(([pn, pt], idx) => {
-            const pl = players.find(p => p.name === pn);
+            const pl = activePlayers().find(p => p.name === pn);
             const cd = playerColors[pl?.color] || playerColors.indigo;
             return `<div class="assigned-task-row">
                             <span class="assigned-task-number">#${idx + 1}</span>
@@ -1515,7 +733,7 @@ function renderRouletteTab() {
                 </div>
             </div>` : ''}
             ${done ? `<div class="completion-notice">
-                <div class="completion-icon">🎉</div>
+                <div class="completion-icon"><i class="bi bi-stars" aria-hidden="true"></i></div>
                 <p class="completion-text">${t('roulette.done_notice')}</p>
                 <p class="completion-subtext">${t('roulette.done_players', { assigned, total })}</p>
                 <div class="completion-actions">
@@ -1541,7 +759,7 @@ function renderRouletteTab() {
         modeInfo = `<div class="task-only-status">
             <div class="game-selector-section">
                 <div class="section-subtitle">
-                    <span class="section-icon">🎮</span>
+                    <span class="section-icon"><i class="bi bi-controller" aria-hidden="true"></i></span>
                     <span>${t('roulette.select_game_lbl')}</span>
                 </div>
                 <div class="game-selector-grid">
@@ -1557,17 +775,17 @@ function renderRouletteTab() {
             </div>
             <div class="player-selector-section">
                 <div class="section-subtitle">
-                    <span class="section-icon">👤</span>
+                    <span class="section-icon"><i class="bi bi-person-fill" aria-hidden="true"></i></span>
                     <span>${t('roulette.select_player_lbl')}</span>
                 </div>
                 <div class="player-selector-grid">
                     <button onclick="selectPlayerForTaskOnly(this.dataset.playerName || null)"
                             data-player-name=""
                             class="player-selector-btn ${taskOnlyState.selectedPlayer === null ? 'selected' : ''}">
-                        <div class="player-selector-name">🎲 ${t('roulette.any_player')}</div>
+                        <div class="player-selector-name"><i class="bi bi-dice-3-fill" aria-hidden="true"></i> ${t('roulette.any_player')}</div>
                         <div class="player-selector-desc">${t('roulette.any_player_desc')}</div>
                     </button>
-                    ${players.map(player => `
+                    ${activePlayers().map(player => `
                         <button onclick="selectPlayerForTaskOnly(this.dataset.playerName)"
                                 data-player-name="${esc(player.name)}"
                                 class="player-selector-btn ${taskOnlyState.selectedPlayer === player.name ? 'selected' : ''}">
@@ -1581,7 +799,7 @@ function renderRouletteTab() {
                 <div class="selection-summary">
                     ${taskOnlyState.selectedGame ? `
                         <div class="status-card selected-game-card">
-                            <div class="status-card-icon">🎮</div>
+                            <div class="status-card-icon"><i class="bi bi-controller" aria-hidden="true"></i></div>
                             <div class="status-card-content">
                                 <span class="status-card-label">${t('roulette.selected_game')}</span>
                                 <span class="status-card-value">${esc(taskOnlyState.selectedGame)}</span>
@@ -1589,22 +807,22 @@ function renderRouletteTab() {
                         </div>` : ''}
                     ${taskOnlyState.selectedPlayer !== null ? `
                         <div class="status-card selected-player-card">
-                            <div class="status-card-icon">👤</div>
+                            <div class="status-card-icon"><i class="bi bi-person-fill" aria-hidden="true"></i></div>
                             <div class="status-card-content">
                                 <span class="status-card-label">${t('roulette.now_spinning')}</span>
-                                <span class="status-card-value" style="color:${esc(taskOnlyState.selectedPlayer ? (playerColors[players.find(p => p.name === taskOnlyState.selectedPlayer)?.color]?.name || '#818cf8') : '#818cf8')}">${esc(taskOnlyState.selectedPlayer || t('roulette.any_player'))}</span>
+                                <span class="status-card-value" style="color:${esc(taskOnlyState.selectedPlayer ? (playerColors[activePlayers().find(p => p.name === taskOnlyState.selectedPlayer)?.color]?.name || '#818cf8') : '#818cf8')}">${esc(taskOnlyState.selectedPlayer || t('roulette.any_player'))}</span>
                             </div>
                         </div>` : ''}
                     <div class="stats-row">
-                        ${taskOnlyState.selectedGame ? `<div class="stat-mini"><span class="stat-mini-icon">📋</span><span class="stat-mini-text">${t('roulette.assigned', { n: games[taskOnlyState.selectedGame]?.length || 0 })}</span></div>` : ''}
-                        <div class="stat-mini"><span class="stat-mini-icon">👥</span><span class="stat-mini-text">${t('roulette.assigned', { n: players.length }).replace(/\d+/, players.length)}</span></div>
+                        ${taskOnlyState.selectedGame ? `<div class="stat-mini"><span class="stat-mini-icon"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span><span class="stat-mini-text">${t('roulette.assigned', { n: games[taskOnlyState.selectedGame]?.length || 0 })}</span></div>` : ''}
+                        <div class="stat-mini"><span class="stat-mini-icon"><i class="bi bi-people-fill" aria-hidden="true"></i></span><span class="stat-mini-text">${t('roulette.assigned', { n: activePlayers().length }).replace(/\d+/, activePlayers().length)}</span></div>
                     </div>
                 </div>` : ''}
         </div>`;
     }
 
     if (!gameFirstState.active && rouletteMode !== 'task-only') {
-        if (rouletteMode === 'player-only' && players.length === 0) {
+        if (rouletteMode === 'player-only' && activePlayers().length === 0) {
             canSpin = false; spinTxt = t('roulette.no_players_btn');
         }
         if (rouletteMode === 'game-only' && !Object.keys(games).some(g => games[g].length > 0)) {
@@ -1613,59 +831,41 @@ function renderRouletteTab() {
     }
 
     const wsz = rouletteSettings.wheelSize;
+    const modeBtn = (id, icon) => `<button onclick="setRouletteMode('${id}')" class="mode-btn ${rouletteMode === id ? 'active' : ''}" aria-pressed="${rouletteMode === id}">
+                        <span class="mode-btn-icon">${icon}</span>
+                        <span class="mode-btn-text">${t('roulette.mode_' + id.replace('-', '_'))}</span>
+                        <span class="mode-btn-desc">${t('roulette.mode_' + id.replace('-', '_') + '_desc')}</span>
+                    </button>`;
     return `<div class="roulette-panel">
-        <div class="roulette-info">
-            <div class="mode-selector">
-                <p class="roulette-mode">🎲 <span class="neon-text">${t('roulette.mode_label')}</span></p>
-                <div class="mode-buttons">
-                    <button onclick="setRouletteMode('full')" class="mode-btn ${rouletteMode === 'full' ? 'active' : ''}">
-                        <span class="mode-btn-icon">🎰</span>
-                        <span class="mode-btn-text">${t('roulette.mode_full')}</span>
-                        <span class="mode-btn-desc">${t('roulette.mode_full_desc')}</span>
-                    </button>
-                    <button onclick="setRouletteMode('game-first')" class="mode-btn ${rouletteMode === 'game-first' ? 'active' : ''}">
-                        <span class="mode-btn-icon">🎯</span>
-                        <span class="mode-btn-text">${t('roulette.mode_game_first')}</span>
-                        <span class="mode-btn-desc">${t('roulette.mode_game_first_desc')}</span>
-                    </button>
-                    <button onclick="setRouletteMode('player-only')" class="mode-btn ${rouletteMode === 'player-only' ? 'active' : ''}">
-                        <span class="mode-btn-icon">👤</span>
-                        <span class="mode-btn-text">${t('roulette.mode_player_only')}</span>
-                        <span class="mode-btn-desc">${t('roulette.mode_player_only_desc')}</span>
-                    </button>
-                    <button onclick="setRouletteMode('task-only')" class="mode-btn ${rouletteMode === 'task-only' ? 'active' : ''}">
-                        <span class="mode-btn-icon">📋</span>
-                        <span class="mode-btn-text">${t('roulette.mode_task_only')}</span>
-                        <span class="mode-btn-desc">${t('roulette.mode_task_only_desc')}</span>
-                    </button>
-                    <button onclick="setRouletteMode('game-only')" class="mode-btn ${rouletteMode === 'game-only' ? 'active' : ''}">
-                        <span class="mode-btn-icon">🎮</span>
-                        <span class="mode-btn-text">${t('roulette.mode_game_only')}</span>
-                        <span class="mode-btn-desc">${t('roulette.mode_game_only_desc')}</span>
-                    </button>
-                </div>
+        <div class="mode-selector">
+            <div class="mode-buttons" role="group" aria-label="${esc(t('roulette.mode_label'))}">
+                ${modeBtn('full', bi('dice-5-fill'))}${modeBtn('game-first', bi('bullseye'))}${modeBtn('player-only', bi('person-fill'))}${modeBtn('task-only', bi('clipboard-check'))}${modeBtn('game-only', bi('controller'))}
             </div>
-            <p class="roulette-hint">${getModeHint()}</p>
-            ${modeInfo}
-            ${!gameFirstState.active ? `<div class="pre-spin-stats">
-                <div class="pre-stat-item"><span class="pre-stat-icon">🎮</span><span class="pre-stat-text">${t('tab.games')}: <strong>${gCount}</strong></span></div>
-                <div class="pre-stat-item"><span class="pre-stat-icon">📋</span><span class="pre-stat-text">${t('roulette.result_task')}: <strong>${tCount}</strong></span></div>
-                <div class="pre-stat-item"><span class="pre-stat-icon">👥</span><span class="pre-stat-text">${t('tab.players')}: <strong>${players.length}</strong></span></div>
-            </div>` : ''}
         </div>
+        <div class="roulette-body">
         <div class="wheel-and-controls">
             <div class="wheel-container" id="wheelContainer" style="${wheelHidden ? 'opacity:0;transform:scale(0.8);pointer-events:none;max-height:0;overflow:hidden;margin:0' : 'opacity:1;transform:scale(1)'}">
-                <canvas id="rouletteWheel" width="${wsz}" height="${wsz}" onclick="startSpin()"></canvas>
+                <canvas id="rouletteWheel" width="${wsz}" height="${wsz}" data-size="${wsz}" style="width:min(100%,${wsz}px)" onclick="startSpin()" role="img" aria-label="${esc(t('roulette.mode_label'))}"></canvas>
                 <div class="wheel-pointer" id="wheelPointer">${getPointerSymbol()}</div>
             </div>
             <div class="roulette-controls">
                 <button onclick="startSpin()" class="cyber-btn spin-btn" ${spinning || !canSpin ? 'disabled' : ''}>${spinTxt}</button>
-                ${gameFirstState.active && canSpin ? `<br><button onclick="resetGameFirstMode()" class="cyber-btn danger-btn outline-btn" style="margin-top:8px">${t('roulette.reset_mode')}</button>` : ''}
-                <p class="spin-hint">${avail.length === 0 ? t('roulette.no_games') : t('roulette.ready', { g: gCount, t: tCount, p: players.length })}</p>
+                ${gameFirstState.active && canSpin ? `<div class="gf-actions"><button onclick="skipGameFirstPlayer()" class="cyber-btn outline-btn"><i class="bi bi-skip-end-fill" aria-hidden="true"></i> ${t('rf.skip_player')}</button><button onclick="resetGameFirstMode()" class="cyber-btn danger-btn outline-btn">${t('roulette.reset_mode')}</button></div>` : ''}
+                <p class="spin-hint">${avail.length === 0 ? t('roulette.no_games') : t('roulette.ready', { g: gCount, t: tCount, p: activePlayers().length })}</p>
             </div>
             <div id="spinResult" class="spin-result hidden">
-                <div class="result-card"><h3>🎯 ${t('roulette.result_task')}:</h3><div id="resultContent"></div><div id="resultActions"></div></div>
+                <div class="result-card"><h3><i class="bi bi-bullseye" aria-hidden="true"></i> ${t('roulette.result_task')}:</h3><div id="resultContent"></div><div id="resultActions"></div></div>
             </div>
+        </div>
+        <div class="roulette-info">
+            <p class="roulette-hint">${getModeHint()}</p>
+            ${modeInfo}
+            ${!gameFirstState.active ? `<div class="pre-spin-stats">
+                <div class="pre-stat-item"><span class="pre-stat-icon"><i class="bi bi-controller" aria-hidden="true"></i></span><span class="pre-stat-text">${t('tab.games')}: <strong>${gCount}</strong></span></div>
+                <div class="pre-stat-item"><span class="pre-stat-icon"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span><span class="pre-stat-text">${t('roulette.result_task')}: <strong>${tCount}</strong></span></div>
+                <div class="pre-stat-item"><span class="pre-stat-icon"><i class="bi bi-people-fill" aria-hidden="true"></i></span><span class="pre-stat-text">${t('tab.players')}: <strong>${activePlayers().length}</strong></span></div>
+            </div>` : ''}
+        </div>
         </div>
     </div>`;
 }
@@ -1686,7 +886,51 @@ function toggleAssignedTasks() {
     const arrow = document.getElementById('assignedArrow');
     if (!list || !arrow) return;
     const hidden = list.classList.contains('hidden');
-    list.classList.toggle('hidden'); arrow.textContent = hidden ? '▼' : '▶';
+    list.classList.toggle('hidden'); arrow.textContent = hidden ? biChar('caret-down-fill') : biChar('caret-right-fill');
+}
+
+
+// ── RESULT ANNOUNCE / HISTORY ─────────────────────────────
+function announceResult(game, player, task, duration) {
+    rchOverlay({ type: 'result', game: String(game), player: String(player), task: String(task), duration });
+    spinHistory.unshift({ ts: Date.now(), mode: rouletteMode, game: String(game), player: String(player), task: String(task) });
+    if (spinHistory.length > 200) spinHistory.length = 200;
+    if (rouletteMode === 'full' || rouletteMode === 'game-first' || rouletteMode === 'task-only') {
+        const k = game + '\u241f' + task; taskDrawCount[k] = (taskDrawCount[k] || 0) + 1;
+    }
+    try { localStorage.setItem('spinHistory', JSON.stringify(spinHistory)); localStorage.setItem('taskDrawCount', JSON.stringify(taskDrawCount)); } catch (e) { }
+    updatePlayerStats(player);
+}
+
+// Re-render the side info + controls without touching the wheel or the result card
+function refreshRouletteInfo() {
+    if (currentTab !== 'roulette') return;
+    const tmp = document.createElement('div'); tmp.innerHTML = renderRouletteTab();
+    ['.roulette-info', '.roulette-controls', '.mode-selector'].forEach(sel => {
+        const a = document.querySelector(sel), b = tmp.querySelector(sel);
+        if (a && b) a.innerHTML = b.innerHTML;
+    });
+    refreshRouletteControls();
+}
+
+function advanceGameFirst() {
+    const P = activePlayers();
+    const nextP = P[gameFirstState.currentPlayerIndex];
+    const stillRem = getRemainingTasksForGame(gameFirstState.selectedGame);
+    if (!nextP || !stillRem.length) { hideWheelSmoothly(); setTimeout(showFinalResults, 900); return; }
+    refreshRouletteInfo();
+    updateWheelSegmentsForGame(gameFirstState.selectedGame); renderWheel();
+    showNotification(`${biChar('person-fill')} ${t('roulette.now_spinning')}: ${nextP.name}`, 'info');
+}
+function skipGameFirstPlayer() {
+    if (spinning || !gameFirstState.active) return;
+    gameFirstState.currentPlayerIndex++;
+    advanceGameFirst();
+}
+function togglePlayerActive(i) {
+    if (!players[i]) return;
+    players[i].active = players[i].active === false;
+    saveAll(); switchTab('players');
 }
 
 // ── WHEEL SEGMENTS ────────────────────────────────────────
@@ -1697,17 +941,25 @@ function getSegmentColor(i, total) {
 
 function updateWheelSegments() {
     segmentScales = []; // Reset scales when updating segments
+    if (rouletteMode === 'game-first') {
+        if (gameFirstState.active && gameFirstState.selectedGame) { updateWheelSegmentsForGame(gameFirstState.selectedGame); return; }
+        const gl = Object.keys(games).filter(g => games[g].some(x => !isBlocked(x)));
+        wheelSegments = gl.length
+            ? gl.map((g, i) => ({ label: g, task: g, game: g, color: getSegmentColor(i, gl.length) }))
+            : [{ label: t('wheel.no_tasks'), task: t('wheel.add_tasks'), game: '', color: '#484f58' }];
+        return;
+    }
     if (rouletteMode === 'player-only') {
-        if (!players.length) {
+        if (!activePlayers().length) {
             wheelSegments = [{ label: t('wheel.no_players'), task: t('wheel.add_players'), game: '', color: '#484f58' }];
             return;
         }
-        let availablePlayers = players;
+        let availablePlayers = activePlayers();
         if (rouletteSettings.removeAfterSpin) {
             const spent = spentTasks['__players__'] || [];
-            availablePlayers = players.filter(p => !spent.includes(p.name));
+            availablePlayers = activePlayers().filter(p => !spent.includes(p.name));
             if (!availablePlayers.length) {
-                wheelSegments = [{ label: '✅', task: t('wheel.all_done'), game: '', color: '#484f58' }];
+                wheelSegments = [{ label: biChar('check-circle-fill'), task: t('wheel.all_done'), game: '', color: '#484f58' }];
                 return;
             }
         }
@@ -1724,7 +976,7 @@ function updateWheelSegments() {
             gameList = gameList.filter(g => !spent.includes(g));
         }
         if (!gameList.length) {
-            wheelSegments = [{ label: '✅', task: t('wheel.all_done'), game: '', color: '#484f58' }];
+            wheelSegments = [{ label: biChar('check-circle-fill'), task: t('wheel.all_done'), game: '', color: '#484f58' }];
         } else {
             wheelSegments = gameList.map((g, i) => ({
                 label: g, task: g, game: g,
@@ -1735,7 +987,7 @@ function updateWheelSegments() {
     }
     if (rouletteMode === 'task-only') {
         if (taskOnlyState.selectedGame && games[taskOnlyState.selectedGame]) {
-            let selectedTasks = games[taskOnlyState.selectedGame];
+            let selectedTasks = games[taskOnlyState.selectedGame].filter(x => !isBlocked(x));
             if (rouletteSettings.removeAfterSpin) {
                 const spent = spentTasks[taskOnlyState.selectedGame] || [];
                 selectedTasks = selectedTasks.filter(t => !spent.includes(t));
@@ -1747,7 +999,8 @@ function updateWheelSegments() {
                     label: `#${i + 1}`,
                     task: t,
                     game: taskOnlyState.selectedGame,
-                    color: getSegmentColor(i, selectedTasks.length)
+                    color: getSegmentColor(i, selectedTasks.length),
+                    weight: taskWeight(taskOnlyState.selectedGame, t)
                 }));
             }
         } else {
@@ -1761,7 +1014,7 @@ function updateWheelSegments() {
         tasks.forEach(t => {
             // Protection against the old data format: a task can be a string or an object
             const taskStr = typeof t === 'string' ? t : (t && typeof t.task === 'string' ? t.task : String(t));
-            if (!taskStr) return;
+            if (!taskStr || isBlocked(taskStr)) return;
             if (rouletteSettings.removeAfterSpin) {
                 const spent = spentTasks[g] || [];
                 if (spent.includes(taskStr)) return; // We skip the ones that fell out
@@ -1802,30 +1055,28 @@ function updateWheelSegments() {
             label: item.game,
             task: item.task,
             game: item.game,
-            color: getSegmentColor(i, allTasks.length)
+            color: getSegmentColor(i, allTasks.length),
+            weight: taskWeight(item.game, item.task)
         }));
     }
 }
 
 function updateWheelSegmentsForGame(gameName) {
-    segmentScales = []; // Reset scales when updating segments
+    segmentScales = [];
     const remaining = getRemainingTasksForGame(gameName);
     if (!remaining.length) {
         wheelSegments = [{ label: t('wheel.all_done'), task: t('wheel.all_done_desc'), game: gameName, color: '#484f58' }];
         return;
     }
-    wheelSegments = remaining.map((t, i) => {
-        const taskStr = typeof t === 'string' ? t : (t && typeof t.task === 'string' ? t.task : String(t));
-        return { label: `#${i + 1}`, task: taskStr, game: gameName, color: getSegmentColor(i, remaining.length) };
-    });
+    wheelSegments = remaining.map((tk, i) => ({ label: `#${i + 1}`, task: tk, game: gameName, color: getSegmentColor(i, remaining.length), weight: taskWeight(gameName, tk) }));
 }
 
 function getRemainingTasksForGame(name) {
     const used = Object.values(gameFirstState.assignedTasks);
-    let tasks = (games[name] || []).filter(t => !used.includes(t));
+    let tasks = (games[name] || []).filter(x => !used.includes(x) && !isBlocked(x));
     if (rouletteSettings.removeAfterSpin) {
         const spent = spentTasks[name] || [];
-        tasks = tasks.filter(t => !spent.includes(t));
+        tasks = tasks.filter(x => !spent.includes(x));
     }
     return tasks;
 }
@@ -1883,110 +1134,24 @@ function checkAllTasksSpent(gameName) {
 }
 
 // ── WHEEL RENDER ──────────────────────────────────────────
+const CENTER_ICONS = ['dice-3-fill', 'dice-5-fill', 'bullseye', 'controller', 'joystick', 'trophy-fill', 'stars', 'lightning-charge-fill', 'fire', 'heart-fill', 'star-fill', 'gem', 'rocket-takeoff-fill', 'puzzle-fill', 'emoji-sunglasses-fill', 'hammer'];
+function pickCenterIcon(name) {
+    updateSetting('centerIcon', name);
+    document.querySelectorAll('#centerIconPicker .icon-pick').forEach(b => b.classList.toggle('active', b.title === name));
+    if (typeof renderWheel === 'function') renderWheel();
+}
 function getPointerSymbol() {
-    const sym = { arrow: '▼', triangle: '▽', diamond: '◆', star: '★', pin: '📍' };
-    return sym[rouletteSettings.pointerStyle] || '▼';
+    const sym = { arrow: 'caret-down-fill', triangle: 'triangle', diamond: 'diamond-fill', star: 'star-fill', pin: 'geo-alt-fill' };
+    return biChar(sym[rouletteSettings.pointerStyle] || 'caret-down-fill');
 }
 
 function renderWheel() {
-    const canvas = document.getElementById('rouletteWheel'); if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    const cx = W / 2, cy = H / 2;
-    const outerR = W / 2 - 10, innerR = 32;
-    ctx.clearRect(0, 0, W, H);
-
-    if (!wheelSegments.length) return;
-
-    // Outer decorative ring
-    const ringGrd = ctx.createLinearGradient(0, 0, W, H);
-    ringGrd.addColorStop(0, rouletteSettings.borderStyle === 'neon' ? '#00ffff' : (getComputedStyle(document.documentElement).getPropertyValue('--wheel-border').trim() || '#6366f1'));
-    ringGrd.addColorStop(1, rouletteSettings.borderStyle === 'neon' ? '#ff00ff' : '#8b5cf6');
-    ctx.beginPath(); ctx.arc(cx, cy, outerR + 12, 0, Math.PI * 2);
-    if (rouletteSettings.borderStyle === 'glow' || rouletteSettings.borderStyle === 'neon') {
-        ctx.shadowColor = ringGrd; ctx.shadowBlur = 20;
-    }
-    ctx.strokeStyle = ringGrd; ctx.lineWidth = rouletteSettings.borderStyle === 'dashed' ? 3 : 4;
-    if (rouletteSettings.borderStyle === 'dashed') ctx.setLineDash([8, 4]); else ctx.setLineDash([]);
-    ctx.stroke(); ctx.shadowBlur = 0; ctx.setLineDash([]);
-
-    // Segments
-    const segAngle = (Math.PI * 2) / wheelSegments.length;
-    wheelSegments.forEach((seg, i) => {
-        const sA = i * segAngle + currentWheelAngle;
-        const eA = sA + segAngle;
-        const scale = (segmentScales[i] !== undefined) ? segmentScales[i] : 1;
-        if (scale <= 0) return; // has completely disappeared — we don't draw it
-
-        ctx.save(); // ← We maintain a clean state for each segment
-
-        if (scale < 1) {
-            // Scale the segment from its center (shrink toward the center of the segment)
-            const midAngle = sA + segAngle / 2;
-            const midR = (innerR + outerR) / 2;
-            const pivotX = cx + Math.cos(midAngle) * midR;
-            const pivotY = cy + Math.sin(midAngle) * midR;
-            ctx.translate(pivotX, pivotY);
-            ctx.scale(scale, scale);
-            ctx.translate(-pivotX, -pivotY);
-            ctx.globalAlpha = scale;
-        }
-
-        // Segment fill with gradient
-        const grd = ctx.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
-        grd.addColorStop(0, seg.color + 'dd');
-        grd.addColorStop(0.7, seg.color + 'bb');
-        grd.addColorStop(1, seg.color + '55');
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, outerR, sA, eA); ctx.closePath();
-        ctx.fillStyle = grd; ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
-
-        // Segment label — a separate save/restore to prevent transformations from accumulating
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(sA + segAngle / 2);
-        ctx.fillStyle = '#fff';
-        const fs = Math.max(9, rouletteSettings.fontSize);
-        ctx.font = `bold ${fs}px Inter,system-ui,sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 5;
-        let lbl = seg.label || seg.game || '';
-        if (lbl.length > 11) lbl = lbl.substring(0, 9) + '..';
-        const textR = outerR * 0.68;
-        ctx.fillText(lbl, textR, 0);
-        if (seg.isGroup) {
-            ctx.font = `${fs - 2}px Inter,system-ui,sans-serif`;
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.fillText(`${seg.items?.length || 0} ${t('wheel.group_tasks', { n: '' }).replace(/{n}/, '')}`, textR, fs + 2);
-        }
-        ctx.restore(); // ← Restore after the label
-
-        ctx.restore(); // ← We restore it to its original, pristine condition
+    const canvas = document.getElementById('rouletteWheel'); if (!canvas || !wheelSegments.length) return;
+    RCHWheel.draw(canvas, wheelSegments, currentWheelAngle, {
+        size: rouletteSettings.wheelSize, scales: segmentScales, fontSize: rouletteSettings.fontSize,
+        centerIcon: rouletteSettings.centerIcon || 'dice-3-fill', bulbs: rouletteSettings.wheelBulbs !== false, spinning,
+        labelOf: seg => seg.isGroup ? `${seg.label} (${seg.items?.length || 0})` : (seg.label || seg.game || ''),
     });
-
-    // Tick dots on the outer ring
-    const tickCount = Math.min(wheelSegments.length * 2, 48);
-    for (let i = 0; i < tickCount; i++) {
-        const a = (i / tickCount) * Math.PI * 2;
-        const tx = cx + (outerR + 7) * Math.cos(a), ty = cy + (outerR + 7) * Math.sin(a);
-        ctx.beginPath(); ctx.arc(tx, ty, i % 2 === 0 ? 3 : 2, 0, Math.PI * 2);
-        ctx.fillStyle = i % 2 === 0 ? (COLOR_SCHEMES[rouletteSettings.colorScheme] || COLOR_SCHEMES.default)[0] : 'rgba(255,255,255,0.3)';
-        ctx.fill();
-    }
-
-    // Center hub
-    const hubGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerR);
-    hubGrd.addColorStop(0, '#ffffff'); hubGrd.addColorStop(1, '#e2e8f0');
-    ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-    ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 12;
-    ctx.fillStyle = hubGrd; ctx.fill();
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--wheel-border').trim() || '#6366f1';
-    ctx.strokeStyle = borderColor; ctx.lineWidth = 3; ctx.shadowBlur = 0; ctx.stroke();
-
-    // Center icon
-    ctx.font = `${innerR * 0.9}px serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(rouletteSettings.centerIcon || '🎲', cx, cy + 1);
 }
 
 // ── SPIN LOGIC ────────────────────────────────────────────
@@ -2000,7 +1165,7 @@ function setRouletteMode(mode) {
     saveAll();
     updateWheelSegments();
     switchTab('roulette');
-    showNotification(`🎲 ${getModeHint()}`, 'info');
+    showNotification(`${biChar('dice-3-fill')} ${getModeHint()}`, 'info');
 }
 
 function resetGameFirstMode() {
@@ -2017,7 +1182,7 @@ function confirmResetSpentTasks() {
     if (rouletteMode === 'player-only') resetKey = 'roulette.spent_reset_players';
     else if (rouletteMode === 'game-only') resetKey = 'roulette.spent_reset_games';
     showConfirmModal(
-        '🗑️ ' + t('settings.spent_reset', { n: total }).replace(/🔄 /, ''),
+        biChar('trash3') + ' ' + t('settings.spent_reset', { n: total }).replace(/^[\uE000-\uF8FF]\s*/, ''),
         t(resetKey, { n: total }),
         t('common.reset'),
         t('common.cancel'),
@@ -2045,7 +1210,7 @@ function selectGameForTaskOnly(gameName) {
     const spinBtn = document.querySelector('.spin-btn');
     if (spinBtn && !spinning) {
         spinBtn.disabled = false;
-        spinBtn.textContent = `🎰 ${t('roulette.spinning_for', { name: gameName.toUpperCase() })}`;
+        spinBtn.textContent = `${biChar('dice-5-fill')} ${t('roulette.spinning_for', { name: gameName.toUpperCase() })}`;
     }
     showNotification(t('notif.game_selected', { name: gameName }), 'info');
 }
@@ -2070,17 +1235,12 @@ function updateGameSummary(gameName) {
     } else if (gameName) {
         const card = document.createElement('div');
         card.className = 'status-card selected-game-card';
-        card.innerHTML = '<div class="status-card-icon">🎮</div><div class="status-card-content"><span class="status-card-label">Selected Game</span><span class="status-card-value"></span></div>';
+        card.innerHTML = `<div class="status-card-icon"><i class="bi bi-controller" aria-hidden="true"></i></div><div class="status-card-content"><span class="status-card-label">${esc(t('roulette.selected_game'))}</span><span class="status-card-value"></span></div>`;
         card.querySelector('.status-card-value').textContent = gameName;
         const sec = document.querySelector('.selection-summary');
         if (sec) sec.prepend(card);
     }
 
-    // Updating the number of tasks — using textContent, not innerHTML
-    const tasksStat = document.querySelector('.stat-mini .stat-mini-text');
-    if (tasksStat && tasksStat.textContent.includes('Заданий:')) {
-        tasksStat.textContent = `Заданий: ${games[gameName]?.length || 0}`;
-    }
 }
 
 function selectPlayerForTaskOnly(playerName) {
@@ -2108,7 +1268,7 @@ function updatePlayerSummary(playerName) {
     if (playerCard) {
         const valueSpan = playerCard.querySelector('.status-card-value');
         if (valueSpan) {
-            valueSpan.textContent = playerName || 'Random';
+            valueSpan.textContent = playerName || t('roulette.any_player');
             // Update the color for a specific player
             if (playerName) {
                 const player = players.find(p => p.name === playerName);
@@ -2126,9 +1286,9 @@ function updatePlayerSummary(playerName) {
 
         const card = document.createElement('div');
         card.className = 'status-card selected-player-card';
-        card.innerHTML = '<div class="status-card-icon">👤</div><div class="status-card-content"><span class="status-card-label">Selected Player</span><span class="status-card-value"></span></div>';
+        card.innerHTML = `<div class="status-card-icon"><i class="bi bi-person-fill" aria-hidden="true"></i></div><div class="status-card-content"><span class="status-card-label">${esc(t('roulette.now_spinning'))}</span><span class="status-card-value"></span></div>`;
         const val = card.querySelector('.status-card-value');
-        val.textContent = playerName || 'Random';
+        val.textContent = playerName || t('roulette.any_player');
         val.style.color = safeColor;
 
         const sec = document.querySelector('.selection-summary');
@@ -2145,19 +1305,18 @@ function updateSelectedPlayerInfo(playerName) {
 
 function startSpin() {
     if (spinning) return;
-    // Gamer: bonus round check
-    if (rouletteSettings.bonusRoundEnabled && Math.random() * 100 < rouletteSettings.bonusRoundChance) {
+    if (rouletteSettings.bonusRoundEnabled && !bonusPending && Math.random() * 100 < rouletteSettings.bonusRoundChance) {
+        bonusPending = true;
         showNotification(t('roulette.bonus_round'), 'success');
-        setTimeout(() => { executeSpin(); setTimeout(executeSpin, rouletteSettings.spinDuration + 2000) }, 200);
-        return;
     }
     executeSpin();
+    if (!spinning) bonusPending = false; // validation failed — no bonus
 }
 
 function executeSpin() {
     if (spinning) return;
     // Validations
-    if (rouletteMode === 'player-only' && players.length < 1) return showNotification(t('roulette.add_players'), 'error');
+    if (rouletteMode === 'player-only' && activePlayers().length < 1) return showNotification(t('roulette.add_players'), 'error');
     if (rouletteMode === 'game-only') {
         const hasGames = Object.keys(games).some(g => games[g].length > 0);
         if (!hasGames) return showNotification(t('roulette.no_games_only'), 'error');
@@ -2167,14 +1326,14 @@ function executeSpin() {
         const selectedTasks = games[taskOnlyState.selectedGame];
         if (!selectedTasks || !selectedTasks.length) return showNotification(t('roulette.no_tasks_game'), 'error');
     }
-    if (rouletteMode !== 'player-only' && rouletteMode !== 'task-only') {
-        if (players.length < 1) return showNotification(t('roulette.add_players'), 'error');
+    if (rouletteMode !== 'player-only' && rouletteMode !== 'task-only' && rouletteMode !== 'game-only') {
+        if (activePlayers().length < 1) return showNotification(t('roulette.add_players'), 'error');
         const allTasks = Object.values(games).flat();
         if (!allTasks.length) return showNotification(t('roulette.add_tasks'), 'error');
     }
     if (rouletteMode === 'game-first' && gameFirstState.active) {
         const rem = getRemainingTasksForGame(gameFirstState.selectedGame);
-        if (!rem.length || Object.keys(gameFirstState.assignedTasks).length >= players.length) {
+        if (!rem.length || Object.keys(gameFirstState.assignedTasks).length >= activePlayers().length) {
             return showNotification(t('roulette.all_assigned'), 'warning');
         }
     }
@@ -2202,7 +1361,7 @@ function startFullRandomMode() {
     updateWheelSegments();
 
     // We select a random segment from those actually drawn on the wheel
-    const ti = Math.floor(Math.random() * wheelSegments.length);
+    const ti = RCHWheel.pickIndex(wheelSegments);
     const winSeg = wheelSegments[ti];
 
     // If the segment is a group (game), select a random task from it
@@ -2216,51 +1375,51 @@ function startFullRandomMode() {
         selTask = winSeg.task;
     }
 
-    const selPlayer = players.length ? players[Math.floor(Math.random() * players.length)] : null;
+    const selPlayer = activePlayers().length ? activePlayers()[Math.floor(Math.random() * activePlayers().length)] : null;
 
     spinWheel(wheelSegments, ti, () => {
         setTimeout(() => {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(selGame, selPlayer, selTask);
             showPopupResult(selGame, selPlayer, selTask);
             // Display the result in an overlay
-            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: selGame, player: selPlayer?.name || '?', task: selTask, duration: 12000 })); } catch (e) { }
+            announceResult(selGame, selPlayer?.name || '?', selTask, 12000);
             markTaskSpent(selGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
                     updateWheelSegments();
                     renderWheel();
                     checkAllTasksSpent(selGame);
-                    updatePlayerStats(selPlayer?.name); playWinSound(); finishSpin();
+                    playWinSound(); finishSpin();
                 });
             } else {
-                updatePlayerStats(selPlayer?.name); playWinSound(); finishSpin();
+                playWinSound(); finishSpin();
             }
         }, rouletteSettings.announceDelay || 0);
     });
 }
 
 function spinPlayerOnly() {
-    if (!players.length) { finishSpin(); return }
+    if (!activePlayers().length) { finishSpin(); return }
     updateWheelSegments();
     // If everything is missing, `wheelSegments` contains a placeholder
     if (wheelSegments.length === 1 && wheelSegments[0].task === t('wheel.all_done')) {
         showNotification(t('wheel.all_done'), 'info'); finishSpin(); return;
     }
-    const ti = Math.floor(Math.random() * wheelSegments.length);
+    const ti = RCHWheel.pickIndex(wheelSegments);
     spinWheel(wheelSegments, ti, () => {
         const seg = wheelSegments[ti];
-        const p = players.find(pl => pl.name === seg?.task) || { name: seg?.task || '?', color: 'indigo', stats: {} };
+        const p = activePlayers().find(pl => pl.name === seg?.task) || { name: seg?.task || '?', color: 'indigo', stats: {} };
         setTimeout(() => {
-            showPopupResult('👤 Выбор игрока', p, p.name);
-            if (rouletteSettings.resultDisplay !== 'popup') showResult('Player Selection', p, `${p.name} selected!`);
-            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: '👤 ' + t('wheel.player_pick'), player: p?.name || '?', task: `${p?.name || '?'} ${t('results.player_picked', { name: '' }).trim()}`, duration: 10000 })); } catch (e) { }
+            showPopupResult(biChar('person-fill') + ' ' + t('wheel.player_pick'), p, p.name);
+            if (rouletteSettings.resultDisplay !== 'popup') showResult(t('wheel.player_pick'), p, t('results.player_picked', { name: p.name }));
+            announceResult(biChar('person-fill') + ' ' + t('wheel.player_pick'), p?.name || '?', `${p?.name || '?'} ${t('results.player_picked', { name: '' }).trim()}`, 10000);
             if (rouletteSettings.removeAfterSpin) {
                 markTaskSpent('__players__', p.name);
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
                     updateWheelSegments();
                     renderWheel();
                     const spentCount = (spentTasks['__players__'] || []).length;
-                    if (spentCount >= players.length) showNotification(t('wheel.all_done'), 'success');
+                    if (spentCount >= activePlayers().length) showNotification(t('wheel.all_done'), 'success');
                     playWinSound(); finishSpin();
                 });
             } else {
@@ -2280,7 +1439,7 @@ function spinGameOnly() {
         showNotification(t('wheel.all_done'), 'info'); finishSpin(); return;
     }
 
-    const ti = Math.floor(Math.random() * wheelSegments.length);
+    const ti = RCHWheel.pickIndex(wheelSegments);
 
     spinWheel(wheelSegments, ti, () => {
         const selectedGame = wheelSegments[ti]?.game;
@@ -2295,17 +1454,17 @@ function spinGameOnly() {
                 if (rd && rc) {
                     rc.innerHTML = `<div class="result-grid">
                         <div class="result-card-item" style="grid-column:1/-1">
-                            <div class="result-card-icon">🎮</div>
+                            <div class="result-card-icon"><i class="bi bi-controller" aria-hidden="true"></i></div>
                             <div class="result-card-label">${t('roulette.result_game_only')}</div>
                             <div class="result-card-value task-highlight">${esc(selectedGame)}</div>
                         </div>
                     </div>`;
-                    if (ra) ra.innerHTML = `<br><button onclick="startSpin()" class="cyber-btn add-btn">${t('roulette.spin_again')}</button>`;
+                    if (ra) ra.innerHTML = `<button onclick="startSpin()" class="cyber-btn add-btn">${t('roulette.spin_again')}</button>`;
                     rd.classList.remove('hidden');
                     rd.style.animation = 'none'; void rd.offsetHeight; rd.style.animation = 'fadeInUp 0.5s ease';
                 }
             }
-            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: selectedGame, player: '—', task: t('roulette.result_game_only') + ' ' + selectedGame, duration: 10000 })); } catch (e) { }
+            announceResult(selectedGame, '—', t('roulette.result_game_only') + ' ' + selectedGame, 10000);
             if (rouletteSettings.removeAfterSpin) {
                 markTaskSpent('__games__', selectedGame);
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
@@ -2326,7 +1485,7 @@ function spinGameOnly() {
 
 function spinTaskOnly() {
     if (!taskOnlyState.selectedGame || !games[taskOnlyState.selectedGame]) {
-        showNotification('Выберите игру из списка', 'error');
+        showNotification(t('roulette.select_game'), 'error');
         finishSpin();
         return;
     }
@@ -2337,23 +1496,23 @@ function spinTaskOnly() {
     // If all tasks have already been used up, `wheelSegments` contains a placeholder
     const availableSegs = wheelSegments.filter(s => s.task && s.task !== t('wheel.all_done_desc'));
     if (!availableSegs.length) {
-        showNotification('В выбранной игре нет заданий', 'error');
+        showNotification(t('roulette.no_tasks_game'), 'error');
         finishSpin();
         return;
     }
 
     // Select a random index from `wheelSegments` (already filtered)
-    const ti = Math.floor(Math.random() * wheelSegments.length);
+    const ti = RCHWheel.pickIndex(wheelSegments);
 
     // Determining the player: specific or random
     let selectedPlayer;
     if (taskOnlyState.selectedPlayer) {
         // A specific player has been selected
-        const foundPlayer = players.find(p => p.name === taskOnlyState.selectedPlayer);
+        const foundPlayer = activePlayers().find(p => p.name === taskOnlyState.selectedPlayer);
         selectedPlayer = foundPlayer || { name: taskOnlyState.selectedPlayer, color: 'indigo', stats: {} };
     } else {
-        // A random player, or "All" if there are no players
-        selectedPlayer = players.length ? players[Math.floor(Math.random() * players.length)] : { name: 'All', color: 'indigo', stats: {} };
+        // A random player, or "All" if there are no activePlayers()
+        selectedPlayer = activePlayers().length ? activePlayers()[Math.floor(Math.random() * activePlayers().length)] : { name: 'All', color: 'indigo', stats: {} };
     }
 
     spinWheel(wheelSegments, ti, () => {
@@ -2364,7 +1523,7 @@ function spinTaskOnly() {
             showPopupResult(taskOnlyState.selectedGame, selectedPlayer, task);
             if (rouletteSettings.resultDisplay !== 'popup') showResult(taskOnlyState.selectedGame, selectedPlayer, task);
             // Display the result in an overlay
-            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: taskOnlyState.selectedGame, player: selectedPlayer?.name || '?', task: task, duration: 12000 })); } catch (e) { }
+            announceResult(taskOnlyState.selectedGame, selectedPlayer?.name || '?', task, 12000);
             markTaskSpent(taskOnlyState.selectedGame, task);
             if (rouletteSettings.removeAfterSpin) {
                 animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
@@ -2381,67 +1540,43 @@ function spinTaskOnly() {
 }
 
 function startGameFirstInitial() {
-    const gamesWithTasks = Object.entries(games).filter(([, t]) => t.length > 0);
-    if (!gamesWithTasks.length) { showNotification('No games with tasks', 'error'); finishSpin(); return }
-    const selGame = gamesWithTasks[Math.floor(Math.random() * gamesWithTasks.length)][0];
-    updateWheelSegments();
-    // We look for the segment containing the desired game directly in `wheelSegments`
-    let ti = wheelSegments.findIndex(s => s.game === selGame);
-    if (ti < 0) ti = 0;
+    const gamesWithTasks = Object.entries(games).filter(([, ts]) => ts.some(x => !isBlocked(x)));
+    if (!gamesWithTasks.length) { showNotification(t('roulette.no_tasks_avail'), 'error'); finishSpin(); return }
+    updateWheelSegments(); renderWheel();           // the wheel shows the games
+    const ti = RCHWheel.pickIndex(wheelSegments);
+    const selGame = wheelSegments[ti].game;
     spinWheel(wheelSegments, ti, () => {
         gameFirstState = { active: true, selectedGame: selGame, currentPlayerIndex: 0, assignedTasks: {} };
-        // We update the segments for the selected game and redraw the wheel
-        updateWheelSegmentsForGame(selGame);
-        renderWheel();
-        showWheel();
-        // We're updating only the dashboard without hiding the steering wheel
-        const infoArea = document.querySelector('.roulette-info');
-        if (infoArea) {
-            // We're redesigning the tab to show the status, but the wheel is already in place
-            switchTab('roulette');
-        }
-        showNotification(`🎮 ${t('roulette.selected_game')}: ${selGame}!`, 'success');
-        if (players[0]) setTimeout(() => showNotification(`👤 ${players[0].name}`, 'info'), 1500);
+        playWinSound();
+        updateWheelSegmentsForGame(selGame); renderWheel(); showWheel();
+        refreshRouletteInfo();
+        rchOverlay({ type: 'winner', name: selGame, from: t('roulette.selected_game') });
+        showNotification(`${biChar('controller')} ${t('roulette.selected_game')}: ${selGame}!`, 'success');
+        const first = activePlayers()[0];
+        if (first) setTimeout(() => showNotification(`${biChar('person-fill')} ${first.name}`, 'info'), 1500);
         finishSpin();
     });
 }
 
 function startGameFirstSpin() {
-    const curP = players[gameFirstState.currentPlayerIndex];
-    if (!curP) { hideWheelSmoothly(); setTimeout(showFinalResults, 600); return }
+    const curP = activePlayers()[gameFirstState.currentPlayerIndex];
+    if (!curP) { hideWheelSmoothly(); setTimeout(showFinalResults, 600); finishSpin(); return }
     const remaining = getRemainingTasksForGame(gameFirstState.selectedGame);
-    if (!remaining.length) { hideWheelSmoothly(); setTimeout(showFinalResults, 600); return }
-    const gameOnlyTasks = remaining.map(t => ({ game: gameFirstState.selectedGame, task: t }));
-    const selTask = remaining[Math.floor(Math.random() * remaining.length)];
-    const ti = gameOnlyTasks.findIndex(i => i.task === selTask);
+    if (!remaining.length) { hideWheelSmoothly(); setTimeout(showFinalResults, 600); finishSpin(); return }
     updateWheelSegmentsForGame(gameFirstState.selectedGame); renderWheel();
-    spinWheel(gameOnlyTasks, ti >= 0 ? ti : 0, () => {
+    const ti = RCHWheel.pickIndex(wheelSegments);
+    const selTask = wheelSegments[ti].task;
+    const game = gameFirstState.selectedGame;
+    spinWheel(wheelSegments, ti, () => {
         gameFirstState.assignedTasks[curP.name] = selTask;
         setTimeout(() => {
-            if (rouletteSettings.resultDisplay !== 'popup') showResult(gameFirstState.selectedGame, curP, selTask);
-            showPopupResult(gameFirstState.selectedGame, curP, selTask);
-            // Display the result in an overlay
-            try { localStorage.setItem('overlayState', JSON.stringify({ type: 'result', game: gameFirstState.selectedGame, player: curP?.name || '?', task: selTask, duration: 12000 })); } catch (e) { }
-            markTaskSpent(gameFirstState.selectedGame, selTask);
-            if (rouletteSettings.removeAfterSpin) {
-                animateSegmentRemoval(lastWinnerSegIdx, 900, () => {
-                    updatePlayerStats(curP.name); playWinSound();
-                    gameFirstState.currentPlayerIndex++;
-                    const nextP = players[gameFirstState.currentPlayerIndex];
-                    const stillRem = getRemainingTasksForGame(gameFirstState.selectedGame);
-                    if (!nextP || !stillRem.length) { hideWheelSmoothly(); setTimeout(showFinalResults, 700) }
-                    else { switchTab('roulette'); updateWheelSegmentsForGame(gameFirstState.selectedGame); renderWheel(); showNotification(`👤 ${t('roulette.now_spinning')}: ${nextP.name}`, 'info') }
-                    finishSpin();
-                });
-            } else {
-                updatePlayerStats(curP.name); playWinSound();
-                gameFirstState.currentPlayerIndex++;
-                const nextP = players[gameFirstState.currentPlayerIndex];
-                const stillRem = getRemainingTasksForGame(gameFirstState.selectedGame);
-                if (!nextP || !stillRem.length) { hideWheelSmoothly(); setTimeout(showFinalResults, 700) }
-                else { switchTab('roulette'); updateWheelSegmentsForGame(gameFirstState.selectedGame); renderWheel(); showNotification(`👤 ${t('roulette.now_spinning')}: ${nextP.name}`, 'info') }
-                finishSpin();
-            }
+            gameFirstState.currentPlayerIndex++;   // the result card then offers the NEXT player
+            if (rouletteSettings.resultDisplay !== 'popup') showResult(game, curP, selTask);
+            showPopupResult(game, curP, selTask);
+            announceResult(game, curP.name, selTask, 12000);
+            markTaskSpent(game, selTask);
+            const after = () => { playWinSound(); advanceGameFirst(); finishSpin(); };
+            if (rouletteSettings.removeAfterSpin) animateSegmentRemoval(lastWinnerSegIdx, 900, after); else after();
         }, rouletteSettings.announceDelay || 0);
     });
 }
@@ -2459,6 +1594,10 @@ function finishSpin() {
     const btn = document.querySelector('.spin-btn');
     if (btn) btn.disabled = false;
     refreshRouletteControls();
+    if (bonusPending) {
+        bonusPending = false;
+        setTimeout(() => { if (currentTab === 'roulette' && !spinning) executeSpin(); }, 1400);
+    }
 }
 
 // Updates the roulette control buttons directly in the DOM (without re-rendering the tab)
@@ -2494,17 +1633,15 @@ function refreshRouletteControls() {
 
 // ── ANIMATION ENGINE ──────────────────────────────────────
 function spinWheel(tasks, targetIdx, callback) {
-    if (!tasks.length) { if (callback) callback(); return }
+    if (!wheelSegments.length) { if (callback) callback(); return }
     lastWinnerSegIdx = targetIdx;
-    const segAngle = (Math.PI * 2) / tasks.length;
-    const targetAngle = targetIdx * segAngle + segAngle / 2; // center of the target segment (from angle 0)
-    const POINTER = -Math.PI / 2; // top index (12 o'clock)
-    const spins = rouletteSettings.minSpins + Math.floor(Math.random() * (rouletteSettings.maxSpins - rouletteSettings.minSpins + 1));
-    // You need to: targetAngle + currentWheelAngle + totalRot ≡ POINTER (mod 2π)
-    // → totalRot = POINTER - currentWheelAngle - targetAngle + N*2π
-    const remainder = ((POINTER - currentWheelAngle - targetAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-    const totalRot = spins * Math.PI * 2 + remainder;
+    const spins = rouletteSettings.minSpins + Math.floor(Math.random() * (Math.max(rouletteSettings.maxSpins, rouletteSettings.minSpins) - rouletteSettings.minSpins + 1));
+    const totalRot = RCHWheel.targetRotation(wheelSegments, targetIdx, currentWheelAngle, spins, 0.6);
     if (rouletteSettings.soundEnabled) playSpinSound();
+    if (rouletteSettings.overlayWheel) {
+        const w = wheelSegments[targetIdx];
+        publishWheel(t('tab.roulette'), wheelSegments, { startAngle: currentWheelAngle, total: totalRot, duration: rouletteSettings.spinDuration }, w.task || w.label);
+    }
     animateWheel(totalRot, callback);
 }
 
@@ -2552,8 +1689,8 @@ function animateWheel(totalRotation, callback) {
         renderWheel();
 
         // Tick sound on segment changes (last 30%)
-        if (progress > 0.7 && rouletteSettings.soundEnabled && rouletteSettings.tickSoundEnabled) {
-            const seg = Math.floor((currentWheelAngle % (Math.PI * 2)) / ((Math.PI * 2) / wheelSegments.length));
+        if (progress > 0.3 && rouletteSettings.soundEnabled && rouletteSettings.tickSoundEnabled) {
+            const seg = RCHWheel.indexAtPointer(wheelSegments, currentWheelAngle);
             if (seg !== lastTickSeg) { lastTickSeg = seg; playTickSound() }
         }
 
@@ -2647,9 +1784,9 @@ function showPopupResult(game, player, task) {
     const pp = popup.querySelector('.popup-player');
     const pt = popup.querySelector('.popup-task');
 
-    if (pg) { pg.textContent = ''; typeWriter(pg, `🎮 ${game}`, 25) }
-    if (pp) { pp.textContent = ''; setTimeout(() => typeWriter(pp, `👤 ${player?.name || '?'}`, 25), 260); pp.style.color = cd.name }
-    if (pt) { pt.textContent = ''; setTimeout(() => typeWriter(pt, `⚡ ${task}`, 16), 520) }
+    if (pg) { pg.textContent = ''; typeWriter(pg, `${biChar('controller')} ${game}`, 25) }
+    if (pp) { pp.textContent = ''; setTimeout(() => typeWriter(pp, `${biChar('person-fill')} ${player?.name || '?'}`, 25), 260); pp.style.color = cd.name }
+    if (pt) { pt.textContent = ''; setTimeout(() => typeWriter(pt, `${biChar('lightning-charge-fill')} ${task}`, 16), 520) }
 
     // Send the result to the chat
     // The chat send feature is not available without logging in
@@ -2699,14 +1836,14 @@ function showResult(game, player, task) {
     if (!rd || !rc) return;
     const cd = playerColors[player?.color] || playerColors.indigo;
     rc.innerHTML = `<div class="result-grid">
-        <div class="result-card-item"><div class="result-card-icon">🎮</div><div class="result-card-label">${t('roulette.result_game')}</div><div class="result-card-value">${esc(game)}</div></div>
-        <div class="result-card-item"><div class="result-card-icon">👤</div><div class="result-card-label">${t('roulette.result_player')}</div><div class="result-card-value" style="color:${esc(cd.name)}">${esc(player?.name || '?')}</div></div>
-        <div class="result-card-item"><div class="result-card-icon">⚡</div><div class="result-card-label">${t('roulette.result_task')}</div><div class="result-card-value task-highlight">${esc(task)}</div></div>
+        <div class="result-card-item"><div class="result-card-icon"><i class="bi bi-controller" aria-hidden="true"></i></div><div class="result-card-label">${t('roulette.result_game')}</div><div class="result-card-value">${esc(game)}</div></div>
+        <div class="result-card-item"><div class="result-card-icon"><i class="bi bi-person-fill" aria-hidden="true"></i></div><div class="result-card-label">${t('roulette.result_player')}</div><div class="result-card-value" style="color:${esc(cd.name)}">${esc(player?.name || '?')}</div></div>
+        <div class="result-card-item"><div class="result-card-icon"><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i></div><div class="result-card-label">${t('roulette.result_task')}</div><div class="result-card-value task-highlight">${esc(task)}</div></div>
     </div>`;
     if (ra) {
         // We use only secure static buttons with no user data in the handlers
         if (gameFirstState.active) {
-            const nextP = players[gameFirstState.currentPlayerIndex];
+            const nextP = activePlayers()[gameFirstState.currentPlayerIndex];
             const rem = getRemainingTasksForGame(gameFirstState.selectedGame);
             if (nextP && rem.length > 0) {
                 const btn = document.createElement('button');
@@ -2714,13 +1851,13 @@ function showResult(game, player, task) {
                 btn.style.marginTop = '8px';
                 btn.textContent = t('roulette.next_player', { name: nextP.name });
                 btn.onclick = startSpin;
-                ra.innerHTML = '<br>';
+                ra.innerHTML = '';
                 ra.appendChild(btn);
             } else {
-                ra.innerHTML = `<br><button onclick="showFinalResults()" class="cyber-btn add-btn">${t('roulette.all_results')}</button>`;
+                ra.innerHTML = `<button onclick="showFinalResults()" class="cyber-btn add-btn">${t('roulette.all_results')}</button>`;
             }
         } else {
-            ra.innerHTML = `<br><button onclick="startSpin()" class="cyber-btn add-btn">${t('roulette.spin_again')}</button>`;
+            ra.innerHTML = `<button onclick="startSpin()" class="cyber-btn add-btn">${t('roulette.spin_again')}</button>`;
         }
     }
     rd.classList.remove('hidden'); rd.style.animation = 'none'; void rd.offsetHeight; rd.style.animation = 'fadeInUp 0.5s ease';
@@ -2728,33 +1865,33 @@ function showResult(game, player, task) {
 
 function showFinalResults() {
     const assigned = Object.keys(gameFirstState.assignedTasks).length;
-    if (!assigned && gameFirstState.active) return showNotification('No tasks have been assigned', 'warning');
-    const unassigned = players.filter(p => !gameFirstState.assignedTasks[p.name]);
+    if (!assigned && gameFirstState.active) return showNotification(t('rf.none_assigned'), 'warning');
+    const unassigned = activePlayers().filter(p => !gameFirstState.assignedTasks[p.name]);
     const rd = document.getElementById('spinResult'), rc = document.getElementById('resultContent'), ra = document.getElementById('resultActions');
     if (!rd || !rc) return;
     rc.innerHTML = `
         <div class="final-result-header">
-            <div class="final-game-info"><span class="final-game-icon">🎮</span><span class="final-game-name">${esc(gameFirstState.selectedGame)}</span></div>
+            <div class="final-game-info"><span class="final-game-icon"><i class="bi bi-controller" aria-hidden="true"></i></span><span class="final-game-name">${esc(gameFirstState.selectedGame)}</span></div>
             <div class="final-stats">
-                <span class="final-stat-badge success">✅ ${assigned}</span>
-                ${unassigned.length ? `<span class="final-stat-badge warning">⚠️ ${unassigned.length}</span>` : ''}
+                <span class="final-stat-badge success"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> ${assigned}</span>
+                ${unassigned.length ? `<span class="final-stat-badge warning"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> ${unassigned.length}</span>` : ''}
             </div>
         </div>
         <div class="final-results-list">
-            <div class="final-results-title">📋 Assignments (${assigned}/${players.length})</div>
+            <div class="final-results-title"><i class="bi bi-clipboard-check" aria-hidden="true"></i> ${t('rf.assignments')} (${assigned}/${activePlayers().length})</div>
             <div class="final-results-grid">
                 ${Object.entries(gameFirstState.assignedTasks).map(([pn, pt], idx) => {
-        const pl = players.find(p => p.name === pn);
+        const pl = activePlayers().find(p => p.name === pn);
         const cd = playerColors[pl?.color] || playerColors.indigo;
         return `<div class="final-result-row"><span class="final-result-number">#${idx + 1}</span><span class="final-result-player" style="color:${esc(cd.name)}">${esc(pn)}</span><span class="final-result-arrow">→</span><span class="final-result-task">${esc(pt)}</span></div>`;
     }).join('')}
             </div>
         </div>
-        ${unassigned.length ? `<div class="unassigned-warning"><p class="unassigned-warning-title">⚠️ No assignments</p><div class="unassigned-players-list">${unassigned.map(p => `<span class="unassigned-player-tag" style="border-color:${esc(playerColors[p.color]?.name || '#818cf8')};color:${esc(playerColors[p.color]?.name || '#818cf8')}">${esc(p.name)}</span>`).join('')}</div></div>` : ''}
+        ${unassigned.length ? `<div class="unassigned-warning"><p class="unassigned-warning-title"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> ${t('rf.unassigned')}</p><div class="unassigned-activePlayers()-list">${unassigned.map(p => `<span class="unassigned-player-tag" style="border-color:${esc(playerColors[p.color]?.name || '#818cf8')};color:${esc(playerColors[p.color]?.name || '#818cf8')}">${esc(p.name)}</span>`).join('')}</div></div>` : ''}
     `;
-    if (ra) ra.innerHTML = `<br><button onclick="resetGameFirstMode()" class="cyber-btn add-btn">${t('results.start_over')}</button><button onclick="exportResults()" class="cyber-btn export-btn">${t('results.export')}</button>`;
+    if (ra) ra.innerHTML = `<button onclick="resetGameFirstMode()" class="cyber-btn add-btn">${t('results.start_over')}</button><button onclick="exportResults()" class="cyber-btn export-btn">${t('results.export')}</button>`;
     rd.classList.remove('hidden'); rd.style.animation = 'none'; void rd.offsetHeight; rd.style.animation = 'fadeInUp 0.5s ease';
-    switchTab('roulette');
+    refreshRouletteInfo(); rd.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ── PARTICLES ─────────────────────────────────────────────
@@ -2780,622 +1917,6 @@ function createParticles() {
 function updatePlayerStats(name) {
     const p = players.find(x => x.name === name);
     if (p) { if (!p.stats) p.stats = { gamesPlayed: 0, tasksCompleted: 0 }; p.stats.gamesPlayed++; p.stats.tasksCompleted++; saveAll() }
-}
-
-// ── STREAMER TAB ──────────────────────────────────────────
-function renderStreamerTab() {
-    return `<div class="streamer-panel">
-        <div class="streamer-hero">
-            <span class="streamer-hero-icon">📡</span>
-            <h2>${t('streamer.hero_title')}</h2>
-            <p>${t('streamer.hero_desc')}</p>
-        </div>
-        <div class="streamer-tools-grid">
-
-            <!-- OBS Overlay -->
-            <div class="streamer-tool-card">
-                <div class="streamer-tool-header">
-                    <span class="streamer-tool-icon">🖥️</span>
-                    <div><div class="streamer-tool-title">${t('streamer.obs_title')}</div><div class="streamer-tool-desc">${t('streamer.obs_desc')}</div></div>
-                </div>
-                <div class="overlay-url-box">
-                    <input type="text" id="overlayUrlInput" readonly value="${getOverlayUrl()}" style="font-size:10px;min-width:0">
-                    <button onclick="copyOverlayUrl()" class="cyber-btn primary-btn" style="padding:5px 10px;font-size:11px">📋 ${t('common.export')}</button>
-                </div>
-                <div class="overlay-status"><span class="overlay-dot"></span> ${t('streamer.obs_ready')}</div>
-                <div class="streamer-tool-actions">
-                    <button onclick="openOverlayWindow()" class="cyber-btn add-btn">${t('streamer.obs_open')}</button>
-                    <button onclick="toggleChromaKey()" class="cyber-btn ${rouletteSettings.chromaKey ? 'primary-btn' : ''}">${t('streamer.obs_chroma')}</button>
-                    <button onclick="showOverlaySettings()" class="cyber-btn">${t('streamer.obs_settings')}</button>
-                </div>
-                <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">
-                    ${t('streamer.obs_hint')}
-                </div>
-            </div>
-
-            <!-- Chat Vote -->
-            <div class="streamer-tool-card">
-                <div class="streamer-tool-header">
-                    <span class="streamer-tool-icon">🗳️</span>
-                    <div><div class="streamer-tool-title">${t('streamer.vote_title')}</div><div class="streamer-tool-desc">${t('streamer.vote_desc')}</div></div>
-                </div>
-                <div class="channel-input-group">
-                    <input type="text" id="channelNameInput" placeholder="${t('streamer.channel_placeholder')}" value="${esc(streamerState.channelName)}" oninput="updateChannelName(this.value)" onkeypress="if(event.key==='Enter')twitchToggleConnect()">
-                    <button onclick="twitchToggleConnect()" class="cyber-btn ${streamerState.connected ? 'danger-btn' : 'add-btn'} channel-connect-btn" id="chatConnectBtn">
-                        ${streamerState.twitchStatus === 'connected' ? t('streamer.disconnect_btn')
-            : streamerState.twitchStatus === 'connecting' ? t('streamer.connecting_btn')
-                : streamerState.twitchStatus === 'error' ? t('streamer.error_btn')
-                    : t('streamer.connect_btn')}
-                    </button>
-                </div>
-                <div class="channel-input-group" style="margin-bottom:8px">
-                    <!-- Auth removed, read-only -->
-                </div>
-                <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">
-                    ${t('streamer.readonly_hint')}
-                </div>
-                <div id="twitchStatusBar" style="font-size:11px;margin:6px 0 10px;color:${streamerState.twitchStatus === 'connected' ? 'var(--accent-success)'
-            : streamerState.twitchStatus === 'error' ? 'var(--accent-danger)'
-                : 'var(--text-muted)'}">
-                    ${streamerState.twitchStatus === 'connected'
-            ? `<span style="display:inline-flex;align-items:center;gap:5px"><span class="overlay-dot"></span> ${t('streamer.status_reading', { ch: esc(streamerState.channelName) })}</span>`
-            : streamerState.twitchStatus === 'connecting' ? t('streamer.status_connecting')
-                : streamerState.twitchStatus === 'error' ? t('streamer.status_error')
-                    : t('streamer.status_idle')}
-                </div>
-                <div id="voteArea">
-                    ${renderVoteArea()}
-                </div>
-                <div style="margin-top:12px;font-size:11px;color:var(--text-muted);padding:8px;background:var(--bg-tertiary);border-radius:var(--radius-sm)">
-                    💡 <strong>${t('streamer.cmd_hint_title')}</strong><br>
-                    ${t('streamer.cmd_spin')}<br>
-                    ${t('streamer.cmd_vote')}<br>
-                    ${t('streamer.cmd_timer')}<br>
-                    <br><strong>${t('streamer.cmd_viewer_title')}</strong><br>
-                    ${t('streamer.cmd_join')}
-                </div>
-            </div>
-
-            <!-- Timer -->
-            <div class="streamer-tool-card">
-                <div class="streamer-tool-header">
-                    <span class="streamer-tool-icon">⏱️</span>
-                    <div><div class="streamer-tool-title">${t('streamer.timer_title')}</div><div class="streamer-tool-desc">${t('streamer.timer_desc')}</div></div>
-                </div>
-                <div class="timer-display" id="timerDisplay">${formatTime(streamerState.timerSeconds || 0)}</div>
-                <div class="input-group" style="margin-bottom:10px">
-                    <input type="number" id="timerMinutes" placeholder="${t('streamer.timer_min')}" min="0" max="99" value="5" style="max-width:80px">
-                    <input type="number" id="timerSeconds2" placeholder="${t('streamer.timer_sec')}" min="0" max="59" value="0" style="max-width:80px">
-                    <button onclick="setTimer()" class="cyber-btn primary-btn">${t('streamer.timer_set_btn')}</button>
-                </div>
-                <div class="timer-controls">
-                    <button onclick="startTimer()"  class="cyber-btn add-btn"    id="timerStartBtn">${streamerState.timerRunning ? t('streamer.timer_pause') : t('streamer.timer_start')}</button>
-                    <button onclick="resetTimer()"  class="cyber-btn danger-btn">${t('streamer.timer_reset')}</button>
-                    <button onclick="addTime(30)"   class="cyber-btn">${t('streamer.timer_add30')}</button>
-                    <button onclick="addTime(60)"   class="cyber-btn">${t('streamer.timer_add1m')}</button>
-                </div>
-                <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">
-                    ${t('streamer.stats_messages')} ${streamerState.chatStats.totalMessages}, ${t('streamer.stats_unique').replace(':', '')} ${streamerState.chatStats.uniqueViewers}
-                </div>
-            </div>
-
-            <!-- Subscriber Wheel -->
-            <div class="streamer-tool-card">
-                <div class="streamer-tool-header">
-                    <span class="streamer-tool-icon">💜</span>
-                    <div><div class="streamer-tool-title">${t('streamer.subwheel_title')}</div><div class="streamer-tool-desc">${t('streamer.subwheel_desc')}</div></div>
-                </div>
-                <div class="sub-wheel-section">
-                    <div class="input-group" style="margin-bottom:8px">
-                        <input type="text" id="subNameInput" placeholder="${t('streamer.sub_placeholder')}" onkeypress="if(event.key==='Enter')addSubToWheel()">
-                        <button onclick="addSubToWheel()" class="cyber-btn add-btn">${t('streamer.sub_add_btn')}</button>
-                    </div>
-                    <div class="sub-list" id="subList">${renderSubList()}</div>
-                </div>
-                <div class="streamer-tool-actions">
-                    <button onclick="spinSubWheel()" class="cyber-btn spin-btn" style="width:100%;font-size:12px;letter-spacing:1px;padding:12px" ${!streamerState.subWheelList.length ? 'disabled' : ''}>${t('streamer.sub_spin_btn')}</button>
-                </div>
-                <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-                    <button onclick="addAllChattersToWheel()" class="cyber-btn primary-btn" style="flex:1;font-size:11px" ${streamerState.twitchStatus !== 'connected' ? 'disabled' : ''}>${t('streamer.sub_all_chat')}</button>
-                    ${streamerState.subWheelList.length ? `<button onclick="clearSubWheel()" class="cyber-btn danger-btn" style="flex:1;font-size:11px">${t('streamer.sub_clear')}</button>` : ''}
-                </div>
-            </div>
-
-            <!-- Quick Commands -->
-            <div class="streamer-tool-card">
-                <div class="streamer-tool-header">
-                    <span class="streamer-tool-icon">⚡</span>
-                    <div><div class="streamer-tool-title">${t('streamer.quick_title')}</div><div class="streamer-tool-desc">${t('streamer.quick_desc')}</div></div>
-                </div>
-                <div class="quick-commands">
-                    <button onclick="quickSpin()" class="quick-cmd-btn"><span class="cmd-icon">🎰</span><span class="cmd-label">${t('streamer.quick_spin')}</span></button>
-                    <button onclick="quickCopyResult()" class="quick-cmd-btn"><span class="cmd-icon">📋</span><span class="cmd-label">${t('streamer.quick_copy')}</span></button>
-                    <button onclick="quickShareResult()" class="quick-cmd-btn"><span class="cmd-icon">📤</span><span class="cmd-label">${t('streamer.quick_export')}</span></button>
-                    <button onclick="switchTab('roulette')" class="quick-cmd-btn"><span class="cmd-icon">🎡</span><span class="cmd-label">${t('streamer.quick_roulette')}</span></button>
-                    <button onclick="quickAddFromChat()" class="quick-cmd-btn"><span class="cmd-icon">💬</span><span class="cmd-label">${t('streamer.quick_chat')}</span></button>
-                    <button onclick="openOverlayWindow()" class="quick-cmd-btn"><span class="cmd-icon">🖥️</span><span class="cmd-label">${t('streamer.quick_overlay')}</span></button>
-                    <button onclick="startVote()" class="quick-cmd-btn"><span class="cmd-icon">🗳️</span><span class="cmd-label">${t('streamer.quick_vote')}</span></button>
-                    <button onclick="quickResetSession()" class="quick-cmd-btn"><span class="cmd-icon">🔄</span><span class="cmd-label">${t('streamer.quick_reset')}</span></button>
-                </div>
-            </div>
-
-            <!-- Chat / Twitch IRC -->
-            <div class="streamer-tool-card">
-                <div class="streamer-tool-header">
-                    <span class="streamer-tool-icon">💬</span>
-                    <div>
-                        <div class="streamer-tool-title">${t('streamer.chat_title')}</div>
-                        <div class="streamer-tool-desc">${streamerState.twitchStatus === 'connected' ? t('streamer.chat_online', { ch: streamerState.channelName }) : t('streamer.chat_real_irc')}</div>
-                    </div>
-                </div>
-                <div class="chat-box" id="chatBox">${renderChatMessages()}</div>
-                <div class="streamer-tool-actions" style="margin-top:8px">
-                    <button onclick="sendCommandsList()" class="cyber-btn primary-btn" ${!streamerState.twitchToken || streamerState.twitchStatus !== 'connected' ? 'disabled' : ''}>${t('streamer.chat_commands')}</button>
-                    <button onclick="clearChat()" class="cyber-btn danger-btn">${t('streamer.chat_clear')}</button>
-                </div>
-                ${streamerState.chatStats.mostActiveUser ? `<div style="margin-top:8px;font-size:10px;color:var(--text-muted)">${t('streamer.chat_most_active', { name: streamerState.chatStats.mostActiveUser })}</div>` : ''}
-            </div>
-
-            <!-- Stream Tools -->
-            <div class="streamer-tool-card">
-                <div class="streamer-tool-header">
-                    <span class="streamer-tool-icon">🔧</span>
-                    <div><div class="streamer-tool-title">${t('streamer.tools_title')}</div><div class="streamer-tool-desc">${t('streamer.tools_desc')}</div></div>
-                </div>
-                <div style="display:grid;gap:8px;margin-bottom:12px">
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <label style="font-size:12px;min-width:80px">${t('streamer.sounds_label')}</label>
-                        <label class="toggle-switch"><input type="checkbox" ${streamerState.chatSounds || false ? 'checked' : ''} onchange="toggleChatSounds(this.checked)"><span class="toggle-slider"></span></label>
-                        <span style="font-size:11px;color:var(--text-muted)">${t('streamer.sounds_hint')}</span>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <label style="font-size:12px;min-width:80px">${t('streamer.autospin_label')}</label>
-                        <label class="toggle-switch"><input type="checkbox" ${streamerState.autoSpin || false ? 'checked' : ''} onchange="toggleAutoSpin(this.checked)"><span class="toggle-slider"></span></label>
-                        <span style="font-size:11px;color:var(--text-muted)">${t('streamer.autospin_hint')}</span>
-                    </div>
-                </div>
-                <div class="streamer-tool-actions">
-                    <button onclick="showStreamStats()" class="cyber-btn">${t('streamer.stats_btn')}</button>
-                    <button onclick="exportStreamData()" class="cyber-btn export-btn">${t('streamer.export_btn')}</button>
-                    <button onclick="resetStreamSession()" class="cyber-btn danger-btn">${t('streamer.reset_btn')}</button>
-                </div>
-            </div>
-
-        </div>
-    </div>`;
-}
-
-function renderVoteArea() {
-    const isReal = streamerState.twitchStatus === 'connected';
-    if (!streamerState.voteActive) {
-        const gameOptions = Object.keys(games).slice(0, 4);
-        return `
-            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">
-                ${isReal
-                ? `✅ ${t('streamer.status_reading', { ch: esc(streamerState.channelName) }).replace('Reading chat', 'Chat connected —')} Viewers, type <b>1–4</b> to vote`
-                : `⚠️ ${t('streamer.connect_first_vote')}`}
-            </div>
-            <div style="margin-bottom:10px">
-                <input type="text" id="voteTitle" placeholder="${t('streamer.vote_topic')}"
-                    value="${esc(streamerState.voteTitle || '')}"
-                    oninput="streamerState.voteTitle=this.value"
-                    style="width:100%;font-size:12px;padding:8px 12px;border-radius:var(--radius-md);
-                           background:var(--bg-input);color:var(--text-primary);
-                           border:2px solid var(--border-light);outline:none;box-sizing:border-box"
-                    onfocus="this.style.borderColor='var(--border-focus)'"
-                    onblur="this.style.borderColor='var(--border-light)'">
-            </div>
-            <div class="input-group" style="margin-bottom:10px">
-                <input type="number" id="voteDuration" placeholder="sec" min="10" max="300" value="${streamerState.voteDuration}" style="max-width:80px" oninput="streamerState.voteDuration=parseInt(this.value)||30">
-                <label style="font-size:12px;color:var(--text-secondary);min-width:auto">${t('streamer.vote_sec_label')}</label>
-            </div>
-            <div class="vote-options" style="margin-bottom:12px">
-                ${gameOptions.map((g, i) => `
-                    <div class="vote-option">
-                        <span class="vote-option-key">${i + 1}</span>
-                        <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g)}</span>
-                    </div>`).join('')}
-                ${!gameOptions.length ? `<div style="font-size:12px;color:var(--text-muted)">${t('streamer.no_games_vote')}</div>` : ''}
-            </div>
-            <button onclick="startVote()" class="cyber-btn add-btn" style="width:100%" ${!gameOptions.length || !isReal ? 'disabled' : ''}>
-                ${isReal ? t('streamer.vote_start_btn') : t('streamer.vote_connect_first')}
-            </button>`;
-    }
-
-    const opts = streamerState.voteOptions || [];
-    const votes = streamerState.voteVotes || {};
-    const total = Object.values(votes).reduce((s, v) => s + v.count, 0) || 1;
-    const voterCount = Object.keys(streamerState.voteVoters || {}).length;
-    const titleHtml = streamerState.voteTitle
-        ? `<div style="font-size:13px;font-weight:700;color:var(--accent-primary);
-                       text-align:center;margin-bottom:8px;padding:6px 10px;
-                       background:rgba(99,102,241,0.1);border-radius:var(--radius-sm);
-                       border:1px solid rgba(99,102,241,0.2);word-break:break-word">
-               🗳️ ${esc(streamerState.voteTitle)}
-           </div>`
-        : '';
-
-    return `
-        ${titleHtml}
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div class="vote-timer ${streamerState.voteTimer <= 5 ? 'urgent' : ''}" id="voteCountdown" style="font-size:24px;margin:0">${t('overlay.vote_sec', { n: streamerState.voteTimer })}</div>
-            <div style="font-size:11px;color:var(--text-secondary);text-align:right">
-                👥 ${t('streamer.vote_voters', { n: voterCount })}
-            </div>
-        </div>
-        <div class="vote-options">
-            ${opts.map((o, i) => {
-        const cnt = votes[i + 1]?.count || 0;
-        const pct = Math.round((cnt / total) * 100);
-        return `<div class="vote-option">
-                    <span class="vote-option-key">${i + 1}</span>
-                    <div style="flex:1;min-width:0">
-                        <span style="font-size:11px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o)}</span>
-                        <div class="vote-option-bar">
-                            <div class="vote-option-fill" id="vf${i}" style="width:${pct}%"></div>
-                        </div>
-                    </div>
-                    <span class="vote-option-count" id="vc${i}">${cnt} (${pct}%)</span>
-                </div>`;
-    }).join('')}
-        </div>
-        <button onclick="stopVote()" class="cyber-btn danger-btn" style="width:100%;margin-top:10px">${t('streamer.vote_stop_btn')}</button>`;
-}
-
-function startVote() {
-    const gameOptions = Object.keys(games).slice(0, 4);
-    if (!gameOptions.length) return showNotification(t('streamer.no_games_vote'), 'error');
-    if (!streamerState.connected) return showNotification(t('streamer.connect_first_vote'), 'warning');
-
-    // We retain the topic from the input field if it is still in the DOM
-    const titleInput = document.getElementById('voteTitle');
-    if (titleInput) streamerState.voteTitle = titleInput.value.trim();
-
-    streamerState.voteOptions = gameOptions;
-    streamerState.voteVotes = {};
-    streamerState.voteVoters = {};      // Who has already voted?
-    streamerState.voteActive = true;
-    streamerState.voteTimer = streamerState.voteDuration || 30;
-    gameOptions.forEach((_, i) => { streamerState.voteVotes[i + 1] = { option: gameOptions[i], count: 0 } });
-
-    const titleMsg = streamerState.voteTitle ? ` "${streamerState.voteTitle}"` : '';
-    showNotification(t('streamer.vote_started', { topic: titleMsg, n: gameOptions.length }), 'success');
-
-    // We pass the voting data to the overlay via localStorage
-    try {
-        localStorage.setItem('overlayState', JSON.stringify({
-            type: 'vote',
-            title: streamerState.voteTitle || '',
-            options: gameOptions.map(g => ({ name: g, count: 0 })),
-            timer: streamerState.voteDuration || 30
-        }));
-    } catch (e) { }
-
-    streamerState.voteInterval = setInterval(() => {
-        streamerState.voteTimer--;
-
-        // Обновляем таймер
-        const cd = document.getElementById('voteCountdown');
-        if (cd) { cd.textContent = t('overlay.vote_sec', { n: streamerState.voteTimer }); cd.className = `vote-timer${streamerState.voteTimer <= 5 ? ' urgent' : ''}` }
-        // We redraw only the vote bars without a full re-render
-        _refreshVoteBars();
-        if (streamerState.voteTimer <= 0) stopVote();
-    }, 1000);
-
-    const va = document.getElementById('voteArea');
-    if (va) va.innerHTML = renderVoteArea();
-}
-
-function _refreshVoteBars() {
-    const opts = streamerState.voteOptions || [];
-    const votes = streamerState.voteVotes || {};
-    const total = Object.values(votes).reduce((s, v) => s + v.count, 0) || 1;
-    opts.forEach((_, i) => {
-        const cnt = votes[i + 1]?.count || 0;
-        const pct = Math.round((cnt / total) * 100);
-        const fill = document.getElementById(`vf${i}`);
-        const cnt_el = document.getElementById(`vc${i}`);
-        if (fill) fill.style.width = pct + '%';
-        if (cnt_el) cnt_el.textContent = cnt + ` (${pct}%)`;
-    });
-}
-
-
-function stopVote() {
-    if (streamerState.voteInterval) { clearInterval(streamerState.voteInterval); streamerState.voteInterval = null }
-    let winner = null, maxVotes = -1;
-    Object.values(streamerState.voteVotes).forEach(v => {
-        if (v.count > maxVotes) { maxVotes = v.count; winner = v.option }
-    });
-    const voterCount = Object.keys(streamerState.voteVoters || {}).length;
-    streamerState.voteActive = false;
-    const va = document.getElementById('voteArea');
-    if (va) va.innerHTML = renderVoteArea();
-    if (winner && maxVotes > 0) {
-        showNotification(t('streamer.vote_winner', { name: winner, votes: maxVotes, viewers: voterCount }), 'success');
-        try {
-            localStorage.setItem('overlayState', JSON.stringify({
-                type: 'winner',
-                name: winner,
-                from: t('streamer.vote_from', { n: voterCount }) + (streamerState.voteTitle ? ` · ${streamerState.voteTitle}` : '')
-            }));
-        } catch (e) { }
-    } else {
-        showNotification(t('streamer.vote_no_votes'), 'info');
-        try {
-            localStorage.setItem('overlayState', JSON.stringify({ type: 'idle' }));
-        } catch (e) { }
-    }
-}
-
-// Timer functions
-function setTimer() {
-    const m = parseInt(document.getElementById('timerMinutes')?.value) || 0;
-    const s = parseInt(document.getElementById('timerSeconds2')?.value) || 0;
-    streamerState.timerSeconds = m * 60 + s;
-    streamerState.timerInitial = streamerState.timerSeconds;
-    updateTimerDisplay();
-}
-function startTimer() {
-    if (streamerState.timerRunning) {
-        clearInterval(streamerState.timerInterval); streamerState.timerInterval = null;
-        streamerState.timerRunning = false;
-        const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = t('streamer.timer_start');
-        updateTimerDisplay(); // We're displaying "pause" in the overlay
-        return;
-    }
-    if (streamerState.timerSeconds <= 0) return showNotification(t('streamer.timer_set_first'), 'warning');
-    streamerState.timerRunning = true;
-    const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = t('streamer.timer_pause');
-    updateTimerDisplay();
-    streamerState.timerInterval = setInterval(() => {
-        if (streamerState.timerSeconds > 0) { streamerState.timerSeconds--; updateTimerDisplay() }
-        else {
-            clearInterval(streamerState.timerInterval); streamerState.timerInterval = null;
-            streamerState.timerRunning = false;
-            const b = document.getElementById('timerStartBtn'); if (b) b.textContent = t('streamer.timer_start');
-            updateTimerDisplay();
-            playWinSound(); showNotification(t('streamer.timer_done'), 'warning');
-        }
-    }, 1000);
-}
-function resetTimer() {
-    if (streamerState.timerInterval) { clearInterval(streamerState.timerInterval); streamerState.timerInterval = null }
-    streamerState.timerRunning = false;
-    streamerState.timerSeconds = streamerState.timerInitial || 0;
-    const btn = document.getElementById('timerStartBtn'); if (btn) btn.textContent = t('streamer.timer_start');
-    updateTimerDisplay();
-}
-function addTime(secs) {
-    streamerState.timerSeconds += secs;
-    updateTimerDisplay();
-    showNotification(t('streamer.timer_added', { n: secs }), 'info');
-}
-function updateTimerDisplay() {
-    const d = document.getElementById('timerDisplay'); if (!d) return;
-    const t = streamerState.timerSeconds;
-    d.textContent = formatTime(t);
-    d.className = `timer-display ${t <= 30 && t > 10 ? 'warning' : ''} ${t <= 10 && t > 0 ? 'danger' : ''}`;
-    // We display the timer status in the overlay
-    try {
-        localStorage.setItem('overlayTimer', JSON.stringify({
-            seconds: streamerState.timerSeconds,
-            initial: streamerState.timerInitial,
-            running: streamerState.timerRunning,
-            ts: Date.now()
-        }));
-    } catch (e) { }
-}
-function formatTime(s) {
-    const m = Math.floor(s / 60), sec = s % 60;
-    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-}
-
-// Subscriber wheel
-function renderSubList() {
-    const chatParticipants = getChatParticipants(1);
-    const activeCount = chatParticipants.length;
-    if (!streamerState.subWheelList.length) {
-        return `
-            <span style="font-size:11px;color:var(--text-muted)">${t('streamer.sub_empty')}</span>
-            ${activeCount > 0 ? `<div style="margin-top:6px;font-size:10px;color:var(--text-secondary)">${t('streamer.sub_active_count', { n: activeCount })}</div>` : ''}
-        `;
-    }
-    return `
-        ${streamerState.subWheelList.map((n, i) => `<span class="sub-tag" data-idx="${i}" onclick="removeSubFromWheel(+this.dataset.idx)" title="${t('common.delete')}">${esc(n)} ×</span>`).join('')}
-        ${activeCount > 0 ? `<div style="margin-top:8px;font-size:10px;color:var(--text-secondary)">${t('streamer.sub_active_count', { n: activeCount })}</div>` : ''}
-    `;
-}
-function addSubToWheel() {
-    const inp = document.getElementById('subNameInput'); if (!inp) return;
-    const name = inp.value.trim(); if (!name) return;
-    streamerState.subWheelList.push(name); inp.value = '';
-    const sl = document.getElementById('subList'); if (sl) sl.innerHTML = renderSubList();
-    switchTab('streamer');
-    showNotification(t('streamer.sub_added', { name }), 'info');
-}
-function removeSubFromWheel(i) {
-    streamerState.subWheelList.splice(i, 1);
-    switchTab('streamer');
-}
-function clearSubWheel() {
-    streamerState.subWheelList = []; switchTab('streamer');
-    showNotification(t('streamer.sub_cleared'), 'info');
-}
-function spinSubWheel() {
-    if (!streamerState.subWheelList.length) return showNotification(t('streamer.sub_no_viewers'), 'error');
-    const winner = streamerState.subWheelList[Math.floor(Math.random() * streamerState.subWheelList.length)];
-    playWinSound();
-    if (rouletteSettings.particleEffect) createParticles();
-    showNotification(t('streamer.sub_winner', { name: winner }), 'success');
-    const modal = document.getElementById('confirmModal');
-    if (modal) {
-        document.getElementById('modalTitle').textContent = t('streamer.sub_winner_title');
-        document.getElementById('modalMessage').innerHTML = `<div style="text-align:center;padding:20px"><div style="font-size:48px;margin-bottom:16px">🏆</div><div style="font-size:24px;font-weight:700;color:var(--accent-primary)">${esc(winner)}</div><div style="font-size:13px;color:var(--text-muted);margin-top:8px">${t('streamer.sub_from', { n: streamerState.subWheelList.length })}</div></div>`;
-        document.getElementById('modalConfirm').textContent = t('common.close');
-        document.getElementById('modalConfirm').onclick = closeModal;
-        const cb = modal.querySelector('.cancel-btn'); if (cb) cb.style.display = 'none';
-        modal.classList.remove('hidden');
-    }
-}
-
-// Chat functions
-function renderChatMessages() {
-    const isReal = streamerState.twitchStatus === 'connected';
-    const msgs = streamerState.chatMessages;
-    if (!msgs.length) {
-        return `<div style="color:var(--text-muted);font-size:11px;padding:8px;text-align:center">
-            ${isReal ? t('streamer.chat_waiting') : t('streamer.chat_connect_first')}
-        </div>`;
-    }
-    return msgs.slice(-50).map(m => _renderOneChatMsg(m)).join('');
-}
-
-function sendChatMsg() {
-    const inp = document.getElementById('chatMsgInput');
-    if (!inp) return;
-    const text = inp.value.trim();
-    if (!text) return;
-
-    // Add it to the local chat as a preview
-    const colors = ['#818cf8', '#34d399', '#fbbf24', '#f472b6', '#67e8f9', '#a3e635'];
-    const msgObj = {
-        user: streamerState.channelName || 'Стример',
-        text,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        badge: 'broadcaster',
-        timestamp: Date.now()
-    };
-
-    streamerState.chatMessages.push(msgObj);
-    saveChatMessage(msgObj);
-    inp.value = '';
-
-    const cb = document.getElementById('chatBox');
-    if (cb) {
-        cb.innerHTML = renderChatMessages();
-        cb.scrollTop = cb.scrollHeight;
-    }
-
-    // Command Processing
-    if (text.startsWith('!')) {
-        processChatCommand(msgObj.user, text, { isBroad: true, isMod: false, isSub: false });
-    }
-}
-
-// Sending commands to the chat (command list—local preview only)
-function sendCommandsList() {
-    const commands = [
-        '🎰 !spin - Start the roulette wheel',
-        '🗳️ !vote - Start voting',
-        '⏱️ !timer N - Set the timer for N minutes',
-        '💜 !addchatters - Add all active users to the group',
-        '🗑️ !clearwheel - clean the wheel',
-        '� !join / !addme - join the group',
-        '❓ !commands / !help - Show commands'
-    ];
-
-    const msgObj = {
-        user: 'RCH_Bot',
-        text: commands.join(' | '),
-        color: '#9147ff',
-        badge: '',
-        timestamp: Date.now()
-    };
-
-    streamerState.chatMessages.push(msgObj);
-    saveChatMessage(msgObj);
-
-    const cb = document.getElementById('chatBox');
-    if (cb) {
-        cb.innerHTML = renderChatMessages();
-        cb.scrollTop = cb.scrollHeight;
-    }
-
-    showNotification('📝 ' + t('streamer.chat_commands') + ' added', 'info');
-}
-
-function clearChat() {
-    streamerState.chatMessages = [];
-    streamerState.chatStats.totalMessages = 0;
-    streamerState.chatStats.uniqueViewers = 0;
-    streamerState.chatStats.mostActiveUser = '';
-    saveStreamerData();
-
-    const cb = document.getElementById('chatBox');
-    if (cb) cb.innerHTML = renderChatMessages();
-    showNotification(t('streamer.chat_cleared'), 'info');
-}
-function twitchToggleConnect() {
-    const inp = document.getElementById('channelNameInput');
-    if (inp) streamerState.channelName = inp.value.trim();
-    if (streamerState.twitchStatus === 'connected') {
-        twitchDisconnect();
-    } else {
-        twitchConnect(streamerState.channelName);
-    }
-}
-
-// Quick commands
-function quickSpin() {
-    if (streamerState.autoSpin) {
-        if (spinning) return showNotification(t('streamer.spinning_already'), 'warning');
-        startSpin();
-    } else {
-        switchTab('roulette');
-        setTimeout(() => { startSpin(); }, 400);
-    }
-}
-function quickCopyResult() {
-    const rc = document.getElementById('resultContent');
-    if (!rc || !rc.textContent.trim()) return showNotification(t('notif.no_result_copy'), 'warning');
-    navigator.clipboard.writeText(rc.innerText).then(() => showNotification(t('notif.copied'), 'success')).catch(() => showNotification(t('notif.copy_error'), 'error'));
-}
-function quickShareResult() { exportResults() }
-function quickAddFromChat() {
-    const game = Object.keys(games)[0];
-    if (!game) return showNotification(t('games.no_game_selected'), 'warning');
-    const chatTasks = ['Play one-handed', 'No sound for 5 min', 'Swap controls', 'Blindfolded for 2 min'];
-    const task = chatTasks[Math.floor(Math.random() * chatTasks.length)];
-    games[game].push(task); saveAll();
-    showNotification(t('notif.task_added_to', { task, game }), 'success');
-}
-function quickResetSession() {
-    showConfirmModal(t('streamer.reset_confirm'), t('streamer.reset_msg'), t('streamer.reset_btn2'), t('common.cancel'), () => {
-        resetGameFirstMode();
-        showNotification(t('streamer.session_reset'), 'success');
-    });
-}
-
-// OBS Overlay
-function getOverlayUrl() {
-    // We construct the full URL to overlay.html relative to the current file
-    const base = window.location.href.replace(/[^/]*$/, '');
-    return base + 'overlay.html';
-}
-function copyOverlayUrl() {
-    navigator.clipboard.writeText(getOverlayUrl())
-        .then(() => showNotification(t('streamer.url_copied'), 'success'))
-        .catch(() => showNotification(t('streamer.url_copy_error'), 'error'));
-}
-function openOverlayWindow() {
-    const url = getOverlayUrl();
-    const w = window.open(url, 'obs-overlay');
-    if (!w) {
-        showNotification(t('streamer.overlay_blocked'), 'warning');
-    } else {
-        showNotification(t('streamer.overlay_opened'), 'info');
-    }
-}
-function toggleChromaKey() {
-    rouletteSettings.chromaKey = !rouletteSettings.chromaKey; saveSettings();
-    showNotification(rouletteSettings.chromaKey ? t('streamer.chroma_on') : t('streamer.chroma_off'), 'info');
-    switchTab('streamer');
-}
-function showOverlaySettings() {
-    showConfirmModal(t('streamer.obs_title'),
-        t('streamer.obs_hint'),
-        t('streamer.obs_open'), t('common.cancel'), openOverlayWindow);
 }
 
 // ── STATS TAB ─────────────────────────────────────────────
@@ -3441,6 +1962,8 @@ function renderStatsTab() {
             </div>
         </div>` : ''}
 
+        ${renderHistoryBlock()}
+
         <div class="top-player" style="border-color:var(--accent-primary);margin-bottom:0">
             <h3>${t('stats.tips_title')}</h3>
         </div>
@@ -3448,7 +1971,7 @@ function renderStatsTab() {
             ${featuredTips.map(tip => `
                 <div class="tip-card tip-cat-${esc(tip.cat)}">
                     <div class="tip-header">
-                        <span class="tip-icon">${tip.icon}</span>
+                        <span class="tip-icon">${bi(tip.icon)}</span>
                         <span class="tip-tag">${esc(tip.tag)}</span>
                     </div>
                     <p class="tip-text">${esc(tip.text)}</p>
@@ -3504,12 +2027,36 @@ function renderStatsTab() {
     </div>`;
 }
 
+
+function renderHistoryBlock() {
+    const rows = spinHistory.slice(0, 15);
+    return `<div class="players-stats history-block">
+        <h3>${t('hist.title')} <span class="section-badge">${spinHistory.length}</span></h3>
+        ${rows.length ? `<div class="history-list">${rows.map(h => `<div class="history-row"><span class="history-time">${esc(new Date(h.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</span>
+            <span class="history-game">${esc(h.game)}</span><span class="history-player">${esc(h.player)}</span><span class="history-task">${esc(h.task)}</span></div>`).join('')}</div>
+        <div class="panel-actions"><button class="cyber-btn export-btn" onclick="exportHistory()"><i class="bi bi-box-arrow-up" aria-hidden="true"></i> CSV</button><button class="cyber-btn danger-btn" onclick="clearHistory()">${t('hist.clear')}</button></div>`
+            : `<p class="empty-text">${t('hist.empty')}</p>`}
+    </div>`;
+}
+function exportHistory() {
+    const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+    const csv = '\ufeff' + ['time,mode,game,player,task'].concat(spinHistory.map(h => [new Date(h.ts).toISOString(), h.mode, h.game, h.player, h.task].map(q).join(','))).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'spin-history-' + Date.now() + '.csv'; a.click();
+}
+function clearHistory() {
+    showConfirmModal(t('hist.clear'), t('hist.clear_msg'), t('common.reset'), t('common.cancel'), () => {
+        spinHistory = []; taskDrawCount = {}; localStorage.setItem('spinHistory', '[]'); localStorage.setItem('taskDrawCount', '{}');
+        switchTab('stats');
+    });
+}
+
 // Rendering a list of tips for the filter
 function renderTipsList(category) {
     const pool = category === 'all' ? GAMING_TIPS : GAMING_TIPS.filter(t => t.cat === category);
     return pool.map(tip => `
         <div class="tip-list-item">
-            <span class="tip-list-icon">${tip.icon}</span>
+            <span class="tip-list-icon">${bi(tip.icon)}</span>
             <div class="tip-list-body">
                 <span class="tip-list-tag tip-cat-${esc(tip.cat)}-tag">${esc(tip.tag)}</span>
                 <p class="tip-list-text">${esc(tip.text)}</p>
@@ -3541,6 +2088,8 @@ function renderSettingsTab() {
         <div id="settingsContent">${renderSettingsContent()}</div>
         <div class="settings-actions">
             <button onclick="resetSettings()" class="cyber-btn danger-btn">${t('settings.reset_all')}</button>
+            <button onclick="confirmClearCache()" class="cyber-btn outline-btn">${t('floating.clear_cache')}</button>
+            <button onclick="confirmResetAll()" class="cyber-btn danger-btn">${t('floating.reset_all')}</button>
             <button onclick="applySettings()"  class="cyber-btn add-btn">${t('settings.apply_btn')}</button>
             <button onclick="exportSettings()" class="cyber-btn export-btn">${t('settings.export_btn')}</button>
             <button onclick="importSettings()" class="cyber-btn import-btn">${t('settings.import_btn')}</button>
@@ -3555,7 +2104,7 @@ function switchSettingsTab(name) {
     document.querySelectorAll('.settings-subtab').forEach(t => t.classList.toggle('active', t.textContent.includes(getSettingsTabEmoji(name))));
 }
 function getSettingsTabEmoji(n) {
-    return { speed: '🎯', sound: '🔊', wheel: '🎡', effects: '✨', gamer: '🎮', streamer: '📡', theme: '🎨' }[n] || '';
+    return biChar({ speed: 'bullseye', sound: 'volume-up-fill', wheel: 'pie-chart-fill', effects: 'stars', gamer: 'controller', streamer: 'broadcast', theme: 'palette-fill' }[n] || '');
 }
 
 function renderSettingsContent() {
@@ -3621,9 +2170,10 @@ function renderWheelSettings() {
             ${rangeItem('fontSize', t('settings.font_size'), rouletteSettings.fontSize, 8, 18, 1, 'fontSize', v => v + 'px')}
             ${rangeItem('maxSegments', t('settings.max_segments'), rouletteSettings.maxSegments, 4, 32, 2, 'maxSegments')}
             ${toggleItem('groupSegments', t('settings.group_segs'), rouletteSettings.groupSegments)}
+            ${toggleItem('wheelBulbs', t('settings.wheel_bulbs'), rouletteSettings.wheelBulbs)}
             <div class="setting-item">
                 <label>${t('settings.center_icon')}</label>
-                <input type="text" id="centerIconInput" value="${rouletteSettings.centerIcon || '🎲'}" maxlength="2" oninput="updateSetting('centerIcon',this.value);renderWheel()" style="max-width:80px;text-align:center;font-size:20px">
+                <div class="icon-picker" id="centerIconPicker" role="group">${CENTER_ICONS.map(n => `<button type="button" class="icon-pick ${(rouletteSettings.centerIcon || 'dice-3-fill') === n ? 'active' : ''}" title="${n}" onclick="pickCenterIcon('${n}')">${bi(n)}</button>`).join('')}</div>
             </div>
             <div class="setting-item">
                 <label>${t('settings.border_style')}</label>
@@ -3637,7 +2187,7 @@ function renderWheelSettings() {
             <div class="setting-item">
                 <label>${t('settings.pointer_style')}</label>
                 <div class="pointer-styles">
-                    ${['arrow', 'triangle', 'diamond', 'star', 'pin'].map(s => `<button onclick="updateSetting('pointerStyle','${s}');document.getElementById('wheelPointer').textContent=getPointerSymbol()" class="pointer-style-btn ${rouletteSettings.pointerStyle === s ? 'active' : ''}"><span class="pointer-style-symbol">${{ arrow: '▼', triangle: '▽', diamond: '◆', star: '★', pin: '📍' }[s]}</span><span class="pointer-style-label">${s}</span></button>`).join('')}
+                    ${['arrow', 'triangle', 'diamond', 'star', 'pin'].map(s => `<button onclick="updateSetting('pointerStyle','${s}');document.getElementById('wheelPointer').textContent=getPointerSymbol()" class="pointer-style-btn ${rouletteSettings.pointerStyle === s ? 'active' : ''}"><span class="pointer-style-symbol">${bi({ arrow: 'caret-down-fill', triangle: 'triangle', diamond: 'diamond-fill', star: 'star-fill', pin: 'geo-alt-fill' }[s])}</span><span class="pointer-style-label">${s}</span></button>`).join('')}
                 </div>
             </div>
         </div>
@@ -3718,6 +2268,7 @@ function renderStreamerSettings() {
         <div class="settings-group">
             ${toggleItem('showPlayerOnWheel', t('settings.player_on_wheel'), rouletteSettings.showPlayerOnWheel)}
             ${toggleItem('chromaKey', t('settings.chroma_key'), rouletteSettings.chromaKey)}
+            ${toggleItem('overlayWheel', t('settings.overlay_wheel'), rouletteSettings.overlayWheel)}
             <div class="setting-item">
                 <label>${t('settings.overlay_pos')}</label>
                 <select onchange="updateSetting('overlayPosition',this.value)" style="flex:1;max-width:220px">
@@ -3734,17 +2285,17 @@ function renderStreamerSettings() {
 
 function renderThemeSettings() {
     const themes = [
-        { id: 'dark', icon: '🌑', nameKey: 'settings.theme_dark' },
-        { id: 'neon', icon: '💜', nameKey: 'settings.theme_neon' },
-        { id: 'cyber', icon: '🔵', nameKey: 'settings.theme_cyber' },
-        { id: 'streamer', icon: '📡', nameKey: 'settings.theme_streamer' },
-        { id: 'pastel', icon: '🌸', nameKey: 'settings.theme_pastel' },
+        { id: 'dark', icon: 'moon-stars-fill', nameKey: 'settings.theme_dark' },
+        { id: 'neon', icon: 'heart-fill', nameKey: 'settings.theme_neon' },
+        { id: 'cyber', icon: 'circle-fill', nameKey: 'settings.theme_cyber' },
+        { id: 'streamer', icon: 'broadcast', nameKey: 'settings.theme_streamer' },
+        { id: 'pastel', icon: 'flower1', nameKey: 'settings.theme_pastel' },
     ];
     return `<div class="panel-section">
         <h3 class="section-title"><span class="neon-text">${t('settings.theme_title')}</span></h3>
         <div class="color-schemes">
             ${themes.map(th => `<div class="color-scheme-card ${currentTheme === th.id ? 'active' : ''}" onclick="applyTheme('${th.id}');document.querySelectorAll('.color-scheme-card').forEach(c=>c.classList.remove('active'));this.classList.add('active')">
-                <div style="font-size:28px;margin-bottom:6px">${th.icon}</div>
+                <div class="theme-card-icon">${bi(th.icon)}</div>
                 <div class="color-scheme-name">${t(th.nameKey)}</div>
             </div>`).join('')}
         </div>
@@ -3781,17 +2332,17 @@ function updateSetting(key, value) {
     if (el && el.type === 'range') {
         const rv = document.getElementById('rv_' + key) || el.parentElement?.querySelector('.range-value');
         if (rv) {
-            if (key === 'spinDuration' || key === 'popupDuration') rv.textContent = value / 1000 + 'с';
+            if (key === 'spinDuration' || key === 'popupDuration') rv.textContent = value / 1000 + t('unit.s');
             else if (key === 'soundVolume') rv.textContent = Math.round(value * 100) + '%';
             else if (key === 'wheelSize' || key === 'fontSize') rv.textContent = value + 'px';
             else if (key === 'bonusRoundChance') rv.textContent = value + '%';
-            else if (key === 'announceDelay') rv.textContent = value + 'мс';
+            else if (key === 'announceDelay') rv.textContent = value + t('unit.ms');
             else rv.textContent = value;
         }
     }
     if (key === 'wheelSize') {
         const cv = document.getElementById('rouletteWheel');
-        if (cv) { cv.width = Number(value); cv.height = Number(value); renderWheel() }
+        if (cv) { cv.dataset.size = value; cv.style.width = 'min(100%, ' + value + 'px)'; renderWheel() }
     }
 }
 function saveBlacklist() {
@@ -3803,7 +2354,7 @@ function saveBlacklist() {
 function applySettings() { saveSettings(); updateWheelSegments(); renderWheel(); showNotification(t('settings.applied'), 'success') }
 function resetSettings() {
     showConfirmModal(t('settings.reset_confirm'), t('settings.reset_msg'), t('common.reset'), t('common.cancel'), () => {
-        rouletteSettings = { spinDuration: 5000, minSpins: 5, maxSpins: 10, soundEnabled: true, soundVolume: 0.5, tickSoundEnabled: true, winSoundEnabled: true, spinSoundType: 'whoosh', visualEffects: true, highlightWinner: true, shakeEffect: true, glowEffect: true, particleEffect: true, particleCount: 30, particleStyle: 'circle', wheelSize: 420, fontSize: 12, groupSegments: true, maxSegments: 14, colorScheme: 'default', borderStyle: 'glow', centerIcon: '🎲', pointerStyle: 'arrow', wheelAnimation: 'ease', resultDisplay: 'both', autoClosePopup: true, popupDuration: 6000, showPlayerOnWheel: false, announceDelay: 0, overlayPosition: 'top-left', chromaKey: false, bonusRoundEnabled: false, bonusRoundChance: 10, weightedSegments: false, blacklistEnabled: false, blacklistTasks: [], removeAfterSpin: false };
+        rouletteSettings = JSON.parse(JSON.stringify(ROULETTE_DEFAULTS));
         saveSettings(); switchTab('settings'); showNotification(t('settings.reset_done'), 'success');
     });
 }
@@ -3918,7 +2469,7 @@ function exportData() {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     a.download = `challenge-hub-v3-${Date.now()}.json`; a.click();
-    showNotification('📤 ' + t('common.export'), 'success');
+    showNotification(biChar('box-arrow-up') + ' ' + t('common.export'), 'success');
 }
 function importData() {
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
@@ -3959,7 +2510,7 @@ function importData() {
                     )];
                 });
                 // Mode and Theme — only valid values
-                const safeModes = ['full', 'game-first', 'player-only', 'task-only'];
+                const safeModes = ['full', 'game-first', 'player-only', 'task-only', 'game-only'];
                 if (d.rouletteMode && safeModes.includes(d.rouletteMode)) {
                     rouletteMode = d.rouletteMode;
                 }
@@ -3980,7 +2531,7 @@ function importData() {
 }
 function exportResults() {
     if (!gameFirstState.selectedGame) { showNotification(t('notif.results_none'), 'warning'); return }
-    let text = `🎮 RANDOM CHALLENGE HUB v3.0\n${'─'.repeat(40)}\n${t('roulette.selected_game')}: ${gameFirstState.selectedGame}\n${new Date().toLocaleString()}\n${'─'.repeat(40)}\n📋 ${t('roulette.result_task').toUpperCase()}:\n`;
+    let text = `RANDOM CHALLENGE HUB v4.0\n${'─'.repeat(40)}\n${t('roulette.selected_game')}: ${gameFirstState.selectedGame}\n${new Date().toLocaleString()}\n${'─'.repeat(40)}\n${t('roulette.result_task').toUpperCase()}:\n`;
     Object.entries(gameFirstState.assignedTasks).forEach(([p, task], i) => { text += `${i + 1}. ${p} → ${task}\n` });
     text += `${'─'.repeat(40)}\n${Object.keys(gameFirstState.assignedTasks).length} / ${players.length}\n`;
     const a = document.createElement('a');

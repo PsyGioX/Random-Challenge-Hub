@@ -62,6 +62,8 @@
           vars[k] !== undefined ? vars[k] : `{${k}}`
         );
       }
+      // {bi:name} → Bootstrap Icons glyph (see js/icons.js)
+      if (typeof str === 'string' && str.indexOf('{bi:') > -1) str = global.biTokens ? global.biTokens(str) : str.replace(/\{bi:[a-z0-9-]+\}\s?/g, '');
       return str;
     },
 
@@ -189,7 +191,7 @@
         container.appendChild(btn);
       });
 
-      document.body.appendChild(container);
+      (document.getElementById('langSlot') || document.body).appendChild(container);
       this._injectSwitcherStyles();
     },
 
@@ -203,46 +205,10 @@
       if (document.getElementById('rchLangSwitcherStyles')) return;
       const s = document.createElement('style');
       s.id = 'rchLangSwitcherStyles';
-      s.textContent = `
-        .rch-lang-switcher {
-          position: fixed;
-          bottom: 80px;
-          right: 20px;
-          z-index: 9998;
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          align-items: center;
-        }
-        .rch-lang-btn {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          border: 2px solid rgba(99,102,241,0.35);
-          background: rgb(23, 0, 67);
-          color: #fff;
-          backdrop-filter: blur(10px);
-          cursor: pointer;
-          font-size: 18px;
-          line-height: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-          padding: 0;
-        }
-        .rch-lang-btn:hover {
-          transform: scale(1.15);
-          border-color: rgba(99,102,241,0.8);
-          box-shadow: 0 0 12px rgba(99,102,241,0.4);
-        }
-        .rch-lang-btn.active {
-          border-color: #6366f1;
-          box-shadow: 0 0 14px rgba(99,102,241,0.6);
-          transform: scale(1.08);
-        }
-      `;
+      // Base look lives in style.css (.rch-lang-switcher); this only covers pages without it.
+      s.textContent = `.rch-lang-switcher{display:flex;gap:4px;align-items:center}
+        .rch-lang-btn{min-width:32px;height:32px;padding:0 6px;border-radius:8px;border:1px solid rgba(128,128,128,.4);background:transparent;color:inherit;cursor:pointer;font:600 12px system-ui}
+        .rch-lang-btn.active{background:rgba(128,128,128,.25)}`;
       document.head.appendChild(s);
     },
 

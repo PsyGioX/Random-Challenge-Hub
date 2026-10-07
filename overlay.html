@@ -7,11 +7,18 @@
     <meta name="description" content="Random Challenge Hub OBS overlay — Browser Source for streams.">
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="favicon/favicon.png">
+    <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link rel="stylesheet" href="style.css">
+    <script src="js/icons.js"></script>
     <!-- i18n: load translation files BEFORE i18n.js -->
     <script src="i18n/en.js"></script>
     <script src="i18n/ru.js"></script>
     <script src="i18n/uk.js"></script>
+    <script src="i18n/ext.en.js"></script>
+    <script src="i18n/ext.ru.js"></script>
+    <script src="i18n/ext.uk.js"></script>
+    <script src="js/bus.js"></script>
+    <script src="js/wheel.js"></script>
     <!-- Community translations: add <script src="i18n/xx.js"></script> here -->
     <script src="i18n/i18n.js"></script>
     <style>
@@ -20,7 +27,7 @@
             width: 100vw; height: 100vh;
             overflow: hidden;
             background: transparent;
-            font-family: 'Inter', system-ui, sans-serif;
+            font-family: 'Inter', system-ui, sans-serif, bootstrap-icons;
         }
         body.chromakey { background: #00ff00 !important }
 
@@ -104,7 +111,7 @@
         }
         .ow-logo { font-size: 18px }
         .ow-title {
-            font-family: 'Orbitron','Inter',sans-serif;
+            font-family: 'Orbitron','Inter',sans-serif, bootstrap-icons;
             font-size: 10px; font-weight: 700; letter-spacing: 2px;
             color: var(--accent-primary, #818cf8); text-transform: uppercase; flex: 1;
         }
@@ -141,7 +148,7 @@
         .ow-vote-fill { height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); border-radius:3px; transition:width 0.5s ease }
         .ow-vote-name { font-size:11px; color:rgba(255,255,255,0.7); min-width:80px; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
         .ow-vote-count { font-size:10px; color:rgba(255,255,255,0.4); min-width:28px; text-align:right }
-        .ow-vote-timer { font-family:'Orbitron',sans-serif; font-size:20px; font-weight:900; text-align:center; color:#fbbf24; margin:6px 0 }
+        .ow-vote-timer { font-family:'Orbitron',sans-serif, bootstrap-icons; font-size:20px; font-weight:900; text-align:center; color:#fbbf24; margin:6px 0 }
         .ow-vote-timer.urgent { color:#f85149; animation:timerPulse 0.5s infinite }
         @keyframes timerPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
 
@@ -220,6 +227,41 @@
         }
         .snap-guide.h { left:0; right:0; height:1px }
         .snap-guide.v { top:0; bottom:0; width:1px }
+
+        .rch-lang-switcher { display: none !important }
+        /* ── AUCTION ── */
+        #auctionWidget { top: 18px; left: 18px; min-width: 300px; max-width: 380px }
+        .au-ov-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin: 20px 0 8px }
+        .au-ov-title { font-weight: 800; font-size: 15px; color: #fff; line-height: 1.2 }
+        .au-ov-clock { font: 800 26px/1 'Unbounded', 'Onest', sans-serif; font-variant-numeric: tabular-nums; color: var(--accent-primary,#ffb938) }
+        .au-ov-clock.urgent { color: #ff4d5e; animation: pulseUrgent .6s infinite alternate }
+        @keyframes pulseUrgent { to { opacity: .55 } }
+        .au-ov-lot { display:grid; grid-template-columns: 22px 1fr auto; gap: 2px 8px; align-items:center; margin: 7px 0; color:#e6edf3; font-size: 13px }
+        .au-ov-num { color: rgba(255,255,255,.55); font-weight: 700 }
+        .au-ov-name { font-weight: 700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+        .au-ov-sum { font-weight: 800; font-variant-numeric: tabular-nums }
+        .au-ov-bar { grid-column: 2 / 4; height: 5px; border-radius: 3px; background: rgba(255,255,255,.1); overflow:hidden }
+        .au-ov-bar { position:relative; height: 14px !important; border-radius: 7px !important }
+        .au-ov-fill { height:100%; background: var(--c,#ffb938); transition: width .5s ease; border-radius: 7px }
+        .au-ov-pct { position:absolute; right:6px; top:50%; transform:translateY(-50%); font: 700 10px/1 system-ui, sans-serif; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.8) }
+        .au-ov-lot.lead .au-ov-name { color: var(--c,#ffb938) }
+        .au-ov-foot { margin-top: 8px; font-size: 11px; color: rgba(255,255,255,.55) }
+        .au-ov-win { text-align:center; padding: 6px 0 2px }
+        .au-ov-win b { display:block; font-size: 20px; color: var(--accent-primary,#ffb938); margin: 4px 0 }
+        /* ── ALERTS ── */
+        #alertStack { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:none; width: min(520px, 94vw) }
+        .ow-alert { width:100%; background: rgba(13,17,23,.94); border: 2px solid var(--accent-primary,#6366f1); border-radius: 16px; padding: 12px 16px; color:#fff; box-shadow: 0 8px 28px rgba(0,0,0,.6); animation: alertIn .45s cubic-bezier(.34,1.56,.64,1) }
+        .ow-alert.out { animation: alertOut .35s ease forwards }
+        .ow-alert-head { display:flex; gap:8px; align-items:baseline; font-weight:800; font-size:17px }
+        .ow-alert-amt { margin-left:auto; color: var(--accent-primary,#ffb938); font-variant-numeric: tabular-nums }
+        .ow-alert-text { margin-top:4px; font-size:14px; color: rgba(255,255,255,.85); overflow-wrap:anywhere }
+        @keyframes alertIn { from { opacity:0; transform: translateY(-24px) scale(.9) } }
+        @keyframes alertOut { to { opacity:0; transform: translateY(-16px) scale(.95) } }
+        /* ── WHEEL REPLAY ── */
+        #wheelWidget { top: 50%; left: 50%; transform: translate(-50%,-50%); min-width: 0; max-width: none; padding: 16px; text-align:center }
+        #wheelWidget canvas { width: min(62vmin, 460px); height: auto; aspect-ratio: 1; display:block; margin: 6px auto }
+        .ow-wheel-pointer { font-size: 28px; line-height: 1; color: var(--accent-primary,#ffb938); margin-bottom: -10px; position: relative; z-index: 2; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)) }
+        .ow-wheel-winner { font-weight: 800; font-size: 20px; color:#fff; min-height: 26px }
     </style>
 </head>
 <body>
@@ -232,11 +274,11 @@
         <!-- RESULT WIDGET -->
         <div class="overlay-widget" id="resultWidget" style="top:18px;left:18px">
             <div class="widget-drag-handle">
-                <span class="widget-close-btn" onclick="hideWidget('resultWidget')">✕</span>
-                <span class="widget-drag-dots">⋮⋮⋮</span>
+                <span class="widget-close-btn" onclick="hideWidget('resultWidget')"><i class="bi bi-x-lg" aria-hidden="true"></i></span>
+                <span class="widget-drag-dots"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i><i class="bi bi-three-dots-vertical" aria-hidden="true"></i><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></span>
             </div>
             <div class="ow-header">
-                <span class="ow-logo">🎲</span>
+                <span class="ow-logo"><i class="bi bi-dice-3-fill" aria-hidden="true"></i></span>
                 <span class="ow-title" data-i18n="overlay.title">Random Challenge Hub</span>
                 <span class="ow-live-dot"></span>
             </div>
@@ -260,7 +302,7 @@
             </div>
             <div id="owWinner" style="display:none">
                 <div class="ow-winner">
-                    <span class="ow-winner-emoji">🏆</span>
+                    <span class="ow-winner-emoji"><i class="bi bi-trophy-fill" aria-hidden="true"></i></span>
                     <div class="ow-winner-label" data-i18n="overlay.winner_label"></div>
                     <div class="ow-winner-name" id="owWinnerName"></div>
                     <div class="ow-winner-from" id="owWinnerFrom"></div>
@@ -271,11 +313,11 @@
         <!-- CHAT WIDGET -->
         <div class="overlay-widget chat-widget" id="chatWidget" style="bottom:80px;right:18px;top:auto;left:auto;display:none">
             <div class="widget-drag-handle">
-                <span class="widget-close-btn" onclick="hideWidget('chatWidget')">✕</span>
-                <span class="widget-drag-dots">⋮⋮⋮</span>
+                <span class="widget-close-btn" onclick="hideWidget('chatWidget')"><i class="bi bi-x-lg" aria-hidden="true"></i></span>
+                <span class="widget-drag-dots"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i><i class="bi bi-three-dots-vertical" aria-hidden="true"></i><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></span>
             </div>
             <div class="ow-header">
-                <span class="ow-logo">💬</span>
+                <span class="ow-logo"><i class="bi bi-chat-dots-fill" aria-hidden="true"></i></span>
                 <span class="ow-title" data-i18n="overlay.chat_title">Live Chat</span>
                 <span class="ow-live-dot" id="chatLiveDot" style="display:none"></span>
             </div>
@@ -287,11 +329,11 @@
         <!-- TIMER WIDGET -->
         <div class="overlay-widget" id="timerWidget" style="top:18px;right:18px;left:auto;min-width:200px;max-width:240px;display:none">
             <div class="widget-drag-handle">
-                <span class="widget-close-btn" onclick="hideWidget('timerWidget')">✕</span>
-                <span class="widget-drag-dots">⋮⋮⋮</span>
+                <span class="widget-close-btn" onclick="hideWidget('timerWidget')"><i class="bi bi-x-lg" aria-hidden="true"></i></span>
+                <span class="widget-drag-dots"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i><i class="bi bi-three-dots-vertical" aria-hidden="true"></i><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></span>
             </div>
             <div class="ow-header">
-                <span class="ow-logo">⏱️</span>
+                <span class="ow-logo"><i class="bi bi-stopwatch-fill" aria-hidden="true"></i></span>
                 <span class="ow-title" data-i18n="overlay.timer_title"></span>
                 <span class="ow-live-dot" id="timerLiveDot" style="display:none"></span>
             </div>
@@ -299,6 +341,25 @@
             <div class="ow-timer-bar"><div class="ow-timer-bar-fill" id="owTimerFill" style="width:100%"></div></div>
             <div class="ow-timer-status" id="owTimerStatus" data-i18n="overlay.timer_waiting"></div>
         </div>
+
+        <!-- AUCTION WIDGET -->
+        <div class="overlay-widget" id="auctionWidget" style="display:none">
+            <div class="widget-drag-handle"><span class="widget-close-btn" onclick="hideWidget('auctionWidget')"><i class="bi bi-x-lg" aria-hidden="true"></i></span><span class="widget-drag-dots"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i><i class="bi bi-three-dots-vertical" aria-hidden="true"></i><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></span></div>
+            <div class="ow-header"><span class="ow-logo"><i class="bi bi-hammer" aria-hidden="true"></i></span><span class="ow-title" data-i18n="ov.auction">AUCTION</span><span class="ow-live-dot" id="auLiveDot" style="display:none"></span></div>
+            <div class="au-ov-head"><div class="au-ov-title" id="auOvTitle"></div><div class="au-ov-clock" id="auOvClock">00:00</div></div>
+            <div id="auOvLots"></div>
+            <div class="au-ov-foot" id="auOvFoot"></div>
+        </div>
+
+        <!-- WHEEL REPLAY -->
+        <div class="overlay-widget" id="wheelWidget" style="display:none">
+            <div class="ow-header" style="margin-top:4px"><span class="ow-logo"><i class="bi bi-pie-chart-fill" aria-hidden="true"></i></span><span class="ow-title" id="owWheelTitle"></span></div>
+            <div class="ow-wheel-pointer"><i class="bi bi-caret-down-fill" aria-hidden="true"></i></div><canvas id="owWheelCanvas" width="460" height="460"></canvas>
+            <div class="ow-wheel-winner" id="owWheelWinner"></div>
+        </div>
+
+        <!-- ALERTS -->
+        <div id="alertStack" aria-live="polite"></div>
 
     </div>
 
@@ -311,6 +372,7 @@
         <button class="ow-ctrl-btn" onclick="showIdle()" data-i18n="overlay.btn_idle"></button>
         <button class="ow-ctrl-btn" onclick="toggleWidget('chatWidget')" data-i18n="overlay.btn_chat"></button>
         <button class="ow-ctrl-btn" onclick="toggleWidget('timerWidget')" data-i18n="overlay.btn_timer"></button>
+        <button class="ow-ctrl-btn" onclick="toggleWidget('auctionWidget')" data-i18n="ov.auction"></button>
         <button class="ow-ctrl-btn" onclick="toggleTheme()" data-i18n="overlay.btn_theme"></button>
         <button class="ow-ctrl-btn" onclick="toggleChroma()" data-i18n="overlay.btn_chroma"></button>
         <button class="ow-ctrl-btn" onclick="resetWidgetPositions()" data-i18n="overlay.btn_reset_pos"></button>
@@ -328,6 +390,7 @@ let themeIdx    = 0;
 let chromaOn    = false;
 let countdownTimer = null;
 let voteTimerInt   = null;
+let ONLY = null;   // widgets selected via ?only=
 
 // ── INIT ──────────────────────────────────────────
 (function init() {
@@ -348,7 +411,8 @@ let voteTimerInt   = null;
     }
 
     window.addEventListener('message', handleMessage);
-    startPolling();
+    applyOnly(p.get('only'));
+    startBus();
 
     // Drag & drop
     initDrag();
@@ -470,30 +534,17 @@ function runVoteTimer(sec, options) {
     if (voteTimerInt) clearInterval(voteTimerInt);
     let s = sec;
     const el = document.getElementById('owVoteTimer');
-    if (el) { el.textContent=s+'с'; el.className='ow-vote-timer' }
+    if (el) { el.textContent=s+t('unit.s'); el.className='ow-vote-timer' }
 
     voteTimerInt = setInterval(() => {
         s--;
-        if (el) { el.textContent=s+'с'; el.className='ow-vote-timer'+(s<=5?' urgent':'') }
-
-        // Sync real votes from localStorage
-        try {
-            const sd = JSON.parse(localStorage.getItem('streamerState')||'{}');
-            if (sd.voteActive && sd.voteVotes && options) {
-                const votes = sd.voteVotes;
-                const total = Object.values(votes).reduce((a,v)=>a+(v.count||0),0)||1;
-                options.forEach((o,i)=>{
-                    const c=(votes[i+1]?.count)||0;
-                    updateVoteOption(i, Math.round(c/total*100), c);
-                });
-            }
-        } catch(e){}
+        if (el) { el.textContent=s+t('unit.s'); el.className='ow-vote-timer'+(s<=5?' urgent':'') }
 
         if (s <= 0) {
             clearInterval(voteTimerInt);
             if (options?.length) {
                 const w = options.reduce((mx,o)=>(o.count||0)>(mx.count||0)?o:mx, options[0]);
-                setTimeout(()=>showWinner(w.name||w, `Победил в голосовании с ${w.count||0} голосами`), 800);
+                setTimeout(()=>showWinner(w.name||w, t('streamer.vote_from', { n: w.count||0 })), 800);
             }
         }
     }, 1000);
@@ -509,31 +560,127 @@ function handleMessage(e) {
     if (d.type==='theme')  applyTheme(d.theme);
 }
 
-// ── POLLING ───────────────────────────────────────
-let _lastOverlay = null;
-let _lastChat    = null;
+// ── LIVE DATA (RCHBus: BroadcastChannel + localStorage) ──
+function applyOnly(list) {
+    if (!list) return;
+    ONLY = list.split(',').map(x => x.trim());
+    const map = { result: 'resultWidget', timer: 'timerWidget', chat: 'chatWidget', auction: 'auctionWidget', wheel: 'wheelWidget' };
+    Object.entries(map).forEach(([k, id]) => { const w = document.getElementById(id); if (w && !ONLY.includes(k)) w.dataset.off = '1'; });
+    ['timer', 'chat'].forEach(k => { if (ONLY.includes(k)) showWidget(map[k]); });
+    document.body.classList.add('only-mode');
+}
+const allowed = id => !document.getElementById(id)?.dataset.off;
 
-function startPolling() {
-    setInterval(() => {
-        try {
-            // overlayState — результаты, голосование, победитель
-            const raw = localStorage.getItem('overlayState');
-            if (raw && raw !== _lastOverlay) {
-                _lastOverlay = raw;
-                const s = JSON.parse(raw);
-                if (s.type==='result') showResult(s.game, s.player, s.task, s.duration);
-                if (s.type==='vote')   showVote(s.options, s.timer, s.title||'');
-                if (s.type==='winner') showWinner(s.name, s.from);
-                if (s.type==='idle')   showIdle();
-            }
-            // overlayChatData 
-            const cr = localStorage.getItem('overlayChatData');
-            if (cr && cr !== _lastChat) { _lastChat=cr; updateChatWidget(JSON.parse(cr)) }
-            // overlayTimer 
-            const tr = localStorage.getItem('overlayTimer');
-            if (tr) { try { updateTimerWidget(JSON.parse(tr)) } catch(e){} }
-        } catch(e){}
-    }, 500);
+function startBus() {
+    RCHBus.subscribe('overlayState', s => {
+        if (!allowed('resultWidget')) return;
+        if (s.type === 'result') showResult(s.game, s.player, s.task, s.duration);
+        if (s.type === 'winner') showWinner(s.name, s.from);
+        if (s.type === 'idle') showIdle();
+    });
+    RCHBus.subscribe('overlayVote', v => allowed('resultWidget') && applyVote(v));
+    RCHBus.subscribe('overlayChatData', d => allowed('chatWidget') && updateChatWidget(d), { replay: true });
+    RCHBus.subscribe('overlayTimer', d => { if (allowed('timerWidget')) { timerSnap = d; updateTimerWidget(liveTimer(d)); } }, { replay: true });
+    RCHBus.subscribe('overlayAuction', a => allowed('auctionWidget') && applyAuction(a), { replay: true });
+    RCHBus.subscribe('overlayAlert', a => (!ONLY || ONLY.includes('alerts')) && pushAlert(a));
+    RCHBus.subscribe('overlayWheel', w => allowed('wheelWidget') && playWheel(w));
+    // timer ticks locally between updates
+    setInterval(() => { if (timerSnap && timerSnap.running) updateTimerWidget(liveTimer(timerSnap)); }, 250);
+    setInterval(tickAuctionClock, 250);
+}
+let timerSnap = null;
+function liveTimer(d) {
+    if (!d.running || !d.endsAt) return d;
+    return Object.assign({}, d, { seconds: Math.max(0, Math.ceil((d.endsAt - Date.now()) / 1000)) });
+}
+
+// ── LIVE VOTE ─────────────────────────────────────
+let _voteSig = '', _voteEnds = 0;
+function applyVote(v) {
+    if (!v || !v.active) { if (document.getElementById('owVote').style.display !== 'none') _voteEnds = 0; return; }
+    const total = v.options.reduce((s, o) => s + o.count, 0) || 1;
+    const opts = v.options.map(o => Object.assign({}, o, { pct: Math.round(o.count / total * 100) }));
+    const sig = v.options.map(o => o.name).join('|') + v.title;
+    if (sig !== _voteSig) {
+        _voteSig = sig;
+        _h('owIdle'); _h('owResult'); _h('owWinner'); _s('owVote');
+        const tp = document.getElementById('owVoteTopic'); tp.textContent = v.title || ''; tp.style.display = v.title ? '' : 'none';
+        renderVoteOptions(opts);
+    } else opts.forEach((o, i) => updateVoteOption(i, o.pct, o.count));
+    _voteEnds = v.endsAt;
+    if (!applyVote.t) applyVote.t = setInterval(() => {
+        const el = document.getElementById('owVoteTimer'); if (!el) return;
+        const left = Math.max(0, Math.ceil((_voteEnds - Date.now()) / 1000));
+        el.textContent = left + t('unit.s'); el.className = 'ow-vote-timer' + (left <= 5 ? ' urgent' : '');
+        if (!_voteEnds || left <= 0) { clearInterval(applyVote.t); applyVote.t = 0; _voteSig = ''; }
+    }, 250);
+}
+
+// ── AUCTION ───────────────────────────────────────
+let _au = null;
+function applyAuction(a) {
+    _au = a; _auAt = Date.now();
+    const w = document.getElementById('auctionWidget'); if (!w) return;
+    const visible = a.status !== 'idle' || (ONLY && ONLY.includes('auction'));
+    w.style.display = visible && a.status !== 'idle' ? '' : 'none';
+    document.getElementById('auLiveDot').style.display = a.status === 'running' ? '' : 'none';
+    document.getElementById('auOvTitle').textContent = a.title || t('ov.auction');
+    const max = Math.max(1, ...a.lots.map(l => l.total));
+    const cur = a.currency || '';
+    if (a.winner) {
+        document.getElementById('auOvLots').innerHTML = `<div class="au-ov-win"><span style="font-size:34px"><i class="bi bi-trophy-fill"></i></span><b>${esc(a.winner.name)}</b><div>${fmtN(a.winner.total)} ${esc(cur)}</div></div>`;
+    } else {
+        document.getElementById('auOvLots').innerHTML = a.lots.slice(0, 7).map((l, i) =>
+            `<div class="au-ov-lot ${i === 0 && l.total > 0 ? 'lead' : ''}" style="--c:${esc(l.color || '#ffb938')}"><span class="au-ov-num">#${l.num}</span><span class="au-ov-name">${esc(l.name)}</span>
+             <span class="au-ov-sum">${fmtN(l.total)} ${esc(cur)}</span><div class="au-ov-bar"><div class="au-ov-fill" style="width:${Math.max(2, Math.round(l.pct || (l.total / max * 100)))}%"></div><span class="au-ov-pct">${Math.round(l.pct || 0)}%</span></div></div>`).join('');
+    }
+    const r = a.recent && a.recent[0];
+    document.getElementById('auOvFoot').textContent = `${t('ov.total')}: ${fmtN(a.sum)} ${cur}` + (r ? ` · ${r.user} +${fmtN(r.amount)}` : '');
+    tickAuctionClock();
+}
+let _auAt = 0;
+function tickAuctionClock() {
+    if (!_au) return;
+    const el = document.getElementById('auOvClock'); if (!el) return;
+    let ms = _au.status === 'running' ? Math.max(0, _au.endsAt - Date.now()) : _au.remainingMs;
+    if (_au.status === 'finished' || _au.status === 'finishing') ms = 0;
+    const s = Math.ceil(ms / 1000), p = n => String(n).padStart(2, '0');
+    el.textContent = `${p(Math.floor(s / 60))}:${p(s % 60)}`;
+    el.classList.toggle('urgent', _au.status === 'running' && s <= 15);
+}
+const fmtN = n => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+// ── ALERTS ────────────────────────────────────────
+const _alertSeen = new Set();
+function pushAlert(a) {
+    if (!a || _alertSeen.has(a.id)) return; _alertSeen.add(a.id);
+    const stack = document.getElementById('alertStack');
+    while (stack.children.length >= 3) stack.firstChild.remove();
+    const el = document.createElement('div'); el.className = 'ow-alert';
+    const icon = a.kind === 'bid' ? bi('hammer') : bi('cash-coin');
+    el.innerHTML = `<div class="ow-alert-head"><span>${icon}</span><span>${esc(a.user)}</span><span class="ow-alert-amt">${fmtN(a.amount)} ${esc(a.currency || '')}</span></div>` +
+        (a.kind === 'bid' ? `<div class="ow-alert-text">${t('ov.bid_on')} #${a.num} ${esc(a.lot)}</div>` : (a.text ? `<div class="ow-alert-text">${esc(a.text)}</div>` : ''));
+    stack.appendChild(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, a.kind === 'bid' ? 4000 : 7000);
+}
+
+// ── WHEEL REPLAY ──────────────────────────────────
+let _wheelId = '', _wheelRun = null;
+function playWheel(w) {
+    if (!w || w.id === _wheelId) return; _wheelId = w.id;
+    if (_wheelRun) _wheelRun.cancel();
+    const widget = document.getElementById('wheelWidget'), canvas = document.getElementById('owWheelCanvas');
+    document.getElementById('owWheelTitle').textContent = w.title || '';
+    document.getElementById('owWheelWinner').textContent = '';
+    widget.style.display = 'block';
+    _wheelRun = RCHWheel.spin({
+        canvas, segs: w.segs, startAngle: w.startAngle || 0, total: w.total, duration: w.duration || 5000,
+        drawOpts: { size: 460, fontSize: 15 },
+        onDone: () => {
+            document.getElementById('owWheelWinner').textContent = biChar('trophy-fill') + ' ' + (w.winner || '');
+            setTimeout(() => { if (_wheelId === w.id) widget.style.display = 'none'; }, 6500);
+        },
+    });
 }
 
 // ── CHAT WIDGET ───────────────────────────────────
@@ -544,13 +691,13 @@ function updateChatWidget(data) {
     if (dot) dot.style.display = data?.connected ? '' : 'none';
 
     if (!data?.connected || !data?.messages?.length) {
-        msgs.innerHTML = `<div class="chat-placeholder">${data?.connected ? 'Ожидание сообщений...' : 'Чат не подключён'}</div>`;
+        msgs.innerHTML = `<div class="chat-placeholder">${data?.connected ? t('streamer.chat_waiting') : t('streamer.chat_connect_first')}</div>`;
         return;
     }
 
     msgs.innerHTML = data.messages.slice(-20).map(m => {
         const badge = m.badge ? `<span class="chat-badge ${m.badge}">${
-            m.badge==='broadcaster'?'СТРИМ':m.badge==='mod'?'МОД':m.badge==='sub'?'SUB':m.badge.toUpperCase()
+            m.badge.toUpperCase()
         }</span>` : '';
         return `<div class="chat-message">${badge}<span class="chat-user" style="color:${m.color||'#818cf8'}">${esc(m.user)}:</span><span class="chat-text">${esc(m.text)}</span></div>`;
     }).join('');
@@ -569,22 +716,22 @@ function updateTimerWidget(data) {
     const dot    = document.getElementById('timerLiveDot');
     if (!val) return;
 
-    const t   = data.seconds || 0;
+    const tt   = data.seconds || 0;
     const ini = data.initial || 0;
-    const m   = Math.floor(t / 60);
-    const s   = t % 60;
-    const pct = ini > 0 ? Math.round((t / ini) * 100) : 0;
+    const m   = Math.floor(tt / 60);
+    const s   = tt % 60;
+    const pct = ini > 0 ? Math.round((tt / ini) * 100) : 0;
 
     val.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 
     // 
-    const cls = t <= 10 && t > 0 ? 'danger' : t <= 30 && t > 0 ? 'warning' : '';
+    const cls = tt <= 10 && tt > 0 ? 'danger' : tt <= 30 && tt > 0 ? 'warning' : '';
     val.className   = 'ow-timer-value'   + (cls ? ' '+cls : '');
     if (fill) {
         fill.style.width  = pct + '%';
         fill.className    = 'ow-timer-bar-fill' + (cls ? ' '+cls : '');
     }
-    if (status) status.textContent = data.running ? '▶ идёт отсчёт' : t > 0 ? '⏸ на паузе' : '— завершён';
+    if (status) status.textContent = data.running ? biChar('play-fill') + ' ' + window.t('streamer.timer_start') : tt > 0 ? biChar('pause-fill') + ' ' + window.t('streamer.timer_pause') : '— ' + window.t('streamer.timer_done');
     if (dot)    dot.style.display  = data.running ? '' : 'none';
 }
 

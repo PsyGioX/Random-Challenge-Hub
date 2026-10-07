@@ -83,7 +83,7 @@ window.RCH_TRANSLATIONS['uk'] = {
   // ── ABOUT SECTION ─────────────────────────────────────────
   'about.title':            'Random Challenge Hub v3',
   'about.description':      'Професійна платформа для створення випадкових ігрових випробувань. Ідеально підходить для стрімерів із OBS Overlay, геймерів із бонусними раундами та компаній друзів. Усе працює безпосередньо в браузері — без серверів, із повною конфіденційністю.',
-  'about.start_btn':        'ПОЧАТИ ✨',
+  'about.start_btn':        'ПОЧАТИ {bi:stars}',
   'feat.roulette_modes':    '4 режими рулетки з покращеною фізикою',
   'feat.obs_overlay':       'OBS Browser Source Overlay',
   'feat.chat_vote':         'Голосування в чаті та колесо глядачів',
@@ -92,17 +92,17 @@ window.RCH_TRANSLATIONS['uk'] = {
   'feat.bonus':             'Бонусні раунди та чорний список завдань',
 
   // ── INFO SECTION ──────────────────────────────────────────
-  'info.how_title':         '💡 Як користуватися?',
+  'info.how_title':         '{bi:lightbulb-fill} Як користуватися?',
   'info.step1':             'Додайте ігри та завдання на вкладці "Ігри"',
   'info.step2':             'Створіть список учасників на вкладці "Гравці"',
   'info.step3':             'Оберіть режим і запустіть колесо!',
   'info.step4':             'Для стрімів підключіть OBS Overlay через вкладку "Стрімер"',
-  'info.modes_title':       '🎮 Режими рулетки',
+  'info.modes_title':       '{bi:controller} Режими рулетки',
   'info.mode_full':         '<strong>Повний випадковий вибір</strong> — гра + завдання + гравець',
   'info.mode_game_first':   '<strong>Спочатку гра</strong> — вибір гри, потім завдання для всіх',
   'info.mode_player_only':  '<strong>Лише гравець</strong> — випадковий учасник',
   'info.mode_task_only':    '<strong>Лише завдання</strong> — випадкове завдання з гри',
-  'info.streamer_title':    '📡 Для стрімерів',
+  'info.streamer_title':    '{bi:broadcast} Для стрімерів',
   'info.obs_label':         'OBS Overlay',
   'info.obs_desc':          'Browser Source прямо у вашому стрімі',
   'info.vote_label':        'Голосування',
@@ -115,8 +115,8 @@ window.RCH_TRANSLATIONS['uk'] = {
   'footer.terms':           'Умови використання',
   'footer.disclaimer':      'Відмова від відповідальності',
   'footer.about':           'Про проєкт',
-  'footer.local_storage':   '🔒 Усі дані зберігаються локально у вашому браузері',
-  'footer.lang_progress':   '🌐 Прогрес перекладу',
+  'footer.local_storage':   '{bi:lock-fill} Усі дані зберігаються локально у вашому браузері',
+  'footer.lang_progress':   '{bi:globe2} Прогрес перекладу',
 
   // ── TABS ──────────────────────────────────────────────────
   'tab.games':              'Ігри',
@@ -127,9 +127,9 @@ window.RCH_TRANSLATIONS['uk'] = {
   'tab.settings':           'Налаштування',
 
   // ── GAMES TAB ─────────────────────────────────────────────
-  'games.add_game_title':   '➕ ДОДАТИ ГРУ',
-  'games.add_task_title':   '📋 ДОДАТИ ЗАВДАННЯ',
-  'games.list_title':       '🎮 ІГРИ ТА ЗАВДАННЯ',
+  'games.add_game_title':   '{bi:plus-lg} ДОДАТИ ГРУ',
+  'games.add_task_title':   '{bi:clipboard-check} ДОДАТИ ЗАВДАННЯ',
+  'games.list_title':       '{bi:controller} ІГРИ ТА ЗАВДАННЯ',
   'games.game_placeholder': 'Назва гри…',
   'games.task_placeholder': 'Опис завдання…',
   'games.quick_placeholder':'Швидке завдання…',
@@ -137,17 +137,17 @@ window.RCH_TRANSLATIONS['uk'] = {
   'games.task_number':      '№{n}',
   'games.empty_games':      'Ігор ще немає. Додайте першу!',
   'games.empty_tasks':      'Немає завдань',
-  'games.bulk_add':         '📝 Масове додавання',
-  'games.bulk_title':       '📝 Масове додавання завдань',
+  'games.bulk_add':         '{bi:pencil-square} Масове додавання',
+  'games.bulk_title':       '{bi:pencil-square} Масове додавання завдань',
   'games.bulk_hint':        'Одне завдання на рядок',
   'games.bulk_add_btn':     'ДОДАТИ',
   'games.games_badge':      '{g} ігор · {t} завдань',
-  'games.delete_game_title':'🗑️ Видалити гру',
+  'games.delete_game_title':'{bi:trash3} Видалити гру',
   'games.delete_game_msg':  'Видалити гру "{name}" та всі її завдання?',
-  'games.delete_task_title':'🗑️ Видалити завдання',
+  'games.delete_task_title':'{bi:trash3} Видалити завдання',
   'games.delete_task_msg':  'Видалити завдання "{name}"?',
-  'games.added':            '🎮 Гру "{name}" додано',
-  'games.task_added':       '✅ Завдання додано',
+  'games.added':            '{bi:controller} Гру "{name}" додано',
+  'games.task_added':       '{bi:check-circle-fill} Завдання додано',
   'games.game_exists':      'Така гра вже існує',
   'games.task_exists':      'Таке завдання вже існує',
   'games.no_game_selected': 'Оберіть гру',
@@ -155,26 +155,26 @@ window.RCH_TRANSLATIONS['uk'] = {
   'games.no_task_desc':     'Введіть опис завдання',
   'games.game_deleted':     'Гру "{name}" видалено',
   'games.task_deleted':     'Завдання видалено',
-  'games.bulk_added':       '✅ Додано {n} завдань до "{game}"',
-  'games.bulk_skipped':     '✅ Додано {n} завдань, пропущено {s} дублікатів',
+  'games.bulk_added':       '{bi:check-circle-fill} Додано {n} завдань до "{game}"',
+  'games.bulk_skipped':     '{bi:check-circle-fill} Додано {n} завдань, пропущено {s} дублікатів',
   'games.bulk_all_exist':   'Усі завдання вже існують',
   'games.bulk_select_hint': 'Оберіть гру та введіть завдання',
   'games.game_not_found':   'Гру не знайдено',
   'games.delete_btn':       'ВИДАЛИТИ',
 
   // ── PLAYERS TAB ───────────────────────────────────────────
-  'players.add_title':      '➕ ДОДАТИ ГРАВЦЯ',
-  'players.list_title':     '👥 СПИСОК ГРАВЦІВ',
+  'players.add_title':      '{bi:plus-lg} ДОДАТИ ГРАВЦЯ',
+  'players.list_title':     '{bi:people-fill} СПИСОК ГРАВЦІВ',
   'players.placeholder':    'Ім’я гравця…',
   'players.count_badge':    '{n} гравців',
   'players.empty':          'Гравців ще немає. Додайте першого!',
-  'players.added':          '👤 Гравця "{name}" додано',
+  'players.added':          '{bi:person-fill} Гравця "{name}" додано',
   'players.deleted':        'Гравця "{name}" видалено',
   'players.exists':         'Такий гравець уже існує',
   'players.no_name':        'Введіть ім’я гравця',
-  'players.stats_mini':     '🎮 {g} ігор · ✅ {t} завдань',
-  'players.clear_all':      '🗑️ Очистити список',
-  'players.reset_stats':    '📊 Скинути статистику',
+  'players.stats_mini':     '{bi:controller} {g} ігор · {bi:check-circle-fill} {t} завдань',
+  'players.clear_all':      '{bi:trash3} Очистити список',
+  'players.reset_stats':    '{bi:bar-chart-fill} Скинути статистику',
   'players.clear_confirm':  'Видалити ВСІХ гравців ({n})?',
   'players.reset_confirm':  'Скинути статистику всіх гравців?',
   'players.cleared':        'Список очищено',
@@ -184,7 +184,7 @@ window.RCH_TRANSLATIONS['uk'] = {
   'players.clear_btn':      'ОЧИСТИТИ',
 
     // ── ROULETTE TAB ──────────────────────────────────────────
-  'roulette.mode_label':    '🎲 РЕЖИМ РУЛЕТКИ',
+  'roulette.mode_label':    '{bi:dice-3-fill} РЕЖИМ РУЛЕТКИ',
   'roulette.mode_full':     'Повний випадковий вибір',
   'roulette.mode_full_desc':'Гра + Завдання + Гравець',
   'roulette.mode_game_first':'Спочатку гра',
@@ -202,23 +202,23 @@ window.RCH_TRANSLATIONS['uk'] = {
   'roulette.hint_task_only':'Для обраної гри та гравця випадково вибирається завдання',
   'roulette.hint_game_only':'Колесо обирає випадкову гру — без завдання та гравця',
 
-  'roulette.no_games_only': '⚠️ Додайте хоча б одну гру',
+  'roulette.no_games_only': '{bi:exclamation-triangle-fill} Додайте хоча б одну гру',
   'roulette.result_game_only':'Грати:',
-  'roulette.spin_btn':      '🎰 ОБЕРНУТИ КОЛЕСО',
+  'roulette.spin_btn':      '{bi:dice-5-fill} ОБЕРНУТИ КОЛЕСО',
   'roulette.spinning':      'Обертання…',
-  'roulette.ready':         '✅ Готово: {g} ігор, {t} завдань, {p} гравців',
-  'roulette.no_games':      '⚠️ Додайте ігри із завданнями',
-  'roulette.no_players':    '⚠️ Спочатку додайте гравців',
+  'roulette.ready':         '{bi:check-circle-fill} Готово: {g} ігор, {t} завдань, {p} гравців',
+  'roulette.no_games':      '{bi:exclamation-triangle-fill} Додайте ігри із завданнями',
+  'roulette.no_players':    '{bi:exclamation-triangle-fill} Спочатку додайте гравців',
 
   'roulette.result_game':   'Гра',
   'roulette.result_player': 'Гравець',
   'roulette.result_task':   'Завдання',
 
-  'roulette.spin_again':    '🔄 ОБЕРНУТИ ЩЕ РАЗ',
-  'roulette.all_results':   '📋 УСІ РЕЗУЛЬТАТИ',
+  'roulette.spin_again':    '{bi:arrow-repeat} ОБЕРНУТИ ЩЕ РАЗ',
+  'roulette.all_results':   '{bi:clipboard-check} УСІ РЕЗУЛЬТАТИ',
 
-  'roulette.mode_changed':  '🎲 Режим змінено',
-  'roulette.reset_mode':    '🔄 Скинути режим',
+  'roulette.mode_changed':  '{bi:dice-3-fill} Режим змінено',
+  'roulette.reset_mode':    '{bi:arrow-repeat} Скинути режим',
   'roulette.mode_reset':    'Режим скинуто',
 
   'roulette.add_players':   'Додайте гравців',
@@ -230,7 +230,7 @@ window.RCH_TRANSLATIONS['uk'] = {
   'roulette.all_assigned':  'Усі завдання розподілено!',
   'roulette.no_tasks_avail':'Немає ігор із завданнями',
 
-  'roulette.bonus_round':   '🎉 БОНУСНИЙ РАУНД! Подвійне обертання!',
+  'roulette.bonus_round':   '{bi:stars} БОНУСНИЙ РАУНД! Подвійне обертання!',
 
   'roulette.progress_label':'Прогрес',
   'roulette.selected_game': 'Обрана гра',
@@ -239,28 +239,28 @@ window.RCH_TRANSLATIONS['uk'] = {
   'roulette.assigned':      'Призначено: {n}',
   'roulette.assigned_count':'Призначено ({n})',
 
-  'roulette.done_notice':   '🎉 Усі завдання розподілено!',
+  'roulette.done_notice':   '{bi:stars} Усі завдання розподілено!',
   'roulette.done_players':  '{assigned} із {total} гравців',
 
-  'roulette.btn_results':   '📋 Результати',
-  'roulette.btn_reset':     '🔄 Почати спочатку',
+  'roulette.btn_results':   '{bi:clipboard-check} Результати',
+  'roulette.btn_reset':     '{bi:arrow-repeat} Почати спочатку',
 
-  'roulette.next_player':   '🔄 НАСТУПНИЙ: {name}',
+  'roulette.next_player':   '{bi:arrow-repeat} НАСТУПНИЙ: {name}',
 
-  'roulette.all_done_btn':  '✅ УСІ ЗАВДАННЯ РОЗПОДІЛЕНО',
-  'roulette.no_players_btn':'⚠️ ГРАВЦІВ НЕ ДОДАНО',
-  'roulette.select_game_btn':'📋 ОБЕРІТЬ ГРУ',
+  'roulette.all_done_btn':  '{bi:check-circle-fill} УСІ ЗАВДАННЯ РОЗПОДІЛЕНО',
+  'roulette.no_players_btn':'{bi:exclamation-triangle-fill} ГРАВЦІВ НЕ ДОДАНО',
+  'roulette.select_game_btn':'{bi:clipboard-check} ОБЕРІТЬ ГРУ',
 
-  'roulette.spinning_for':  '🎰 ОБЕРТАННЯ ДЛЯ: {name}',
+  'roulette.spinning_for':  '{bi:dice-5-fill} ОБЕРТАННЯ ДЛЯ: {name}',
 
-  'roulette.spent_reset_btn':'🗑️ Скинути завдання ({n} використано)',
-  'roulette.spent_reset_players':'🗑️ Скинути гравців ({n} використано)',
-  'roulette.spent_reset_games':'🗑️ Скинути ігри ({n} використано)',
+  'roulette.spent_reset_btn':'{bi:trash3} Скинути завдання ({n} використано)',
+  'roulette.spent_reset_players':'{bi:trash3} Скинути гравців ({n} використано)',
+  'roulette.spent_reset_games':'{bi:trash3} Скинути ігри ({n} використано)',
 
   'roulette.select_game_lbl':'Оберіть гру для завдань',
   'roulette.select_player_lbl':'Оберіть гравця',
 
-  'roulette.any_player':    '🎲 Випадково',
+  'roulette.any_player':    '{bi:dice-3-fill} Випадково',
   'roulette.any_player_desc':'Будь-який гравець',
 
   'roulette.specific_player':'Конкретний гравець',
@@ -272,9 +272,9 @@ window.RCH_TRANSLATIONS['uk'] = {
   'streamer.obs_title':     'OBS OVERLAY',
   'streamer.obs_desc':      'Додайте колесо в OBS як Browser Source',
   'streamer.obs_ready':     'Overlay готовий до використання',
-  'streamer.obs_open':      '🖥️ Відкрити Overlay',
-  'streamer.obs_chroma':    '🟢 Хромакей',
-  'streamer.obs_settings':  '⚙️ Налаштування',
+  'streamer.obs_open':      '{bi:display} Відкрити Overlay',
+  'streamer.obs_chroma':    '{bi:circle-fill} Хромакей',
+  'streamer.obs_settings':  '{bi:gear-fill} Налаштування',
   'streamer.obs_hint':      'В OBS: Джерела → Browser → вставте URL вище → 400×400 px',
 
   'streamer.vote_title':    'ГОЛОСУВАННЯ В ЧАТІ',
@@ -282,19 +282,19 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   'streamer.channel_placeholder': 'Назва Twitch-каналу…',
 
-  'streamer.connect_btn':   '🔌 Підключити',
-  'streamer.disconnect_btn':'✅ Відключити',
-  'streamer.connecting_btn':'⏳ Підключення…',
-  'streamer.error_btn':     '❌ Помилка — повторити',
+  'streamer.connect_btn':   '{bi:plug-fill} Підключити',
+  'streamer.disconnect_btn':'{bi:check-circle-fill} Відключити',
+  'streamer.connecting_btn':'{bi:hourglass-split} Підключення…',
+  'streamer.error_btn':     '{bi:x-circle-fill} Помилка — повторити',
 
-  'streamer.readonly_hint': '📖 Чат лише для читання (без надсилання повідомлень)',
+  'streamer.readonly_hint': '{bi:book-fill} Чат лише для читання (без надсилання повідомлень)',
 
   'streamer.status_reading':'Читання чату #{ch}',
-  'streamer.status_connecting':'⏳ Підключення до Twitch IRC…',
-  'streamer.status_error':  '❌ Не вдалося підключитися',
+  'streamer.status_connecting':'{bi:hourglass-split} Підключення до Twitch IRC…',
+  'streamer.status_error':  '{bi:x-circle-fill} Не вдалося підключитися',
   'streamer.status_idle':   'Введіть назву каналу та натисніть «Підключити»',
 
-  'streamer.cmd_hint_title':'💡 Команди модератора:',
+  'streamer.cmd_hint_title':'{bi:lightbulb-fill} Команди модератора:',
   'streamer.cmd_spin':      '!spin — обернути колесо',
   'streamer.cmd_vote':      '!vote — розпочати голосування',
   'streamer.cmd_timer':     '!timer N — встановити таймер на N хвилин',
@@ -308,14 +308,14 @@ window.RCH_TRANSLATIONS['uk'] = {
   'streamer.timer_min':     'Хв',
   'streamer.timer_sec':     'Сек',
 
-  'streamer.timer_set_btn': '⏱ Встановити',
-  'streamer.timer_start':   '▶️ Старт',
-  'streamer.timer_pause':   '⏸️ Пауза',
-  'streamer.timer_reset':   '🔄 Скинути',
+  'streamer.timer_set_btn': '{bi:stopwatch-fill} Встановити',
+  'streamer.timer_start':   '{bi:play-fill} Старт',
+  'streamer.timer_pause':   '{bi:pause-fill} Пауза',
+  'streamer.timer_reset':   '{bi:arrow-repeat} Скинути',
   'streamer.timer_add30':   '+30 с',
   'streamer.timer_add1m':   '+1 хв',
 
-  'streamer.timer_done':    '⏱️ Час вийшов!',
+  'streamer.timer_done':    '{bi:stopwatch-fill} Час вийшов!',
   'streamer.timer_set_first':'Спочатку встановіть час',
   'streamer.timer_added':   'Додано +{n} с',
 
@@ -324,20 +324,20 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   'streamer.sub_placeholder':'Ім’я глядача…',
   'streamer.sub_add_btn':   '+ Додати',
-  'streamer.sub_spin_btn':  '🎰 Обернути колесо',
-  'streamer.sub_all_chat':  '👥 Усі з чату',
-  'streamer.sub_clear':     '🗑️ Очистити',
+  'streamer.sub_spin_btn':  '{bi:dice-5-fill} Обернути колесо',
+  'streamer.sub_all_chat':  '{bi:people-fill} Усі з чату',
+  'streamer.sub_clear':     '{bi:trash3} Очистити',
 
-  'streamer.sub_added':     '💜 {name} додано до колеса',
+  'streamer.sub_added':     '{bi:heart-fill} {name} додано до колеса',
   'streamer.sub_cleared':   'Список підписників очищено',
   'streamer.sub_empty':     'Додайте глядачів…',
 
-  'streamer.sub_active_count':'💬 {n} активних у чаті',
+  'streamer.sub_active_count':'{bi:chat-dots-fill} {n} активних у чаті',
   'streamer.sub_no_viewers':'Спочатку додайте глядачів',
 
-  'streamer.sub_winner':    '🎉 Переможець: {name}!',
+  'streamer.sub_winner':    '{bi:stars} Переможець: {name}!',
   'streamer.sub_from':      'із {n} глядачів',
-  'streamer.sub_winner_title':'🎉 Переможця знайдено!',
+  'streamer.sub_winner_title':'{bi:stars} Переможця знайдено!',
 
   'streamer.quick_title':   'ШВИДКІ ДІЇ',
   'streamer.quick_desc':    'Гарячі команди для вашого стріму',
@@ -352,12 +352,12 @@ window.RCH_TRANSLATIONS['uk'] = {
   'streamer.quick_reset':   'Нова сесія',
 
     'streamer.chat_title':    'ЧАТ TWITCH',
-  'streamer.chat_online':   '🟢 #{ch} — онлайн',
+  'streamer.chat_online':   '{bi:circle-fill} #{ch} — онлайн',
   'streamer.chat_real_irc': 'Справжній Twitch IRC',
-  'streamer.chat_waiting':  '⏳ Очікування повідомлень чату…',
-  'streamer.chat_connect_first': '💬 Підключіть чат, щоб бачити повідомлення',
-  'streamer.chat_commands': '📝 Команди',
-  'streamer.chat_clear':    '🗑️ Очистити чат',
+  'streamer.chat_waiting':  '{bi:hourglass-split} Очікування повідомлень чату…',
+  'streamer.chat_connect_first': '{bi:chat-dots-fill} Підключіть чат, щоб бачити повідомлення',
+  'streamer.chat_commands': '{bi:pencil-square} Команди',
+  'streamer.chat_clear':    '{bi:trash3} Очистити чат',
   'streamer.chat_cleared':  'Чат очищено',
   'streamer.chat_most_active': 'Найактивніший: {name}',
 
@@ -370,74 +370,74 @@ window.RCH_TRANSLATIONS['uk'] = {
   'streamer.autospin_label':'Автообертання:',
   'streamer.autospin_hint': 'Автоматичний запуск по команді !spin',
 
-  'streamer.stats_btn':     '📊 Статистика',
-  'streamer.export_btn':    '📤 Експорт даних',
-  'streamer.reset_btn':     '🔄 Нова сесія',
+  'streamer.stats_btn':     '{bi:bar-chart-fill} Статистика',
+  'streamer.export_btn':    '{bi:box-arrow-up} Експорт даних',
+  'streamer.reset_btn':     '{bi:arrow-repeat} Нова сесія',
 
-  'streamer.vote_start_btn':'▶️ Почати голосування',
-  'streamer.vote_stop_btn': '⏹️ Завершити голосування',
+  'streamer.vote_start_btn':'{bi:play-fill} Почати голосування',
+  'streamer.vote_stop_btn': '{bi:stop-fill} Завершити голосування',
 
-  'streamer.vote_connect_first':'🔌 Спочатку підключіть чат',
+  'streamer.vote_connect_first':'{bi:plug-fill} Спочатку підключіть чат',
 
   'streamer.vote_topic':    'Тема голосування (необов’язково)…',
   'streamer.vote_sec_label':'сек голосування',
 
-  'streamer.vote_started':  '🗳️ Голосування{topic} розпочато! Глядачі вводять 1–{n} у чаті',
-  'streamer.vote_winner':   '🏆 Переможець: {name} ({votes} голос(ів) від {viewers} глядачів)',
+  'streamer.vote_started':  '{bi:check2-square} Голосування{topic} розпочато! Глядачі вводять 1–{n} у чаті',
+  'streamer.vote_winner':   '{bi:trophy-fill} Переможець: {name} ({votes} голос(ів) від {viewers} глядачів)',
   'streamer.vote_no_votes': 'Голосування завершилося без голосів',
   'streamer.vote_voters':   'Проголосували: {n}',
   'streamer.vote_from':     'за результатами голосування · {n} глядачів',
 
-  'streamer.chat_sounds_on':  '🔊 Звуки чату увімкнено',
-  'streamer.chat_sounds_off': '🔊 Звуки чату вимкнено',
+  'streamer.chat_sounds_on':  '{bi:volume-up-fill} Звуки чату увімкнено',
+  'streamer.chat_sounds_off': '{bi:volume-up-fill} Звуки чату вимкнено',
 
-  'streamer.autospin_on':     '🎰 Автообертання увімкнено',
-  'streamer.autospin_off':    '🎰 Автообертання вимкнено',
+  'streamer.autospin_on':     '{bi:dice-5-fill} Автообертання увімкнено',
+  'streamer.autospin_off':    '{bi:dice-5-fill} Автообертання вимкнено',
 
   'streamer.spinning_already':'Колесо вже обертається',
 
-  'streamer.session_reset': '🔄 Сесію скинуто',
+  'streamer.session_reset': '{bi:arrow-repeat} Сесію скинуто',
 
-  'streamer.reset_confirm': '🔄 Скинути сесію',
+  'streamer.reset_confirm': '{bi:arrow-repeat} Скинути сесію',
   'streamer.reset_msg':     'Скинути дані поточної стрім-сесії?',
   'streamer.reset_btn2':    'СКИНУТИ',
 
-  'streamer.reconnect_msg': '🔌 Повторно підключитися до #{ch}?',
-  'streamer.connected_msg': '✅ Підключено до #{ch} (лише читання)',
-  'streamer.connect_error': '❌ Не вдалося підключитися до Twitch',
+  'streamer.reconnect_msg': '{bi:plug-fill} Повторно підключитися до #{ch}?',
+  'streamer.connected_msg': '{bi:check-circle-fill} Підключено до #{ch} (лише читання)',
+  'streamer.connect_error': '{bi:x-circle-fill} Не вдалося підключитися до Twitch',
   'streamer.enter_channel': 'Введіть назву каналу',
   'streamer.disconnected':  'Відключено від Twitch',
-  'streamer.connecting_to': '🔌 Підключення до #{ch}…',
+  'streamer.connecting_to': '{bi:plug-fill} Підключення до #{ch}…',
 
-  'streamer.all_chatters_added': '💜 До колеса додано {n} учасників чату',
+  'streamer.all_chatters_added': '{bi:heart-fill} До колеса додано {n} учасників чату',
   'streamer.all_already_in_wheel': 'Усі активні користувачі вже знаходяться в колесі',
 
   'streamer.no_games_vote': 'Додайте ігри, щоб розпочати голосування',
   'streamer.connect_first_vote': 'Спочатку підключіться до Twitch-каналу',
 
-  'streamer.overlay_opened': '🖥️ Overlay відкрито. Додайте URL у Browser Source в OBS.',
-  'streamer.overlay_blocked': '🚫 Спливаюче вікно заблоковано. Скопіюйте URL і відкрийте його вручну або в OBS.',
+  'streamer.overlay_opened': '{bi:display} Overlay відкрито. Додайте URL у Browser Source в OBS.',
+  'streamer.overlay_blocked': '{bi:slash-circle} Спливаюче вікно заблоковано. Скопіюйте URL і відкрийте його вручну або в OBS.',
 
-  'streamer.url_copied':    '📋 URL скопійовано! Вставте його в OBS Browser Source.',
+  'streamer.url_copied':    '{bi:clipboard-check} URL скопійовано! Вставте його в OBS Browser Source.',
   'streamer.url_copy_error':'Помилка копіювання',
 
-  'streamer.chroma_on':     '🟢 Хромакей увімкнено',
+  'streamer.chroma_on':     '{bi:circle-fill} Хромакей увімкнено',
   'streamer.chroma_off':    'Хромакей вимкнено',
 
-  'streamer.stats_title':   '📊 Статистика стріму',
-  'streamer.stats_session': '📺 Сесія:',
+  'streamer.stats_title':   '{bi:bar-chart-fill} Статистика стріму',
+  'streamer.stats_session': '{bi:tv} Сесія:',
   'streamer.stats_min':     '{n} хвилин',
-  'streamer.stats_messages':'💬 Повідомлень:',
-  'streamer.stats_unique':  '👥 Унікальних глядачів:',
-  'streamer.stats_most_active':'🔥 Найактивніший:',
-  'streamer.stats_in_wheel':'🎯 У колесі:',
-  'streamer.stats_participants':'💜 Доступно з чату:',
-  'streamer.stats_vote_active':'🗳️ Голосування активне',
+  'streamer.stats_messages':'{bi:chat-dots-fill} Повідомлень:',
+  'streamer.stats_unique':  '{bi:people-fill} Унікальних глядачів:',
+  'streamer.stats_most_active':'{bi:fire} Найактивніший:',
+  'streamer.stats_in_wheel':'{bi:bullseye} У колесі:',
+  'streamer.stats_participants':'{bi:heart-fill} Доступно з чату:',
+  'streamer.stats_vote_active':'{bi:check2-square} Голосування активне',
   'streamer.stats_no_data':'немає даних',
   'streamer.stats_close':'ЗАКРИТИ',
   'streamer.stats_active':'{n} активних',
 
-  'streamer.export_done':'📤 Дані стріму експортовано',
+  'streamer.export_done':'{bi:box-arrow-up} Дані стріму експортовано',
 
   // ── STATS TAB ─────────────────────────────────────────────
   'stats.games':            'Ігри',
@@ -445,22 +445,22 @@ window.RCH_TRANSLATIONS['uk'] = {
   'stats.players':          'Гравці',
   'stats.spins':            'Обертання',
 
-  'stats.top_player_title': '👑 Найактивніший гравець',
-  'stats.top_game_title':   '🎮 Найбільша гра',
+  'stats.top_player_title': '{bi:award-fill} Найактивніший гравець',
+  'stats.top_game_title':   '{bi:controller} Найбільша гра',
 
   'stats.top_spins':        '{n} обертань',
   'stats.top_tasks':        '{n} завдань',
 
-  'stats.tips_title':       '💡 Поради та факти — оновлюються щодня',
+  'stats.tips_title':       '{bi:lightbulb-fill} Поради та факти — оновлюються щодня',
 
   'stats.filter_all':       'Усі',
-  'stats.filter_coop':      '🤝 Кооператив',
-  'stats.filter_comp':      '🏆 Змагання',
-  'stats.filter_online':    '🌐 Онлайн',
-  'stats.filter_fact':      '🧠 Факти',
+  'stats.filter_coop':      '{bi:people} Кооператив',
+  'stats.filter_comp':      '{bi:trophy-fill} Змагання',
+  'stats.filter_online':    '{bi:globe2} Онлайн',
+  'stats.filter_fact':      '{bi:cpu} Факти',
 
-  'stats.players_stats':    '📊 Статистика гравців',
-  'stats.games_stats':      '🎮 Ігри за кількістю завдань',
+  'stats.players_stats':    '{bi:bar-chart-fill} Статистика гравців',
+  'stats.games_stats':      '{bi:controller} Ігри за кількістю завдань',
 
   'stats.no_data':          'Немає даних',
 
@@ -468,32 +468,32 @@ window.RCH_TRANSLATIONS['uk'] = {
   'stats.n_tasks_g':        '{n} завдань',
 
     // ── SETTINGS TAB ──────────────────────────────────────────
-  'settings.title':         '⚙️ Розширені налаштування',
+  'settings.title':         '{bi:gear-fill} Розширені налаштування',
   'settings.subtitle':      'Повне налаштування для будь-якого стилю гри',
 
-  'settings.tab_speed':     '🎯 Швидкість',
-  'settings.tab_sound':     '🔊 Звук',
-  'settings.tab_wheel':     '🎡 Колесо',
-  'settings.tab_effects':   '✨ Ефекти',
-  'settings.tab_gamer':     '🎮 Геймер',
-  'settings.tab_streamer':  '📡 Стрімер',
-  'settings.tab_theme':     '🎨 Теми',
+  'settings.tab_speed':     '{bi:bullseye} Швидкість',
+  'settings.tab_sound':     '{bi:volume-up-fill} Звук',
+  'settings.tab_wheel':     '{bi:pie-chart-fill} Колесо',
+  'settings.tab_effects':   '{bi:stars} Ефекти',
+  'settings.tab_gamer':     '{bi:controller} Геймер',
+  'settings.tab_streamer':  '{bi:broadcast} Стрімер',
+  'settings.tab_theme':     '{bi:palette-fill} Теми',
 
-  'settings.reset_all':     '🔄 Скинути все',
-  'settings.apply_btn':     '✅ Застосувати',
-  'settings.export_btn':    '📤 Експорт налаштувань',
-  'settings.import_btn':    '📥 Імпорт налаштувань',
+  'settings.reset_all':     '{bi:arrow-repeat} Скинути все',
+  'settings.apply_btn':     '{bi:check-circle-fill} Застосувати',
+  'settings.export_btn':    '{bi:box-arrow-up} Експорт налаштувань',
+  'settings.import_btn':    '{bi:box-arrow-in-down} Імпорт налаштувань',
 
-  'settings.applied':       '✅ Налаштування застосовано!',
-  'settings.reset_confirm': '🔄 Скидання налаштувань',
+  'settings.applied':       '{bi:check-circle-fill} Налаштування застосовано!',
+  'settings.reset_confirm': '{bi:arrow-repeat} Скидання налаштувань',
   'settings.reset_msg':     'Скинути всі налаштування до стандартних?',
   'settings.reset_done':    'Налаштування скинуто',
-  'settings.exported':      '📤 Налаштування експортовано',
-  'settings.imported':      '📥 Налаштування імпортовано',
+  'settings.exported':      '{bi:box-arrow-up} Налаштування експортовано',
+  'settings.imported':      '{bi:box-arrow-in-down} Налаштування імпортовано',
   'settings.import_error':  'Помилка імпорту',
 
   // Speed
-  'settings.speed_title':   '🎯 ШВИДКІСТЬ І ФІЗИКА',
+  'settings.speed_title':   '{bi:bullseye} ШВИДКІСТЬ І ФІЗИКА',
   'settings.spin_duration': 'Тривалість обертання',
   'settings.min_spins':     'Мінімум обертів',
   'settings.max_spins':     'Максимум обертів',
@@ -507,7 +507,7 @@ window.RCH_TRANSLATIONS['uk'] = {
   'settings.announce_delay':'Затримка показу результату (мс)',
 
   // Sound
-  'settings.sound_title':   '🔊 ЗВУК',
+  'settings.sound_title':   '{bi:volume-up-fill} ЗВУК',
   'settings.sound_enable':  'Увімкнути звук',
   'settings.sound_volume':  'Гучність',
   'settings.tick_sound':    'Клік на секторі',
@@ -519,7 +519,7 @@ window.RCH_TRANSLATIONS['uk'] = {
   'settings.sound_casino':  'Казино',
 
   // Wheel
-  'settings.wheel_title':   '🎡 ЗОВНІШНІЙ ВИГЛЯД КОЛЕСА',
+  'settings.wheel_title':   '{bi:pie-chart-fill} ЗОВНІШНІЙ ВИГЛЯД КОЛЕСА',
   'settings.wheel_size':    'Розмір колеса',
   'settings.font_size':     'Розмір шрифту',
   'settings.max_segments':  'Максимум секторів',
@@ -535,10 +535,10 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   'settings.pointer_style': 'Стиль покажчика',
 
-  'settings.color_schemes': '🎨 КОЛЬОРОВІ СХЕМИ',
+  'settings.color_schemes': '{bi:palette-fill} КОЛЬОРОВІ СХЕМИ',
 
   // Effects
-  'settings.effects_title': '✨ ВІЗУАЛЬНІ ЕФЕКТИ',
+  'settings.effects_title': '{bi:stars} ВІЗУАЛЬНІ ЕФЕКТИ',
 
   'settings.visual_effects':'Візуальні ефекти',
   'settings.highlight_win': 'Підсвічувати переможця',
@@ -562,30 +562,30 @@ window.RCH_TRANSLATIONS['uk'] = {
   'settings.popup_duration':'Час показу результату',
 
   // Gamer
-  'settings.gamer_title':   '🎮 НАЛАШТУВАННЯ ГЕЙМЕРА',
+  'settings.gamer_title':   '{bi:controller} НАЛАШТУВАННЯ ГЕЙМЕРА',
 
-  'settings.bonus_round':   '🎉 Бонусний раунд (подвійне обертання)',
+  'settings.bonus_round':   '{bi:stars} Бонусний раунд (подвійне обертання)',
   'settings.bonus_chance':  'Ймовірність бонусного раунду',
 
-  'settings.weighted_segs': '⚖️ Вагові сектори',
+  'settings.weighted_segs': '{bi:sliders} Вагові сектори',
 
-  'settings.remove_after':  '🗑️ Видаляти елемент після випадання',
+  'settings.remove_after':  '{bi:trash3} Видаляти елемент після випадання',
   'settings.remove_hint':   'Елементи, що вже випадали, більше не братимуть участі в наступних обертаннях. Працює в усіх режимах.',
 
-  'settings.spent_reset':   '🔄 Скинути використані ({n} завдань)',
+  'settings.spent_reset':   '{bi:arrow-repeat} Скинути використані ({n} завдань)',
   'settings.no_spent':      'Немає використаних завдань.',
 
-  'settings.blacklist':     '🚫 Чорний список завдань',
+  'settings.blacklist':     '{bi:slash-circle} Чорний список завдань',
   'settings.blacklist_input':'Одне завдання на рядок',
-  'settings.blacklist_save':'💾 Зберегти чорний список',
-  'settings.blacklist_saved':'🚫 Чорний список збережено ({n} завдань)',
+  'settings.blacklist_save':'{bi:floppy-fill} Зберегти чорний список',
+  'settings.blacklist_saved':'{bi:slash-circle} Чорний список збережено ({n} завдань)',
 
   // Streamer
-  'settings.streamer_title':'📡 НАЛАШТУВАННЯ СТРІМЕРА',
+  'settings.streamer_title':'{bi:broadcast} НАЛАШТУВАННЯ СТРІМЕРА',
 
   'settings.player_on_wheel':'Імена гравців на колесі',
 
-  'settings.chroma_key':    '🟢 Хромакей для Overlay',
+  'settings.chroma_key':    '{bi:circle-fill} Хромакей для Overlay',
 
   'settings.overlay_pos':   'Положення Overlay',
 
@@ -596,7 +596,7 @@ window.RCH_TRANSLATIONS['uk'] = {
   'settings.pos_center':    'По центру',
 
   // Themes
-  'settings.theme_title':   '🎨 ТЕМИ',
+  'settings.theme_title':   '{bi:palette-fill} ТЕМИ',
 
   'settings.theme_hint':    'Тема застосовується миттєво та зберігається після перезавантаження сторінки.',
 
@@ -609,24 +609,24 @@ window.RCH_TRANSLATIONS['uk'] = {
     // ── MODALS / FLOATING MENU ────────────────────────────────
   'modal.confirm_default':   'Підтвердження',
   'modal.are_you_sure':      'Ви впевнені?',
-  'modal.clear_cache_title': '🗑️ Очистити кеш',
+  'modal.clear_cache_title': '{bi:trash3} Очистити кеш',
   'modal.clear_cache_msg':   'Очистити кеш браузера? Дані буде повернуто до стандартних значень.',
   'modal.clear_cache_btn':   'ОЧИСТИТИ',
 
-  'modal.reset_all_title':   '🔄 Повне скидання',
+  'modal.reset_all_title':   '{bi:arrow-repeat} Повне скидання',
   'modal.reset_all_msg':     'Видалити ВСІ дані? Цю дію неможливо скасувати.',
   'modal.reset_all_btn':     'СКИНУТИ ВСЕ',
 
-  'modal.cache_cleared':     '✅ Кеш очищено!',
-  'modal.all_reset':         '🔄 Усі дані скинуто!',
+  'modal.cache_cleared':     '{bi:check-circle-fill} Кеш очищено!',
+  'modal.all_reset':         '{bi:arrow-repeat} Усі дані скинуто!',
 
-  'floating.clear_cache':    '🗑️ Очистити кеш',
-  'floating.reset_all':      '🔄 Скинути все',
-  'floating.scroll_top':     '⬆️ Нагору',
-  'floating.settings':       '⚙️ Налаштування',
-  'floating.roulette':       '🎰 Рулетка',
-  'floating.streamer':       '📡 Стрімер',
-  'floating.overlay':        '🖥️ OBS Overlay',
+  'floating.clear_cache':    '{bi:trash3} Очистити кеш',
+  'floating.reset_all':      '{bi:arrow-repeat} Скинути все',
+  'floating.scroll_top':     '{bi:arrow-up} Нагору',
+  'floating.settings':       '{bi:gear-fill} Налаштування',
+  'floating.roulette':       '{bi:dice-5-fill} Рулетка',
+  'floating.streamer':       '{bi:broadcast} Стрімер',
+  'floating.overlay':        '{bi:display} OBS Overlay',
 
   // ── WHEEL SEGMENTS (no-data states) ───────────────────────
   'wheel.no_players':        'Немає гравців',
@@ -640,7 +640,7 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   'wheel.player_pick':       'Вибір гравця',
 
-  'wheel.all_done':          '✅ Усе',
+  'wheel.all_done':          '{bi:check-circle-fill} Усе',
   'wheel.all_done_desc':     'Усі завдання використано! Скиньте список.',
 
   'wheel.group_tasks':       '{n} завдань',
@@ -652,11 +652,11 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   'overlay.waiting':         'Очікування результату…',
 
-  'overlay.game_label':      '🎮 Гра',
-  'overlay.player_label':    '👤 Гравець',
-  'overlay.task_label':      '⚡ Завдання',
+  'overlay.game_label':      '{bi:controller} Гра',
+  'overlay.player_label':    '{bi:person-fill} Гравець',
+  'overlay.task_label':      '{bi:lightning-charge-fill} Завдання',
 
-  'overlay.vote_title':      '🗳️ Голосування в чаті',
+  'overlay.vote_title':      '{bi:check2-square} Голосування в чаті',
   'overlay.winner_label':    'Переможець',
 
   'overlay.chat_title':      'Чат',
@@ -668,19 +668,19 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   'overlay.preview':         'Попередній перегляд OBS:',
 
-  'overlay.btn_result':      '🎯 Результат',
-  'overlay.btn_vote':        '🗳️ Голосування',
-  'overlay.btn_winner':      '🏆 Переможець',
-  'overlay.btn_idle':        '⏸ Очікування',
-  'overlay.btn_chat':        '💬 Чат',
-  'overlay.btn_timer':       '⏱️ Таймер',
-  'overlay.btn_theme':       '🎨 Тема',
-  'overlay.btn_chroma':      '🟢 Хромакей',
+  'overlay.btn_result':      '{bi:bullseye} Результат',
+  'overlay.btn_vote':        '{bi:check2-square} Голосування',
+  'overlay.btn_winner':      '{bi:trophy-fill} Переможець',
+  'overlay.btn_idle':        '{bi:pause-fill} Очікування',
+  'overlay.btn_chat':        '{bi:chat-dots-fill} Чат',
+  'overlay.btn_timer':       '{bi:stopwatch-fill} Таймер',
+  'overlay.btn_theme':       '{bi:palette-fill} Тема',
+  'overlay.btn_chroma':      '{bi:circle-fill} Хромакей',
 
-  'overlay.btn_reset_pos':   '🔄 Скинути позиції',
+  'overlay.btn_reset_pos':   '{bi:arrow-repeat} Скинути позиції',
 
-  'overlay.btn_hide_preview':'👁️ Приховати перегляд',
-  'overlay.btn_show_preview':'👁️ Показати перегляд',
+  'overlay.btn_hide_preview':'{bi:eye-fill} Приховати перегляд',
+  'overlay.btn_show_preview':'{bi:eye-fill} Показати перегляд',
 
   'overlay.vote_sec':        '{n} с',
 
@@ -805,22 +805,22 @@ window.RCH_TRANSLATIONS['uk'] = {
 
     // ── NOTIFICATIONS ─────────────────────────────────────────
   'notif.no_result_copy':   'Немає результату для копіювання',
-  'notif.copied':           '📋 Скопійовано!',
+  'notif.copied':           '{bi:clipboard-check} Скопійовано!',
   'notif.copy_error':       'Помилка копіювання',
-  'notif.task_added_to':    '✅ Завдання "{task}" додано до гри {game}',
-  'notif.game_selected':    '🎮 Обрано гру: {name}',
-  'notif.player_selected':  '👤 Обрано гравця: {name}',
-  'notif.all_tasks_spent':  '✅ Усі завдання в грі "{game}" вже використані! Натисніть «Скинути завдання».',
-  'notif.spent_reset':      '🔄 Використані завдання скинуто ({n} всього)',
-  'notif.export_results':   '📤 Результати експортовано',
+  'notif.task_added_to':    '{bi:check-circle-fill} Завдання "{task}" додано до гри {game}',
+  'notif.game_selected':    '{bi:controller} Обрано гру: {name}',
+  'notif.player_selected':  '{bi:person-fill} Обрано гравця: {name}',
+  'notif.all_tasks_spent':  '{bi:check-circle-fill} Усі завдання в грі "{game}" вже використані! Натисніть «Скинути завдання».',
+  'notif.spent_reset':      '{bi:arrow-repeat} Використані завдання скинуто ({n} всього)',
+  'notif.export_results':   '{bi:box-arrow-up} Результати експортовано',
   'notif.results_none':     'Немає призначених завдань',
 
   // ── FINAL RESULTS ─────────────────────────────────────────
-  'results.title':            '📋 Завдання ({assigned}/{total})',
-  'results.start_over':       '🔄 ПОЧАТИ СПОЧАТКУ',
-  'results.export':           '📤 Експорт',
-  'results.unassigned':       '⚠️ Без завдання',
-  'results.player_pick_title':'👤 Вибір гравця',
+  'results.title':            '{bi:clipboard-check} Завдання ({assigned}/{total})',
+  'results.start_over':       '{bi:arrow-repeat} ПОЧАТИ СПОЧАТКУ',
+  'results.export':           '{bi:box-arrow-up} Експорт',
+  'results.unassigned':       '{bi:exclamation-triangle-fill} Без завдання',
+  'results.player_pick_title':'{bi:person-fill} Вибір гравця',
   'results.player_picked':    'Обрано {name}!',
   'results.popup_close_hint': '× натисніть, щоб закрити',
 
@@ -857,8 +857,8 @@ window.RCH_TRANSLATIONS['uk'] = {
   'mobile.alt_share_desc': 'Надішліть посилання на комп’ютер',
 
   'mobile.url_label':      'Адреса сайту:',
-  'mobile.copy_link':      '📋 Копіювати посилання',
-  'mobile.link_copied':    '✅ Посилання скопійовано!',
+  'mobile.copy_link':      '{bi:clipboard-check} Копіювати посилання',
+  'mobile.link_copied':    '{bi:check-circle-fill} Посилання скопійовано!',
 
   // ── GAMING TIPS ───────────────────────────────────────────
   // Поки що можна залишити англійський масив без змін.
