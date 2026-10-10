@@ -1,7 +1,7 @@
 // ============================================================
 // RCH Streamer module: Twitch chat (anonymous IRC), chat voting,
 // timer, viewer wheel, viewer suggestions, donation sources
-// (Streamlabs / DonationAlerts) and the OBS overlay bridge.
+// (Streamlabs / DonationAlerts).
 // ============================================================
 
 const TWITCH_IRC = 'wss://irc-ws.chat.twitch.tv:443';
@@ -115,7 +115,6 @@ function _twOpen(ch, silent) {
         streamerState.twitchWs = null; streamerState.connected = false;
         if (_twWanted) _twScheduleRetry(ch);
         else { streamerState.twitchStatus = 'idle'; _updateConnectBtn(); }
-        updateOverlayChatData();
     };
 }
 
@@ -136,11 +135,13 @@ function _handleTwitchEvent(ev, ws, ch) {
                 streamerState.twitchStatus = 'connected'; streamerState.connected = true; _twAttempt = 0;
                 _updateConnectBtn();
                 showNotification(t('streamer.connected_msg', { ch }), 'success');
-                updateOverlayChatData();
-            }
+                    }
             break;
         case 'chat': _handleChat(ev); break;
-        case 'usernotice': if (window.RCHAuction) RCHAuction.onTwitchNotice(ev); break;
+        case 'usernotice':
+            if (window.RCHAuction) RCHAuction.onTwitchNotice(ev);
+            if (window.RCHActivity) RCHActivity.onNotice(ev);
+            break;
     }
 }
 
@@ -151,7 +152,6 @@ function twitchDisconnect() {
     streamerState.twitchStatus = 'idle'; streamerState.connected = false;
     _updateConnectBtn();
     showNotification(t('streamer.disconnected'), 'info');
-    updateOverlayChatData();
 }
 
 function twitchToggleConnect(inputId) {
@@ -173,25 +173,27 @@ function _randomChatColor(name) {
 
 function _handleChat(ev) {
     const badge = ev.isBroad ? 'broadcaster' : ev.isMod ? 'mod' : ev.isVip ? 'vip' : ev.isSub ? 'sub' : '';
-    const msg = { user: ev.name, login: ev.user, text: ev.text, color: ev.color || _randomChatColor(ev.user), badge, timestamp: Date.now() };
+    const msg = { user: ev.name, login: ev.user, text: ev.text, color: ev.color || _randomChatColor(ev.user), badge, timestamp: Date.now(), sub: ev.isSub, mod: ev.isMod, vip: ev.isVip };
     streamerState.chatMessages.push(msg);
     if (streamerState.chatMessages.length > 300) streamerState.chatMessages.shift();
 
     const cb = document.getElementById('chatBox');
-    if (cb) {
+    if (cb && _passChat(msg)) {
         if (cb.querySelector('.chat-empty')) cb.innerHTML = '';
         const stick = cb.scrollTop + cb.clientHeight >= cb.scrollHeight - 30;
         cb.insertAdjacentHTML('beforeend', _renderOneChatMsg(msg));
         while (cb.children.length > 80) cb.removeChild(cb.firstChild);
         if (stick) cb.scrollTop = cb.scrollHeight;
     }
+    if (window.RCHActivity) RCHActivity.onChat(ev);   // before trackChatUser: needs the previous per-user counters
     trackChatUser(ev);
     playChatNotificationSound();
-    _scheduleOverlayChat();
     if (streamerState.voteActive) _castVote(ev.user, ev.text);
     if (window.RCHAuction) RCHAuction.onChat(ev);
     processChatCommand(ev);
 }
+
+function _passChat(m) { return !window.RCHActivity || RCHActivity.passFilter(m); }
 
 function trackChatUser(ev) {
     const ua = streamerState.userActivity;
@@ -223,7 +225,7 @@ function processChatCommand(ev) {
     const cmd = cmd0.toLowerCase();
     const now = Date.now();
     const priv = ev.isMod || ev.isBroad;
-    const MOD_ONLY = ['!spin', '!vote', '!endvote', '!timer', '!addchatters', '!clearwheel', '!add'];
+    const MOD_ONLY = ['!spin', '!vote', '!endvote', '!timer', '!addchatters', '!clearwheel', '!add', '!mark', '!giveaway'];
     if (MOD_ONLY.includes(cmd) && !priv) return;           // unauthorised attempts must not trigger the cooldown
     const ck = cmd + ':' + (priv ? 'm' : 'u');
     if (_cmdCooldown[ck] && now - _cmdCooldown[ck] < 1500) return;
@@ -241,6 +243,8 @@ function processChatCommand(ev) {
         if (cmd === '!addchatters') return addAllChattersToWheel();
         if (cmd === '!clearwheel') return clearSubWheel();
         if (cmd === '!add' && args[0]) return addSubToWheelFromChat(args[0].replace(/^@/, ''));
+        if (cmd === '!mark' && window.RCHActivity) return RCHActivity.addMarker(args.join(' '), ev.name);
+        if (cmd === '!giveaway' && window.RCHActivity) return RCHActivity.chatGiveaway(args[0]);
     }
     if (cmd === '!join' || cmd === '!addme') return addSubToWheelFromChat(ev.name);
     if (cmd === '!task' || cmd === '!предложить') return addSuggestion(ev.name, args.join(' '));
@@ -281,28 +285,6 @@ function playChatNotificationSound(force) {
 }
 function toggleChatSounds(on) { streamerState.chatSounds = on; saveStreamerData(); showNotification(on ? t('streamer.chat_sounds_on') : t('streamer.chat_sounds_off'), 'info'); }
 function toggleAutoSpin(on) { streamerState.autoSpin = on; saveStreamerData(); showNotification(on ? t('streamer.autospin_on') : t('streamer.autospin_off'), 'info'); }
-
-// ── OVERLAY BRIDGE ────────────────────────────────────────
-function rchOverlay(state) { try { RCHBus.publish('overlayState', state); } catch (e) { } }
-let _ovChatT = null;
-function _scheduleOverlayChat() { if (_ovChatT) return; _ovChatT = setTimeout(() => { _ovChatT = null; updateOverlayChatData(); }, 250); }
-function updateOverlayChatData() {
-    try {
-        RCHBus.publish('overlayChatData', {
-            connected: streamerState.twitchStatus === 'connected', channelName: streamerState.channelName,
-            messages: streamerState.chatMessages.slice(-20).map(m => ({ user: m.user, text: m.text, color: m.color, badge: m.badge })),
-        });
-    } catch (e) { }
-}
-function publishWheel(title, segs, res, winner) {
-    try {
-        RCHBus.publish('overlayWheel', {
-            id: Date.now() + '' + Math.random(), title, winner: winner || '',
-            segs: segs.map(s => ({ label: String(s.label || s.task || '').slice(0, 40), color: s.color, weight: s.weight || 1 })),
-            startAngle: res.startAngle, total: res.total, duration: res.duration,
-        });
-    } catch (e) { }
-}
 
 // ── CONNECTION STATUS UI ──────────────────────────────────
 function _updateConnectBtn() {
@@ -346,9 +328,7 @@ function handleDonation(d) {
     _seenDonations.add(d.id); if (_seenDonations.size > 500) _seenDonations.delete(_seenDonations.values().next().value);
     d.ts = Date.now();
     streamerState.donations.unshift(d); streamerState.donations.length = Math.min(streamerState.donations.length, 40);
-    if (streamerState.alertsEnabled) {
-        try { RCHBus.publish('overlayAlert', { id: d.id + d.ts, kind: 'donation', user: d.user, amount: d.amount, currency: d.currency, text: d.text.slice(0, 160) }); } catch (e) { }
-    }
+    if (window.RCHActivity) RCHActivity.onDonation(d);
     if (window.RCHAuction) RCHAuction.onDonation(d);
     else showNotification(`${d.user}: ${d.amount} ${d.currency}`, 'success');
 }
@@ -456,7 +436,7 @@ function renderVoteArea() {
         const total = Object.values(S.voteVotes).reduce((s, v) => s + v.count, 0);
         return `
         ${S.voteTitle ? `<div class="vote-topic">${esc(S.voteTitle)}</div>` : ''}
-        <div class="vote-head"><div class="vote-timer ${S.voteTimer <= 5 ? 'urgent' : ''}" id="voteCountdown">${esc(t('overlay.vote_sec', { n: S.voteTimer }))}</div>
+        <div class="vote-head"><div class="vote-timer ${S.voteTimer <= 5 ? 'urgent' : ''}" id="voteCountdown">${esc(t('streamer.vote_sec_fmt', { n: S.voteTimer }))}</div>
             <div class="muted small" id="voteVoters">${esc(t('streamer.vote_voters', { n: Object.keys(S.voteVoters).length }))}</div></div>
         <div class="vote-options">${S.voteOptions.map((o, i) => {
             const c = S.voteVotes[i + 1]?.count || 0, pct = total ? Math.round(c / total * 100) : 0;
@@ -502,24 +482,13 @@ function startVote() {
     S.voteEndsAt = Date.now() + (S.voteDuration || 30) * 1000;
     S.voteTimer = S.voteDuration || 30;
     showNotification(t('streamer.vote_started', { topic: S.voteTitle ? ` "${S.voteTitle}"` : '', n: S.voteOptions.length }), 'success');
-    _publishVote();
     S.voteInterval = setInterval(() => {
         S.voteTimer = Math.max(0, Math.ceil((S.voteEndsAt - Date.now()) / 1000));
         const cd = document.getElementById('voteCountdown');
-        if (cd) { cd.textContent = t('overlay.vote_sec', { n: S.voteTimer }); cd.classList.toggle('urgent', S.voteTimer <= 5); }
+        if (cd) { cd.textContent = t('streamer.vote_sec_fmt', { n: S.voteTimer }); cd.classList.toggle('urgent', S.voteTimer <= 5); }
         if (S.voteTimer <= 0) stopVote();
     }, 250);
     _refreshVoteUI();
-}
-let _voteOvT = null;
-function _publishVote() {
-    const S = streamerState;
-    try {
-        RCHBus.publish('overlayVote', {
-            active: S.voteActive, title: S.voteTitle, endsAt: S.voteEndsAt, voters: Object.keys(S.voteVoters).length,
-            options: S.voteOptions.map((o, i) => ({ name: o.label, count: S.voteVotes[i + 1]?.count || 0 })),
-        });
-    } catch (e) { }
 }
 function _castVote(user, text) {
     const S = streamerState;
@@ -532,7 +501,6 @@ function _castVote(user, text) {
     if (prev) S.voteVotes[prev].count--;
     S.voteVoters[user] = n; S.voteVotes[n].count++;
     _refreshVoteBars();
-    if (!_voteOvT) _voteOvT = setTimeout(() => { _voteOvT = null; _publishVote(); }, 300);
 }
 function _refreshVoteBars() {
     const S = streamerState;
@@ -557,12 +525,12 @@ function stopVote() {
         const note = t('streamer.vote_from', { n: voters }) + (tied.length > 1 ? ' · ' + t('st.vote_tie', { n: tied.length }) : '') + ` · ${max}`;
         S.lastVote = { label: win.label, kind: win.kind, game: win.game, note };
         showNotification(t('streamer.vote_winner', { name: win.label, votes: max, viewers: voters }), 'success');
-        rchOverlay({ type: 'winner', name: win.label, from: note });
+        if (window.RCHActivity) RCHActivity.log('vote', t('act.ev_vote', { name: win.label, n: max }));
         playWinSound(); if (rouletteSettings.particleEffect) createParticles();
     } else {
-        S.lastVote = null; showNotification(t('streamer.vote_no_votes'), 'info'); rchOverlay({ type: 'idle' });
+        S.lastVote = null; showNotification(t('streamer.vote_no_votes'), 'info');
     }
-    _publishVote(); _refreshVoteUI();
+    _refreshVoteUI();
 }
 function applyVoteWinner() {
     const lv = streamerState.lastVote; if (!lv) return;
@@ -571,7 +539,6 @@ function applyVoteWinner() {
     } else if (lv.kind === 'task') {
         const p = players.length ? players[Math.floor(Math.random() * players.length)] : null;
         showPopupResult(lv.game || '—', p, lv.label);
-        rchOverlay({ type: 'result', game: lv.game || '—', player: p ? p.name : '—', task: lv.label, duration: 12000 });
     }
 }
 
@@ -624,7 +591,6 @@ function updateTimerDisplay() {
     const d = document.getElementById('timerDisplay');
     if (d) { d.textContent = formatTime(r); d.className = 'timer-display' + (r <= 10 && r > 0 ? ' danger' : r <= 30 && r > 0 ? ' warning' : ''); }
     const b = document.getElementById('timerStartBtn'); if (b) b.textContent = S.timerRunning ? t('streamer.timer_pause') : t('streamer.timer_start');
-    try { RCHBus.publish('overlayTimer', { seconds: r, initial: S.timerInitial, running: S.timerRunning, endsAt: S.timerRunning ? S.timerEndsAt : 0 }); } catch (e) { }
 }
 
 // ── VIEWER WHEEL ──────────────────────────────────────────
@@ -692,8 +658,8 @@ function spinSubWheel() {
         const winner = segs[target].label;
         _viewerSpinning = false;
         playWinSound(); if (rouletteSettings.particleEffect) createParticles();
+        if (window.RCHActivity) RCHActivity.log('wheel', t('act.ev_wheel', { name: winner }));
         if (banner) banner.innerHTML = `<span class="winner-name"><i class="bi bi-trophy-fill" aria-hidden="true"></i> ${esc(winner)}</span><span class="muted small">${esc(t('streamer.sub_from', { n: segs.length }))}</span>`;
-        rchOverlay({ type: 'winner', name: winner, from: t('streamer.sub_from', { n: segs.length }) });
         S.viewerWinners.unshift(winner); S.viewerWinners.length = Math.min(S.viewerWinners.length, 20);
         if (S.viewerRemoveWinner) { S.subWheelList.splice(target, 1); }
         saveStreamerData();
@@ -702,13 +668,12 @@ function spinSubWheel() {
     _viewerSpinning = true;
     if (!canvas) { finish(); return; }
     if (rouletteSettings.soundEnabled) playSpinSound();
-    const run = RCHWheel.spin({
+    RCHWheel.spin({
         canvas, segs, targetIdx: target, startAngle: _viewerAngle, duration, spins: 5,
         drawOpts: { size: 300, fontSize: 12, centerIcon: 'heart-fill' },
         onTick: () => { if (rouletteSettings.tickSoundEnabled) playTickSound(); },
         onDone: ang => { _viewerAngle = ang % RCHWheel.TAU; finish(); },
     });
-    publishWheel(t('streamer.subwheel_title'), segs, { startAngle: _viewerAngle, total: run.total, duration }, segs[target].label);
 }
 
 // ── VIEWER SUGGESTIONS ────────────────────────────────────
@@ -752,21 +717,26 @@ function rejectSuggestion(id) { const S = streamerState; S.suggestions = S.sugge
 function _renderOneChatMsg(m) {
     const badge = m.badge ? `<span class="chat-badge ${esc(m.badge)}">${esc(m.badge)}</span>` : '';
     const col = /^#[0-9a-fA-F]{3,6}$/.test(m.color) ? m.color : '#818cf8';
-    return `<div class="chat-msg">${badge}<span class="chat-user" style="color:${col}">${esc(m.user)}</span><span class="chat-text">: ${esc(m.text)}</span></div>`;
+    const body = window.RCHActivity ? RCHActivity.fmtText(m.text) : esc(m.text);
+    return `<div class="chat-msg">${badge}<span class="chat-user" style="color:${col}" data-ac="user" data-u="${esc(m.login || m.user.toLowerCase())}" title="${esc(t('act.uc_open'))}">${esc(m.user)}</span><span class="chat-text">: ${body}</span></div>`;
 }
 function renderChatMessages() {
-    const msgs = streamerState.chatMessages;
+    const all = streamerState.chatMessages, msgs = all.filter(_passChat);
+    if (all.length && !msgs.length) return `<div class="chat-empty muted small">${esc(t('act.flt_none'))}</div>`;
     if (!msgs.length) return `<div class="chat-empty muted small">${esc(streamerState.twitchStatus === 'connected' ? t('streamer.chat_waiting') : t('streamer.chat_connect_first'))}</div>`;
     return msgs.slice(-60).map(_renderOneChatMsg).join('');
 }
 function clearChat() {
     streamerState.chatMessages = []; streamerState.chatStats = { totalMessages: 0, uniqueViewers: 0, mostActiveUser: '' };
     streamerState.userActivity = {}; saveStreamerData();
+    if (window.RCHActivity) RCHActivity.resetChatStats();
     const cb = document.getElementById('chatBox'); if (cb) cb.innerHTML = renderChatMessages();
-    updateOverlayChatData(); showNotification(t('streamer.chat_cleared'), 'info');
+    showNotification(t('streamer.chat_cleared'), 'info');
 }
 function sendCommandsList() {
-    const rows = ['!spin', '!vote [sec]', '!endvote', '!timer N | stop', '!addchatters', '!clearwheel', '!add name', '!join', '!task text', '!lots'].map((c, i) => `<li><code>${esc(c)}</code> — ${esc(t('st.cmd_' + i))}</li>`).join('');
+    const list = [['!spin', 'st.cmd_0'], ['!vote [sec]', 'st.cmd_1'], ['!endvote', 'st.cmd_2'], ['!timer N | stop', 'st.cmd_3'], ['!addchatters', 'st.cmd_4'], ['!clearwheel', 'st.cmd_5'],
+        ['!add name', 'st.cmd_6'], ['!join', 'st.cmd_7'], ['!task text', 'st.cmd_8'], ['!lots', 'st.cmd_9'], ['!mark [text]', 'act.cmd_mark'], ['!giveaway open | close | draw', 'act.cmd_giveaway'], ['<keyword>', 'act.cmd_raffle']];
+    const rows = list.map(([c, k]) => `<li><code>${esc(c)}</code> — ${esc(t(k))}</li>`).join('');
     const modal = document.getElementById('confirmModal'); if (!modal) return;
     document.getElementById('modalTitle').textContent = t('streamer.chat_commands');
     document.getElementById('modalMessage').innerHTML = `<ul class="cmd-list">${rows}</ul>`;
@@ -784,7 +754,7 @@ function showStreamStats() {
     document.getElementById('modalMessage').innerHTML = `<div class="kv-list">
         ${row(t('streamer.stats_session'), t('streamer.stats_min', { n: dur }))}${row(t('streamer.stats_messages'), S.chatStats.totalMessages)}
         ${row(t('streamer.stats_unique'), S.chatStats.uniqueViewers)}${row(t('streamer.stats_most_active'), S.chatStats.mostActiveUser || t('streamer.stats_no_data'))}
-        ${row(t('streamer.stats_in_wheel'), S.subWheelList.length)}${row(t('streamer.stats_participants'), t('streamer.stats_active', { n: getChatParticipants(1).length }))}</div>`;
+        ${window.RCHActivity ? RCHActivity.statsHtml(row) : ''}${row(t('streamer.stats_in_wheel'), S.subWheelList.length)}${row(t('streamer.stats_participants'), t('streamer.stats_active', { n: getChatParticipants(1).length }))}</div>`;
     const b = document.getElementById('modalConfirm'); b.textContent = t('streamer.stats_close'); b.onclick = closeModal;
     const c = modal.querySelector('.cancel-btn'); if (c) c.style.display = 'none';
     modal.classList.remove('hidden');
@@ -794,7 +764,7 @@ function exportStreamData() {
     const data = {
         session: { channel: S.channelName, start: S.sessionStartTime, end: Date.now() }, chatStats: S.chatStats,
         participants: getChatParticipants(1), viewerWheel: S.subWheelList, recentMessages: S.chatMessages.slice(-50),
-        donations: S.donations, exportDate: new Date().toISOString(),
+        donations: S.donations, activity: window.RCHActivity ? RCHActivity.report() : null, exportDate: new Date().toISOString(),
     };
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     a.download = `stream-data-${S.channelName || 'session'}-${Date.now()}.json`; a.click();
@@ -804,6 +774,7 @@ function resetStreamSession() {
     showConfirmModal(t('streamer.reset_confirm'), t('streamer.reset_msg'), t('streamer.reset_btn2'), t('common.cancel'), () => {
         const S = streamerState;
         S.chatMessages = []; S.chatStats = { totalMessages: 0, uniqueViewers: 0, mostActiveUser: '' }; S.userActivity = {}; S.sessionStartTime = Date.now();
+        if (window.RCHActivity) RCHActivity.resetSession();
         saveStreamerData(); if (currentTab === 'streamer') switchTab('streamer');
         showNotification(t('streamer.session_reset'), 'success');
     });
@@ -824,31 +795,6 @@ function quickResetSession() {
     showConfirmModal(t('streamer.reset_confirm'), t('streamer.reset_msg'), t('streamer.reset_btn2'), t('common.cancel'), () => { resetGameFirstMode(); showNotification(t('streamer.session_reset'), 'success'); });
 }
 
-// ── OBS OVERLAY LINKS ─────────────────────────────────────
-function getOverlayUrl(only) {
-    const base = window.location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + 'overlay.html';
-    const q = ['obs=1']; if (only && only !== 'all') q.push('only=' + only);
-    if (rouletteSettings.chromaKey) q.push('chroma=1');
-    return base + '?' + q.join('&');
-}
-function overlayUrlChanged() {
-    const sel = document.getElementById('overlayWidgetSel'), inp = document.getElementById('overlayUrlInput');
-    if (sel && inp) inp.value = getOverlayUrl(sel.value);
-}
-function copyOverlayUrl() {
-    const inp = document.getElementById('overlayUrlInput'); const url = inp ? inp.value : getOverlayUrl();
-    navigator.clipboard.writeText(url).then(() => showNotification(t('streamer.url_copied'), 'success')).catch(() => showNotification(t('streamer.url_copy_error'), 'error'));
-}
-function openOverlayWindow() {
-    const w = window.open(getOverlayUrl('all').replace('obs=1&', '').replace('?obs=1', '?preview=1'), 'obs-overlay');
-    showNotification(w ? t('streamer.overlay_opened') : t('streamer.overlay_blocked'), w ? 'info' : 'warning');
-}
-function toggleChromaKey() {
-    rouletteSettings.chromaKey = !rouletteSettings.chromaKey; saveSettings();
-    showNotification(rouletteSettings.chromaKey ? t('streamer.chroma_on') : t('streamer.chroma_off'), 'info');
-    switchTab('streamer');
-}
-
 // ── STREAMER TAB ──────────────────────────────────────────
 function _chip(svc, name) {
     return `<button type="button" class="conn-chip" data-svc="${svc}" data-state="idle" onclick="switchTab('${svc === 'twitch' ? 'streamer' : 'auction'}')"><span class="conn-dot"></span><span class="conn-name">${name}</span><span class="conn-label"></span></button>`;
@@ -861,15 +807,6 @@ function renderStreamerTab() {
       <div class="streamer-hero"><div><h2>${esc(t('streamer.hero_title'))}</h2><p>${esc(t('streamer.hero_desc'))}</p></div>
         <div class="conn-chips">${_chip('twitch', 'Twitch')}${_chip('streamlabs', 'Streamlabs')}${_chip('donationalerts', 'DonationAlerts')}</div></div>
       <div class="streamer-tools-grid">
-        ${card(bi('display'), t('streamer.obs_title'), t('streamer.obs_desc'), `
-          <div class="field-row"><select id="overlayWidgetSel" onchange="overlayUrlChanged()">
-              ${['all', 'result', 'timer', 'chat', 'auction', 'alerts', 'wheel'].map(k => `<option value="${k}">${esc(t('st.ow_' + k))}</option>`).join('')}</select></div>
-          <div class="overlay-url-box"><input type="text" id="overlayUrlInput" readonly value="${esc(getOverlayUrl('all'))}" onfocus="this.select()">
-            <button onclick="copyOverlayUrl()" class="cyber-btn primary-btn"><i class="bi bi-clipboard-check" aria-hidden="true"></i> ${esc(t('st.copy'))}</button></div>
-          <div class="streamer-tool-actions"><button onclick="openOverlayWindow()" class="cyber-btn add-btn">${esc(t('streamer.obs_open'))}</button>
-            <button onclick="toggleChromaKey()" class="cyber-btn ${rouletteSettings.chromaKey ? 'primary-btn' : ''}">${esc(t('streamer.obs_chroma'))}</button></div>
-          <p class="muted small">${esc(t('st.obs_sync_hint'))}</p>`)}
-
         ${card(bi('check2-square'), t('streamer.vote_title'), t('streamer.vote_desc'), `
           <div class="channel-input-group"><input type="text" class="js-channel-input" id="channelNameInput" placeholder="${esc(t('streamer.channel_placeholder'))}" value="${esc(S.channelName)}" oninput="updateChannelName(this.value)" onkeypress="if(event.key==='Enter')twitchToggleConnect('channelNameInput')" autocomplete="off" autocapitalize="off">
             <button onclick="twitchToggleConnect('channelNameInput')" class="cyber-btn add-btn js-twitch-btn"></button></div>
@@ -890,6 +827,7 @@ function renderStreamerTab() {
         ${card(bi('pencil-square'), t('st.suggest_title'), t('st.suggest_desc'), '<div id="suggestCard">' + renderSuggestCard() + '</div>')}
 
         ${card(bi('chat-dots-fill'), t('streamer.chat_title'), t('streamer.chat_real_irc'), `
+          ${window.RCHActivity ? RCHActivity.toolbarHtml() : ''}
           <div class="chat-box" id="chatBox" role="log">${renderChatMessages()}</div>
           <div class="streamer-tool-actions"><button onclick="sendCommandsList()" class="cyber-btn primary-btn">${esc(t('streamer.chat_commands'))}</button>
             <button onclick="clearChat()" class="cyber-btn danger-btn">${esc(t('streamer.chat_clear'))}</button></div>
@@ -901,16 +839,18 @@ function renderStreamerTab() {
             <button onclick="quickCopyResult()" class="quick-cmd-btn"><span class="cmd-icon"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span><span class="cmd-label">${esc(t('streamer.quick_copy'))}</span></button>
             <button onclick="switchTab('auction')" class="quick-cmd-btn"><span class="cmd-icon"><i class="bi bi-hammer" aria-hidden="true"></i></span><span class="cmd-label">${esc(t('tab.auction'))}</span></button>
             <button onclick="startVote()" class="quick-cmd-btn js-needs-chat"><span class="cmd-icon"><i class="bi bi-check2-square" aria-hidden="true"></i></span><span class="cmd-label">${esc(t('streamer.quick_vote'))}</span></button>
-            <button onclick="openOverlayWindow()" class="quick-cmd-btn"><span class="cmd-icon"><i class="bi bi-display" aria-hidden="true"></i></span><span class="cmd-label">${esc(t('streamer.quick_overlay'))}</span></button>
             <button onclick="quickResetSession()" class="quick-cmd-btn"><span class="cmd-icon"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span><span class="cmd-label">${esc(t('streamer.quick_reset'))}</span></button></div>
           <label class="check-row"><input type="checkbox" ${S.chatSounds ? 'checked' : ''} onchange="toggleChatSounds(this.checked)"> ${esc(t('streamer.sounds_label'))}</label>
           <label class="check-row"><input type="checkbox" ${S.autoSpin ? 'checked' : ''} onchange="toggleAutoSpin(this.checked)"> ${esc(t('st.autospin_label'))}</label>
           <div class="streamer-tool-actions"><button onclick="showStreamStats()" class="cyber-btn">${esc(t('streamer.stats_btn'))}</button>
             <button onclick="exportStreamData()" class="cyber-btn export-btn">${esc(t('streamer.export_btn'))}</button>
             <button onclick="resetStreamSession()" class="cyber-btn danger-btn">${esc(t('streamer.reset_btn'))}</button></div>`)}
+
+        ${window.RCHActivity ? RCHActivity.render() : ''}
       </div></div>`;
 }
 function afterStreamerRender() {
     _updateConnectBtn(); drawViewerWheel(); refreshConnChips(); updateTimerDisplay();
     const cb = document.getElementById('chatBox'); if (cb) cb.scrollTop = cb.scrollHeight;
+    if (window.RCHActivity) RCHActivity.afterRender();
 }

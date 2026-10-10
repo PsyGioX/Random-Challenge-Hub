@@ -6,7 +6,7 @@
 //   1. Copy i18n/en.js → i18n/xx.js  (xx = ISO 639-1 code)
 //   2. Fill in _meta block (code, name, nameNative, flag, author, completion)
 //   3. Translate every value string (do NOT rename keys)
-//   4. Add a <script> tag in index.html / overlay.html loading your file
+//   4. Add a <script> tag in index.html loading your file
 //      BEFORE i18n.js:  <script src="i18n/xx.js"></script>
 //   5. Register the language in RCH_I18N.register() below (or just load the file —
 //      auto-detection via window.RCH_TRANSLATIONS will pick it up automatically)

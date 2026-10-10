@@ -23,10 +23,10 @@ window.RCH_TRANSLATIONS['en'] = {
 'Random Challenge Hub v3 | Random Challenge Roulette for Streamers & Gamers',
 
 'meta.description':
-'Random Challenge Hub — free interactive challenge roulette for streamers, gamers and groups. OBS overlay, Twitch chat voting, 4 roulette modes, 5 themes, 10 color schemes. Works directly in your browser without installation.',
+'Random Challenge Hub — free interactive challenge roulette for streamers, gamers and groups. Twitch chat voting, chat activity stats, giveaways, 4 roulette modes, 5 themes, 10 color schemes. Works directly in your browser without installation.',
 
 'meta.keywords':
-'challenge roulette, streamer tools, OBS overlay, game challenges, random selection, Twitch roulette, random challenge, gaming tasks, stream tools, browser source OBS, challenge wheel',
+'challenge roulette, streamer tools, chat activity, Twitch giveaway, game challenges, random selection, Twitch roulette, random challenge, gaming tasks, stream tools, chat statistics, challenge wheel',
 
 'meta.language':
 'English',
@@ -38,7 +38,7 @@ window.RCH_TRANSLATIONS['en'] = {
 'Random Challenge Hub v3 | Challenge Roulette for Streamers',
 
 'meta.og_description':
-'Free interactive challenge roulette with OBS overlay, Twitch chat voting, 4 modes, 5 themes and browser-based tools. No installation required.',
+'Free interactive challenge roulette with chat activity stats, Twitch chat voting and giveaways, 4 modes, 5 themes and browser-based tools. No installation required.',
 
 'meta.og_image_alt':
 'Random Challenge Hub — challenge roulette for streamers',
@@ -47,7 +47,7 @@ window.RCH_TRANSLATIONS['en'] = {
 'Random Challenge Hub v3 | Streamer Challenge Roulette',
 
 'meta.twitter_description':
-'Free interactive challenge roulette with OBS overlay for streamers and gamers.',
+'Free interactive challenge roulette with chat analytics for streamers and gamers.',
 
 'meta.twitter_image_alt':
 'Random Challenge Hub logo',
@@ -83,10 +83,9 @@ window.RCH_TRANSLATIONS['en'] = {
 
   // ── ABOUT SECTION ─────────────────────────────────────────
   'about.title':            'Random Challenge Hub v3',
-  'about.description':      'Professional platform for creating random game challenges. Perfect for streamers with OBS overlay, gamers with bonus rounds, and friend groups. Everything runs directly in the browser — no servers, full privacy.',
+  'about.description':      'Professional platform for creating random game challenges. Perfect for streamers with chat analytics and giveaways, gamers with bonus rounds, and friend groups. Everything runs directly in the browser — no servers, full privacy.',
   'about.start_btn':        'GET STARTED {bi:stars}',
   'feat.roulette_modes':    '4 roulette modes with improved physics',
-  'feat.obs_overlay':       'OBS Browser Source overlay',
   'feat.chat_vote':         'Chat voting and viewer wheel',
   'feat.themes':            '5 themes and 10 colour schemes',
   'feat.timer':             'Streamer timer with countdown',
@@ -97,15 +96,13 @@ window.RCH_TRANSLATIONS['en'] = {
   'info.step1':             'Add games and tasks in the "Games" tab',
   'info.step2':             'Create a participants list in the "Players" tab',
   'info.step3':             'Pick a mode and spin the wheel!',
-  'info.step4':             'For streams, connect OBS Overlay via the "Streamer" tab',
+  'info.step4':             'For streams, connect Twitch chat in the "Streamer" tab',
   'info.modes_title':       '{bi:controller} Roulette Modes',
   'info.mode_full':         '<strong>Full Random</strong> — game + task + player',
   'info.mode_game_first':   '<strong>Game First</strong> — pick game, then tasks for all',
   'info.mode_player_only':  '<strong>Player Only</strong> — pick a random participant',
   'info.mode_task_only':    '<strong>Task Only</strong> — random task from a game',
   'info.streamer_title':    '{bi:broadcast} For Streamers',
-  'info.obs_label':         'OBS Overlay',
-  'info.obs_desc':          'Browser Source right in your stream',
   'info.vote_label':        'Voting',
   'info.vote_desc':         'Viewers choose the task',
   'info.subs_label':        'Subs Wheel',
@@ -251,14 +248,7 @@ window.RCH_TRANSLATIONS['en'] = {
 
   // ── STREAMER TAB ──────────────────────────────────────────
   'streamer.hero_title':    'STREAMER MODE',
-  'streamer.hero_desc':     'Advanced streaming tools: OBS overlay, chat voting, timer, quick commands and subscriber wheel',
-  'streamer.obs_title':     'OBS OVERLAY',
-  'streamer.obs_desc':      'Add the wheel to OBS as a Browser Source',
-  'streamer.obs_ready':     'Overlay ready to use',
-  'streamer.obs_open':      '{bi:display} Open Overlay',
-  'streamer.obs_chroma':    '{bi:circle-fill} Chroma Key',
-  'streamer.obs_settings':  '{bi:gear-fill} Settings',
-  'streamer.obs_hint':      'In OBS: Sources → Browser → paste URL above → 400×400px',
+  'streamer.hero_desc':     'Advanced streaming tools: chat analytics, giveaways, voting, timer, goals, reminders and viewer wheel',
   'streamer.vote_title':    'CHAT VOTING',
   'streamer.vote_desc':     'Viewers choose a task via chat',
   'streamer.channel_placeholder': 'Twitch channel name…',
@@ -312,7 +302,6 @@ window.RCH_TRANSLATIONS['en'] = {
   'streamer.quick_export':  'Export',
   'streamer.quick_roulette':'To Wheel',
   'streamer.quick_chat':    'Task from chat',
-  'streamer.quick_overlay': 'OBS Overlay',
   'streamer.quick_vote':    'Voting',
   'streamer.quick_reset':   'New Session',
   'streamer.chat_title':    'TWITCH CHAT',
@@ -362,12 +351,6 @@ window.RCH_TRANSLATIONS['en'] = {
   'streamer.all_already_in_wheel': 'All active chat users already in wheel',
   'streamer.no_games_vote': 'Add games to start voting',
   'streamer.connect_first_vote': 'Connect to a Twitch channel first',
-  'streamer.overlay_opened': '{bi:display} Overlay opened. Add the URL to OBS Browser Source.',
-  'streamer.overlay_blocked': '{bi:slash-circle} Popup blocked. Copy the URL and open it manually or in OBS.',
-  'streamer.url_copied':    '{bi:clipboard-check} URL copied! Paste into OBS Browser Source',
-  'streamer.url_copy_error':'Copy error',
-  'streamer.chroma_on':     '{bi:circle-fill} Chroma Key on',
-  'streamer.chroma_off':    'Chroma Key off',
   'streamer.stats_title':   '{bi:bar-chart-fill} Stream Stats',
   'streamer.stats_session': '{bi:tv} Session:',
   'streamer.stats_min':     '{n} minutes',
@@ -487,13 +470,6 @@ window.RCH_TRANSLATIONS['en'] = {
   'settings.blacklist_saved': '{bi:slash-circle} Blacklist saved ({n} tasks)',
   'settings.streamer_title':'{bi:broadcast} STREAMER SETTINGS',
   'settings.player_on_wheel':'Player names on wheel',
-  'settings.chroma_key':    '{bi:circle-fill} Chroma Key for overlay',
-  'settings.overlay_pos':   'Overlay position',
-  'settings.pos_top_left':  'Top-left',
-  'settings.pos_top_right': 'Top-right',
-  'settings.pos_bot_left':  'Bottom-left',
-  'settings.pos_bot_right': 'Bottom-right',
-  'settings.pos_center':    'Center',
   'settings.theme_title':   '{bi:palette-fill} THEMES',
   'settings.theme_hint':    'Theme is applied immediately and saved across reloads',
   'settings.theme_dark':    'Dark',
@@ -519,7 +495,6 @@ window.RCH_TRANSLATIONS['en'] = {
   'floating.settings':      '{bi:gear-fill} Settings',
   'floating.roulette':      '{bi:dice-5-fill} Roulette',
   'floating.streamer':      '{bi:broadcast} Streamer',
-  'floating.overlay':       '{bi:display} OBS Overlay',
 
   // ── WHEEL SEGMENTS (no-data states) ───────────────────────
   'wheel.no_players':       'No players',
@@ -534,31 +509,6 @@ window.RCH_TRANSLATIONS['en'] = {
   'wheel.group_tasks':      '{n} tasks',
   'wheel.waiting':          'Waiting for result…',
 
-  // ── OVERLAY ───────────────────────────────────────────────
-  'overlay.title':          'Random Challenge Hub',
-  'overlay.waiting':        'Waiting for result…',
-  'overlay.game_label':     '{bi:controller} Game',
-  'overlay.player_label':   '{bi:person-fill} Player',
-  'overlay.task_label':     '{bi:lightning-charge-fill} Task',
-  'overlay.vote_title':     '{bi:check2-square} Chat Vote',
-  'overlay.winner_label':   'Winner',
-  'overlay.chat_title':     'Live Chat',
-  'overlay.timer_title':    'Timer',
-  'overlay.timer_waiting':  'waiting',
-  'overlay.chat_empty':     'Chat not connected',
-  'overlay.preview':        'OBS Preview:',
-  'overlay.btn_result':     '{bi:bullseye} Result',
-  'overlay.btn_vote':       '{bi:check2-square} Vote',
-  'overlay.btn_winner':     '{bi:trophy-fill} Winner',
-  'overlay.btn_idle':       '{bi:pause-fill} Idle',
-  'overlay.btn_chat':       '{bi:chat-dots-fill} Chat',
-  'overlay.btn_timer':      '{bi:stopwatch-fill} Timer',
-  'overlay.btn_theme':      '{bi:palette-fill} Theme',
-  'overlay.btn_chroma':     '{bi:circle-fill} Chroma',
-  'overlay.btn_reset_pos':  '{bi:arrow-repeat} Reset Positions',
-  'overlay.btn_hide_preview': '{bi:eye-fill} Hide Preview',
-  'overlay.btn_show_preview': '{bi:eye-fill} Show Preview',
-  'overlay.vote_sec':       '{n}s',
 
   // ── LEGAL PAGES ───────────────────────────────────────────
   'legal.nav_privacy':      'Privacy Policy',
@@ -688,10 +638,10 @@ window.RCH_TRANSLATIONS['en'] = {
   // ── MOBILE BLOCK ──────────────────────────────────────────
   'mobile.title':   'RANDOM CHALLENGE HUB',
   'mobile.subtitle':'Desktop Required',
-  'mobile.desc':    '<strong>Random Challenge Hub</strong> is a professional tool designed for the desktop experience — a large canvas wheel, multi-window OBS setup, and full keyboard control.',
+  'mobile.desc':    '<strong>Random Challenge Hub</strong> is a professional tool designed for the desktop experience — a large canvas wheel, a multi-panel streamer dashboard, and full keyboard control.',
   'mobile.why_title': 'WHY DESKTOP?',
   'mobile.why_1':   'Canvas wheel requires a screen ≥ 900px wide',
-  'mobile.why_2':   'OBS overlay needs multiple windows',
+  'mobile.why_2':   'The streamer dashboard needs a large screen',
   'mobile.why_3':   'Settings panel requires a keyboard',
   'mobile.why_4':   'Twitch IRC chat works best on desktop',
   'mobile.alt_title': 'What to do?',

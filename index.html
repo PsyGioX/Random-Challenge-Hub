@@ -16,8 +16,8 @@
                    base-uri 'self';">
 
 <title data-i18n-meta="title">Random Challenge Hub v3 | Random Challenge Roulette for Streamers & Gamers</title>
-<meta name="description" data-i18n-meta="description" content="Random Challenge Hub — free interactive challenge roulette for streamers, gamers and groups. OBS overlay, Twitch chat voting, 4 roulette modes, 5 themes, 10 color schemes. Works directly in your browser without installation.">
-<meta name="keywords" data-i18n-meta="keywords" content="challenge roulette, streamer tools, OBS overlay, game challenges, random selection, Twitch roulette, random challenge, gaming tasks, stream tools, browser source OBS, challenge wheel">
+<meta name="description" data-i18n-meta="description" content="Random Challenge Hub — free interactive challenge roulette for streamers, gamers and groups. Twitch chat voting, chat activity stats, giveaways, 4 roulette modes, 5 themes, 10 color schemes. Works directly in your browser without installation.">
+<meta name="keywords" data-i18n-meta="keywords" content="challenge roulette, streamer tools, chat activity, Twitch giveaway, game challenges, random selection, Twitch roulette, random challenge, gaming tasks, stream tools, chat statistics, challenge wheel">
 <meta name="author" content="Random Challenge Hub">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
 <meta name="theme-color" content="#12151d">
@@ -29,7 +29,7 @@
 
 <!-- Open Graph -->
 <meta property="og:title" data-i18n-meta="og:title" content="Random Challenge Hub v3 | Challenge Roulette for Streamers">
-<meta property="og:description" data-i18n-meta="og:description" content="Free interactive challenge roulette with OBS overlay, Twitch chat voting, 4 modes, 5 themes and browser-based tools. No installation required.">
+<meta property="og:description" data-i18n-meta="og:description" content="Free interactive challenge roulette with chat activity stats, Twitch chat voting and giveaways, 4 modes, 5 themes and browser-based tools. No installation required.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://random-challenge-hub.vercel.app">
 <meta property="og:locale" data-i18n-meta="locale" content="en_US">
@@ -42,7 +42,7 @@
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" data-i18n-meta="twitter:title" content="Random Challenge Hub v3 | Streamer Challenge Roulette">
-<meta name="twitter:description" data-i18n-meta="twitter:description" content="Free interactive challenge roulette with OBS overlay for streamers and gamers.">
+<meta name="twitter:description" data-i18n-meta="twitter:description" content="Free interactive challenge roulette with chat analytics for streamers and gamers.">
 <meta name="twitter:image" content="https://random-challenge-hub.vercel.app/favicon/favicon.png">
 <meta name="twitter:image:alt" data-i18n-meta="twitter:image_alt" content="Random Challenge Hub logo">
 
@@ -80,6 +80,9 @@
 <script src="i18n/ext.en.js"></script>
 <script src="i18n/ext.ru.js"></script>
 <script src="i18n/ext.uk.js"></script>
+<script src="i18n/act.en.js"></script>
+<script src="i18n/act.ru.js"></script>
+<script src="i18n/act.uk.js"></script>
 <!-- Community translations: add <script src="i18n/xx.js"></script> here -->
 <script src="i18n/i18n.js"></script>
 
@@ -89,7 +92,7 @@
     "@type": "WebApplication",
     "name": "Random Challenge Hub",
     "alternateName": "RCH",
-    "description": "Free interactive challenge roulette with OBS overlay for streamers and gamers. Twitch chat voting, 4 roulette modes, 5 themes and browser-based tools.",
+    "description": "Free interactive challenge roulette with chat analytics and giveaways for streamers and gamers. Twitch chat voting, 4 roulette modes, 5 themes and browser-based tools.",
     "url": "https://random-challenge-hub.vercel.app",
     "applicationCategory": "EntertainmentApplication",
     "applicationSubCategory": "GameApplication",
@@ -104,7 +107,7 @@
     "featureList": [
         "Donation auction (Streamlabs, DonationAlerts, Twitch Bits)",
         "4 roulette modes",
-        "OBS Browser Source overlay",
+        "Chat activity analytics and giveaways",
         "Twitch chat voting",
         "5 themes",
         "10 color schemes",
@@ -162,7 +165,7 @@
                 </p>
                 <div class="features-grid">
                     <div class="feature-item"><span class="feature-icon"><i class="bi bi-pie-chart-fill" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.roulette_modes"></span></div>
-                    <div class="feature-item"><span class="feature-icon"><i class="bi bi-display" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.obs_overlay"></span></div>
+                    <div class="feature-item"><span class="feature-icon"><i class="bi bi-activity" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.chat_stats"></span></div>
                     <div class="feature-item"><span class="feature-icon"><i class="bi bi-check2-square" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.chat_vote"></span></div>
                     <div class="feature-item"><span class="feature-icon"><i class="bi bi-palette-fill" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.themes"></span></div>
                     <div class="feature-item"><span class="feature-icon"><i class="bi bi-stopwatch-fill" aria-hidden="true"></i></span><span class="feature-text" data-i18n="feat.timer"></span></div>
@@ -208,9 +211,9 @@
                 <h3 data-i18n="info.streamer_title"></h3>
                 <div class="audience-grid">
                     <div class="audience-item">
-                        <span class="audience-icon"><i class="bi bi-display" aria-hidden="true"></i></span>
-                        <strong data-i18n="info.obs_label">OBS Overlay</strong>
-                        <p data-i18n="info.obs_desc"></p>
+                        <span class="audience-icon"><i class="bi bi-activity" aria-hidden="true"></i></span>
+                        <strong data-i18n="info.stats_label">Chat activity</strong>
+                        <p data-i18n="info.stats_desc"></p>
                     </div>
                     <div class="audience-item">
                         <span class="audience-icon"><i class="bi bi-check2-square" aria-hidden="true"></i></span>
@@ -275,11 +278,11 @@
         </div>
     </footer>
 
-    <script src="js/bus.js"></script>
     <script src="js/wheel.js"></script>
     <script src="js/integrations.js"></script>
     <script src="script.js"></script>
     <script src="js/streamer.js"></script>
+    <script src="js/activity.js"></script>
     <script src="js/auction.js"></script>
 
     <script>

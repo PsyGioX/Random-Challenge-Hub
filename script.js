@@ -1,6 +1,6 @@
 // ============================================================
 // RANDOM CHALLENGE HUB — MASTER SCRIPT v3.0
-// Features: 5 themes, advanced wheel, streamer mode, OBS overlay,
+// Features: 5 themes, advanced wheel, streamer mode,
 //           chat vote, viewer wheel, timer, quick commands
 // ============================================================
 
@@ -130,8 +130,6 @@ const ROULETTE_DEFAULTS = {
     // Streamer extras
     showPlayerOnWheel: false,
     announceDelay: 0,        // ms before showing result
-    overlayPosition: 'top-left', // top-left | top-right | bottom-left | bottom-right
-    chromaKey: false,
     // Gamer extras
     bonusRoundEnabled: false,
     bonusRoundChance: 10,    // %
@@ -141,7 +139,6 @@ const ROULETTE_DEFAULTS = {
     weightedSegments: false,
     removeAfterSpin: false, // Remove the task from the wheel after each scroll
     wheelBulbs: true,       // marquee bulb ring
-    overlayWheel: true,     // replay the spin in the OBS overlay
 };
 let rouletteSettings = Object.assign({}, ROULETTE_DEFAULTS, _safeParse('rouletteSettings', {}));
 
@@ -247,7 +244,6 @@ function createFloatingButton() {
                 <button onclick="switchTab('roulette')"  class="floating-menu-btn">${t('floating.roulette')}</button>
                 <button onclick="switchTab('auction')"   class="floating-menu-btn"><i class="bi bi-hammer" aria-hidden="true"></i> ${t('tab.auction')}</button>
                 <button onclick="switchTab('streamer')"  class="floating-menu-btn">${t('floating.streamer')}</button>
-                <button onclick="openOverlayWindow()"    class="floating-menu-btn">${t('floating.overlay')}</button>
             </div>
         </div>
     `);
@@ -275,7 +271,7 @@ function showConfirmModal(title, msg, confirmTxt, cancelTxt, onConfirm) {
     const btn = document.getElementById('modalConfirm');
     btn.textContent = confirmTxt || 'CONFIRM';
     const cancelBtn = modal.querySelector('.cancel-btn');
-    if (cancelBtn) cancelBtn.textContent = cancelTxt || 'CANCEL';
+    if (cancelBtn) { cancelBtn.style.display = ''; cancelBtn.textContent = cancelTxt || 'CANCEL'; }
     modalCallback = onConfirm;
     btn.onclick = () => { if (modalCallback) modalCallback(); closeModal() };
     modal.classList.remove('hidden');
@@ -892,7 +888,6 @@ function toggleAssignedTasks() {
 
 // ── RESULT ANNOUNCE / HISTORY ─────────────────────────────
 function announceResult(game, player, task, duration) {
-    rchOverlay({ type: 'result', game: String(game), player: String(player), task: String(task), duration });
     spinHistory.unshift({ ts: Date.now(), mode: rouletteMode, game: String(game), player: String(player), task: String(task) });
     if (spinHistory.length > 200) spinHistory.length = 200;
     if (rouletteMode === 'full' || rouletteMode === 'game-first' || rouletteMode === 'task-only') {
@@ -900,6 +895,7 @@ function announceResult(game, player, task, duration) {
     }
     try { localStorage.setItem('spinHistory', JSON.stringify(spinHistory)); localStorage.setItem('taskDrawCount', JSON.stringify(taskDrawCount)); } catch (e) { }
     updatePlayerStats(player);
+    if (window.RCHActivity) RCHActivity.log('spin', t('act.ev_spin', { player: String(player), task: String(task), game: String(game) }));
 }
 
 // Re-render the side info + controls without touching the wheel or the result card
@@ -1381,7 +1377,7 @@ function startFullRandomMode() {
         setTimeout(() => {
             if (rouletteSettings.resultDisplay !== 'popup') showResult(selGame, selPlayer, selTask);
             showPopupResult(selGame, selPlayer, selTask);
-            // Display the result in an overlay
+            // Display the result in the popup
             announceResult(selGame, selPlayer?.name || '?', selTask, 12000);
             markTaskSpent(selGame, selTask);
             if (rouletteSettings.removeAfterSpin) {
@@ -1522,7 +1518,7 @@ function spinTaskOnly() {
         setTimeout(() => {
             showPopupResult(taskOnlyState.selectedGame, selectedPlayer, task);
             if (rouletteSettings.resultDisplay !== 'popup') showResult(taskOnlyState.selectedGame, selectedPlayer, task);
-            // Display the result in an overlay
+            // Display the result in the popup
             announceResult(taskOnlyState.selectedGame, selectedPlayer?.name || '?', task, 12000);
             markTaskSpent(taskOnlyState.selectedGame, task);
             if (rouletteSettings.removeAfterSpin) {
@@ -1550,7 +1546,6 @@ function startGameFirstInitial() {
         playWinSound();
         updateWheelSegmentsForGame(selGame); renderWheel(); showWheel();
         refreshRouletteInfo();
-        rchOverlay({ type: 'winner', name: selGame, from: t('roulette.selected_game') });
         showNotification(`${biChar('controller')} ${t('roulette.selected_game')}: ${selGame}!`, 'success');
         const first = activePlayers()[0];
         if (first) setTimeout(() => showNotification(`${biChar('person-fill')} ${first.name}`, 'info'), 1500);
@@ -1638,10 +1633,6 @@ function spinWheel(tasks, targetIdx, callback) {
     const spins = rouletteSettings.minSpins + Math.floor(Math.random() * (Math.max(rouletteSettings.maxSpins, rouletteSettings.minSpins) - rouletteSettings.minSpins + 1));
     const totalRot = RCHWheel.targetRotation(wheelSegments, targetIdx, currentWheelAngle, spins, 0.6);
     if (rouletteSettings.soundEnabled) playSpinSound();
-    if (rouletteSettings.overlayWheel) {
-        const w = wheelSegments[targetIdx];
-        publishWheel(t('tab.roulette'), wheelSegments, { startAngle: currentWheelAngle, total: totalRot, duration: rouletteSettings.spinDuration }, w.task || w.label);
-    }
     animateWheel(totalRot, callback);
 }
 
@@ -2267,18 +2258,6 @@ function renderStreamerSettings() {
         <h3 class="section-title"><span class="neon-text">${t('settings.streamer_title')}</span><span class="section-badge">LIVE</span></h3>
         <div class="settings-group">
             ${toggleItem('showPlayerOnWheel', t('settings.player_on_wheel'), rouletteSettings.showPlayerOnWheel)}
-            ${toggleItem('chromaKey', t('settings.chroma_key'), rouletteSettings.chromaKey)}
-            ${toggleItem('overlayWheel', t('settings.overlay_wheel'), rouletteSettings.overlayWheel)}
-            <div class="setting-item">
-                <label>${t('settings.overlay_pos')}</label>
-                <select onchange="updateSetting('overlayPosition',this.value)" style="flex:1;max-width:220px">
-                    <option value="top-left"     ${rouletteSettings.overlayPosition === 'top-left' ? 'selected' : ''}>${t('settings.pos_top_left')}</option>
-                    <option value="top-right"    ${rouletteSettings.overlayPosition === 'top-right' ? 'selected' : ''}>${t('settings.pos_top_right')}</option>
-                    <option value="bottom-left"  ${rouletteSettings.overlayPosition === 'bottom-left' ? 'selected' : ''}>${t('settings.pos_bot_left')}</option>
-                    <option value="bottom-right" ${rouletteSettings.overlayPosition === 'bottom-right' ? 'selected' : ''}>${t('settings.pos_bot_right')}</option>
-                    <option value="center"       ${rouletteSettings.overlayPosition === 'center' ? 'selected' : ''}>${t('settings.pos_center')}</option>
-                </select>
-            </div>
         </div>
     </div>`;
 }

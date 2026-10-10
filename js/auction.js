@@ -65,7 +65,7 @@
     }
     let _saveT = null;
     function persist() { try { localStorage.setItem(KEY, JSON.stringify(A)); } catch (e) { } }
-    function save() { clearTimeout(_saveT); _saveT = setTimeout(persist, 300); publishSoon(); }
+    function save() { clearTimeout(_saveT); _saveT = setTimeout(persist, 300); }
     window.addEventListener('beforeunload', persist);
 
     // ── helpers ──────────────────────────────────────────
@@ -162,7 +162,6 @@
             toast(t('au.toast_extended', { n: A.antiSnipeExtend }), 'info');
         }
         playBid();
-        try { RCHBus.publish('overlayAlert', { id: b.id, kind: 'bid', user: b.user, amount: b.amount, currency: A.currency, lot: lot.name, num: lot.num }); } catch (e) { }
         refreshLive(); save();
     }
     function playBid() {
@@ -220,7 +219,6 @@
             }
             A.endsAt = Date.now() + A.durationSec * 1000; A.status = 'running'; A.winner = null;
         }
-        rchOverlay({ type: 'idle' });
         render(); save();
     }
     function pause() { if (A.status !== 'running') return; A.remainingMs = Math.max(0, A.endsAt - Date.now()); A.status = 'paused'; render(); save(); }
@@ -244,7 +242,7 @@
         showConfirmModal(t('au.reset_title'), t('au.reset_msg'), t('common.reset'), t('common.cancel'), () => {
             A.status = 'idle'; A.bids = []; A.unassigned = []; A.winner = null; A.endsAt = 0; A.out = [];
             A.lots = A.lots.filter(l => l.pin); A.lots.forEach(l => { l.amount = 0; l.at = 0; });
-            rchOverlay({ type: 'idle' }); render(); save();
+            render(); save();
         });
     }
     function tick() {
@@ -252,7 +250,6 @@
             if (Date.now() >= A.endsAt) { finish(); return; }
             const left = remaining(), c = $('auClock');
             if (c) { c.textContent = clock(left); c.classList.toggle('urgent', left <= 15000); }
-            const now = Math.floor(Date.now() / 1000); if (now !== tick.last) { tick.last = now; publishNow(); }
         }
     }
     setInterval(tick, 250);
@@ -353,7 +350,7 @@
         A.winner = { lotId: lot.id, name: lot.name, num: lot.num, total: lot.amount, ts: Date.now() };
         A.history.unshift({ ts: Date.now(), name: lot.name, total: lot.amount, mode: A.wheel.mode });
         A.history.length = Math.min(A.history.length, 30);
-        rchOverlay({ type: 'winner', name: lot.name, from: `${fmt(lot.amount)} ${A.currency}` });
+        if (window.RCHActivity) RCHActivity.log('auction', t('act.ev_auction', { name: lot.name }));
         playWinSound(); if (rouletteSettings.particleEffect) createParticles();
         toast(t('au.winner_toast', { name: lot.name }), 'success');
         if (A.wheel.removeWinner) removeLotQuiet(lot.id);
@@ -412,26 +409,9 @@
             canvas, segs, targetIdx: idx, startAngle, duration, spins: 5, drawOpts: { size: 360, fontSize: 13, centerIcon: 'hammer' },
             onTick: () => { if (rouletteSettings.tickSoundEnabled) playTickSound(); }, onDone: done,
         });
-        publishWheel(A.title || t('tab.auction'), segs, { startAngle, total: wheelRun.total, duration }, segs[idx].label);
     }
     function restoreOut(id) { A.out = id ? A.out.filter(x => x !== id) : []; refreshLive(); save(); }
     function setWheelMode(m) { if (spinning) return; A.wheel.mode = m === 'dropout' ? 'dropout' : 'normal'; autoDrop = false; render(); save(); }
-
-    // ── overlay publishing ───────────────────────────────
-    let _pubT = null;
-    function snapshot() {
-        const { rows, sum } = computed();
-        const top = rows.filter(r => r.total > 0).sort((a, b) => b.total - a.total || (a.lot.at || 0) - (b.lot.at || 0));
-        return {
-            status: A.status, title: A.title, currency: A.currency, endsAt: A.status === 'running' ? A.endsAt : 0,
-            remainingMs: remaining(), sum, bids: A.bids.length,
-            lots: top.slice(0, 8).map(r => ({ num: r.lot.num, name: r.lot.name, total: r.total, count: r.count, pct: Math.round(r.pct * 10) / 10, color: r.lot.color, out: r.out })),
-            winner: A.winner ? { name: A.winner.name, total: A.winner.total } : null,
-            recent: A.bids.filter(b => b.src !== 'manual').slice(-4).reverse().map(b => ({ user: b.user, amount: b.amount, lot: (lotById(b.lotId) || {}).name || '' })),
-        };
-    }
-    function publishNow() { try { RCHBus.publish('overlayAuction', snapshot()); } catch (e) { } }
-    function publishSoon() { if (_pubT) return; _pubT = setTimeout(() => { _pubT = null; publishNow(); }, 120); }
 
     // ── UI: pieces ───────────────────────────────────────
     const ic = (n, c) => bi(n, c);
@@ -634,9 +614,6 @@
           </div>
           <details class="pa-card pa-fold" ${anySource ? '' : 'open'}><summary><h3>${ic('plug-fill')} ${esc(t('au.sources'))}</h3></summary>${sourcesHtml()}</details>
           <details class="pa-card pa-fold"><summary><h3>${ic('sliders')} ${esc(t('au.settings'))}</h3></summary>${settingsHtml()}</details>
-          <details class="pa-card pa-fold"><summary><h3>${ic('display')} ${esc(t('au.overlay'))}</h3></summary>
-            <p class="muted small">${esc(t('au.overlay_hint'))}</p>
-            <div class="overlay-url-box"><input type="text" readonly id="auOverlayUrl" value="${esc(getOverlayUrl('auction'))}" onfocus="this.select()"><button class="cyber-btn primary-btn" data-au="copyurl">${ic('clipboard')} ${esc(t('st.copy'))}</button></div></details>
         </div>`;
     }
 
@@ -660,7 +637,7 @@
         drawWheel();
     }
     function render() {
-        if (currentTab !== 'auction') { publishSoon(); return; }
+        if (currentTab !== 'auction') return;
         const c = $('tabContent'); if (!c) return;
         const active = document.activeElement;
         if (active && (active.id === 'auTitle' || active.classList.contains('pa-inline'))) return; // never rebuild while typing
@@ -710,7 +687,6 @@
         autodrop: () => { autoDrop = true; spinWheel(); },
         sort: () => set('sort', A.sort === 'amount' ? 'added' : 'amount'),
         compact: () => { set('compact', !A.compact); const l = $('auLots'); if (l) l.classList.toggle('compact', A.compact); render(); },
-        copyurl: () => navigator.clipboard.writeText($('auOverlayUrl').value).then(() => toast(t('streamer.url_copied'), 'success')).catch(() => { }),
     };
     document.addEventListener('click', e => {
         const el = e.target.closest('[data-au]'); if (!el || !el.closest('#auRoot')) return;
@@ -751,5 +727,4 @@
         start, pause, finish, reset, addTime, addLotUI, delLot, assign, dismiss, undoBid, testBid,
         set, copyChatText, pickReward, toRoulette, addAsGame, render, addBid, spinWheel, merge, adjust,
     };
-    document.addEventListener('DOMContentLoaded', () => setTimeout(publishNow, 500));
 })();

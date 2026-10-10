@@ -1,7 +1,7 @@
 {
     "name": "Random Challenge Hub",
     "short_name": "Challenge Hub",
-    "description": "Интерактивная рулетка заданий с OBS overlay для стримеров и геймеров",
+    "description": "Интерактивная рулетка заданий со статистикой чата и розыгрышами для стримеров и геймеров",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0f1218",

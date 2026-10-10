@@ -26,7 +26,6 @@ Perfect for streamers, gamers, and groups of friends — runs entirely in your b
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [Roulette Modes](#roulette-modes)
-- [OBS Overlay](#obs-overlay)
 - [Streamer Mode](#streamer-mode)
 - [Settings](#settings)
 - [Technology Stack](#technology-stack)
@@ -57,7 +56,7 @@ Everything runs **locally in your browser**—no servers, no accounts, no tracki
 | **Games & Challenges** | Create unlimited games with custom challenges |
 | **Players** | Manage participants with colors and statistics |
 | **5 Roulette Modes** | Full Random, Game First, Player Only, Task Only, Game Only |
-| **Donation Auction** | Streamlabs · DonationAlerts · Twitch Bits/subs, live OBS widget |
+| **Donation Auction** | Streamlabs · DonationAlerts · Twitch Bits/subs, live lots and winner |
 | **Responsive** | Phone-friendly layout with a bottom navigation bar |
 | **Statistics** | Spin history (CSV export), player activity, and rankings |
 | **5 UI Themes** | Dark, Neon, Cyber, Streamer, and Pastel |
@@ -72,13 +71,18 @@ Everything runs **locally in your browser**—no servers, no accounts, no tracki
 
 | Feature | Description |
 |---------|-------------|
-| **OBS Browser Source Overlay** | Live widgets for results, timer, and chat |
+| **Chat Activity Analytics** | Messages per minute, peak, sparkline, top chatters / words / emotes, hype and dead-chat alerts |
+| **Chat Giveaway** | Keyword entries, subscriber / min-message filters, animated draw, re-roll |
+| **Live Feed** | Subs, gifts, raids, bits, donations and results in one timeline |
+| **Stream Goal** | Progress bar for donations, subs, new chatters, messages or manual counter |
+| **Stream Markers** | `Alt+M` / `!mark` → chapter timestamps for YouTube |
+| **Streamer Reminders** | Recurring nudges: water, breaks, follow call-outs |
 | **Chat Voting** | Viewers vote using `!1`, `!2`, `!3`, etc. |
 | **Viewer Wheel** | Randomly pick a viewer from chat |
-| **Streamer Timer** | Countdown synced with OBS Overlay |
-| **Live Chat Widget** | Twitch chat displayed in the overlay |
+| **Streamer Timer** | Precise countdown with quick +30s / +1m buttons |
+| **Chat Tools** | Filter by role, search with highlight, hide `!commands`, viewer cards |
 | **Twitch IRC** | Anonymous read-only connection (no OAuth required) |
-| **Chroma Key Mode** | Green background for OBS chroma key |
+| **Session Report** | Copy a text summary, export JSON or the chat log as CSV |
 
 ---
 
@@ -105,7 +109,7 @@ No dependencies.
 No build tools.
 No server required.
 
-For the best OBS Overlay experience, use a local HTTP server:
+If you want to connect Twitch / Streamlabs from a local copy, use a local HTTP server:
 
 ```bash
 npx serve .
@@ -121,7 +125,7 @@ python -m http.server 8080
 2. Add players.
 3. Choose a roulette mode.
 4. Spin the wheel.
-5. Connect Twitch and configure OBS Overlay if you're streaming.
+5. Connect Twitch in the Streamer tab if you're streaming.
 
 ---
 
@@ -130,16 +134,15 @@ python -m http.server 8080
 ```
 Random-Challenge-Hub/
 ├── index.html            app shell (responsive, bottom nav on phones)
-├── overlay.html          OBS Browser Source (result, timer, chat, auction, alerts, wheel replay)
 ├── script.js             core: games, players, roulette modes, settings, stats
 ├── style.css             themes + v4 design layer
 ├── vendor/bootstrap-icons/   Bootstrap Icons 1.13 (icon font, bundled locally)
 ├── js/
 │   ├── icons.js          bi() / biChar() helpers and {bi:name} tokens for translations
-│   ├── wheel.js          wheel engine (weighted segments, bulb ring) — shared with the overlay
-│   ├── bus.js            app  overlay sync (BroadcastChannel + localStorage)
+│   ├── wheel.js          wheel engine (weighted segments, bulb ring) — 
 │   ├── integrations.js   Twitch IRC parser, Streamlabs & DonationAlerts clients
 │   ├── streamer.js       Twitch chat, voting, timer, viewer wheel, suggestions
+│   ├── activity.js       chat analytics, giveaway, goal, feed, markers, reminders
 │   └── auction.js        donation auction
 ├── i18n/                 en / ru / uk (+ ext.*.js with the newer strings)
 └── legal/
@@ -177,44 +180,20 @@ Tokens are stored only in your browser's `localStorage`. Do not show the Auction
 
 ---
 
-# OBS Overlay
-
-`overlay.html` is added to OBS as a **Browser Source**.
-
-```
-https://<your-host>/overlay.html?obs=1
-```
-
-### URL Parameters
-
-| Parameter | Description |
-|-----------|-------------|
-| `obs=1` | Hide the control panel |
-| `chroma=1` | Green background for chroma key |
-| `theme=neon` | Overlay theme |
-| `only=auction,alerts` | Show only these widgets: `result`, `timer`, `chat`, `auction`, `alerts`, `wheel` |
-
-Use one Browser Source per widget (`only=`) to place them independently in OBS.
-
-## Widgets
-
-Result / vote / winner · Timer · Chat · **Auction** (live lots, clock, winner) · **Donation & bid alerts** · **Wheel replay** (the roulette, viewer wheel and auction wheel spin on stream in sync with the app). Widgets are draggable; positions are saved.
-
-## Synchronization — important for OBS
-
-The app and the overlay talk through `BroadcastChannel` + `localStorage`, so they must share one browser profile. **OBS Browser Sources have their own storage**, separate from Chrome. To feed the overlay, open this app *inside OBS*:
-
-`View → Docks → Custom Browser Docks` → paste the app URL. Docks and Browser Sources share storage, so the overlay receives everything live.
-
----
-
 # Streamer Mode
 
 - **Twitch chat** — anonymous read-only IRC, auto-reconnect with back-off.
-- **Chat voting** — options from random games, random tasks or your own list. Viewers type `2`, `!2` or `!vote 2` and may change their vote. Live bars in the overlay; ties are drawn at random; the winner can be applied to the roulette.
+- **Chat voting** — options from random games, random tasks or your own list. Viewers type `2`, `!2` or `!vote 2` and may change their vote. Live bars; ties are drawn at random; the winner can be applied to the roulette.
 - **Timer** — precise (timestamp based), `!timer 5` / `!timer stop`.
 - **Viewer wheel** — real animated wheel; equal chances, by chat activity, or subscribers ×2; optional removal of winners.
 - **Viewer suggestions** — viewers send `!task text`, you approve it into a game.
+- **Chat activity** — live msg/min, peak, 30-minute sparkline, top chatters, popular words and emotes. Alerts when chat gets hot (threshold) or goes quiet; bots are ignored (editable list). Click any name for a viewer card.
+- **Chat giveaway** — viewers type a keyword (default `!raffle`); optional subscribers-only, minimum messages, auto-close timer, several winners, animated draw, re-roll, send entrants to the viewer wheel.
+- **Live feed** — subs, resubs, gifts, raids, bits, donations, votes, wheel / auction / giveaway results, first-time chatters.
+- **Stream goal** — donations (optionally per currency), new subs, new chatters, messages, or manual.
+- **Markers** — `Alt+M` or `!mark text`; copy as YouTube chapters (`0:00 Stream start`, …).
+- **Reminders** — recurring toast + sound.
+- **Reports** — copy a text summary, download JSON (includes analytics) or the chat log as CSV.
 
 ## Chat Commands
 
@@ -225,6 +204,9 @@ The app and the overlay talk through `BroadcastChannel` + `localStorage`, so the
 | `!timer N` / `!timer stop` | mods | Timer in minutes |
 | `!addchatters` / `!clearwheel` / `!add name` | mods | Manage the viewer wheel |
 | `!lots` | mods | Show auction leaders |
+| `!mark [text]` | mods | Add a stream marker |
+| `!giveaway open\|close\|draw` | mods | Control the giveaway |
+| *keyword* | everyone | Enter the open giveaway |
 | `!join` | everyone | Join the viewer wheel |
 | `!task text` | everyone | Suggest a task (once a minute) |
 
@@ -232,7 +214,7 @@ The app and the overlay talk through `BroadcastChannel` + `localStorage`, so the
 
 # Settings
 
-Wheel (size, bulbs, fonts, colours), particles, audio, elimination mode, **avoid repeats** (recently drawn tasks get smaller slices), task blacklist, bonus round, streamer/overlay options.
+Wheel (size, bulbs, fonts, colours), particles, audio, elimination mode, **avoid repeats** (recently drawn tasks get smaller slices), task blacklist, bonus round, streamer options.
 
 ---
 

@@ -1,5 +1,5 @@
 // ============================================================
-// RCH Wheel engine — shared by the app (index.html) and the OBS overlay.
+// RCH Wheel engine — used by the main wheel, the auction wheel and the viewer wheel.
 // Draws a wheel with weighted segments, a marquee bulb ring and
 // handles spin geometry. No dependencies on app globals.
 // ============================================================
@@ -186,7 +186,7 @@
         else { ctx.font = `${innerR * 0.95}px Onest, Inter, system-ui, sans-serif`; ctx.fillText(ci.length <= 2 ? ci : '', cx, cy + 1); }
     }
 
-    /** Standalone spin (used for auction / viewer wheels and by the overlay replay). */
+    /** Standalone spin (used for auction / viewer wheels). */
     function spin(opts) {
         const o = opts;
         const ease = o.ease || easeOutQuint;

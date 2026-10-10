@@ -22,10 +22,10 @@ window.RCH_TRANSLATIONS['uk'] = {
 'Random Challenge Hub v3 | Рулетка завдань для стрімерів та геймерів',
 
 'meta.description':
-'Random Challenge Hub — безкоштовна інтерактивна рулетка завдань для стрімерів, геймерів та команд. OBS overlay, голосування через чат Twitch, 4 режими рулетки, 5 тем оформлення, 10 кольорових схем. Працює прямо у браузері без встановлення.',
+'Random Challenge Hub — безкоштовна інтерактивна рулетка завдань для стрімерів, геймерів та команд. голосування через чат Twitch, статистика активності чату, розіграші, 4 режими рулетки, 5 тем оформлення, 10 кольорових схем. Працює прямо у браузері без встановлення.',
 
 'meta.keywords':
-'рулетка завдань, інструменти для стрімерів, OBS overlay, ігрові челенджі, випадковий вибір, Twitch рулетка, random challenge, завдання для геймерів, інструменти для стримів, browser source OBS, колесо випробувань',
+'рулетка завдань, інструменти для стрімерів, активність чату, розіграш Twitch, ігрові челенджі, випадковий вибір, Twitch рулетка, random challenge, завдання для геймерів, інструменти для стримів, статистика чату, колесо випробувань',
 
 'meta.language':
 'Ukrainian',
@@ -37,7 +37,7 @@ window.RCH_TRANSLATIONS['uk'] = {
 'Random Challenge Hub v3 | Рулетка завдань для стрімерів',
 
 'meta.og_description':
-'Безкоштовна інтерактивна рулетка завдань з OBS overlay, голосуванням через чат Twitch, 4 режимами, 5 темами оформлення та роботою прямо у браузері без встановлення.',
+'Безкоштовна інтерактивна рулетка завдань зі статистикою чату, голосуванням і розіграшами Twitch, 4 режимами, 5 темами оформлення та роботою прямо у браузері без встановлення.',
 
 'meta.og_image_alt':
 'Random Challenge Hub — рулетка завдань для стрімерів',
@@ -46,7 +46,7 @@ window.RCH_TRANSLATIONS['uk'] = {
 'Random Challenge Hub v3 | Рулетка для стрімерів',
 
 'meta.twitter_description':
-'Інтерактивна рулетка завдань з OBS overlay для стрімерів та геймерів.',
+'Інтерактивна рулетка завдань з аналітикою чату для стрімерів та геймерів.',
 
 'meta.twitter_image_alt':
 'Логотип Random Challenge Hub',
@@ -82,10 +82,9 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   // ── ABOUT SECTION ─────────────────────────────────────────
   'about.title':            'Random Challenge Hub v3',
-  'about.description':      'Професійна платформа для створення випадкових ігрових випробувань. Ідеально підходить для стрімерів із OBS Overlay, геймерів із бонусними раундами та компаній друзів. Усе працює безпосередньо в браузері — без серверів, із повною конфіденційністю.',
+  'about.description':      'Професійна платформа для створення випадкових ігрових випробувань. Ідеально підходить для стрімерів з аналітикою чату та розіграшами, геймерів із бонусними раундами та компаній друзів. Усе працює безпосередньо в браузері — без серверів, із повною конфіденційністю.',
   'about.start_btn':        'ПОЧАТИ {bi:stars}',
   'feat.roulette_modes':    '4 режими рулетки з покращеною фізикою',
-  'feat.obs_overlay':       'OBS Browser Source Overlay',
   'feat.chat_vote':         'Голосування в чаті та колесо глядачів',
   'feat.themes':            '5 тем і 10 кольорових схем',
   'feat.timer':             'Таймер для стрімера зі зворотним відліком',
@@ -96,15 +95,13 @@ window.RCH_TRANSLATIONS['uk'] = {
   'info.step1':             'Додайте ігри та завдання на вкладці "Ігри"',
   'info.step2':             'Створіть список учасників на вкладці "Гравці"',
   'info.step3':             'Оберіть режим і запустіть колесо!',
-  'info.step4':             'Для стрімів підключіть OBS Overlay через вкладку "Стрімер"',
+  'info.step4':             'Для стрімів підключіть чат Twitch у вкладці "Стрімер"',
   'info.modes_title':       '{bi:controller} Режими рулетки',
   'info.mode_full':         '<strong>Повний випадковий вибір</strong> — гра + завдання + гравець',
   'info.mode_game_first':   '<strong>Спочатку гра</strong> — вибір гри, потім завдання для всіх',
   'info.mode_player_only':  '<strong>Лише гравець</strong> — випадковий учасник',
   'info.mode_task_only':    '<strong>Лише завдання</strong> — випадкове завдання з гри',
   'info.streamer_title':    '{bi:broadcast} Для стрімерів',
-  'info.obs_label':         'OBS Overlay',
-  'info.obs_desc':          'Browser Source прямо у вашому стрімі',
   'info.vote_label':        'Голосування',
   'info.vote_desc':         'Глядачі обирають завдання',
   'info.subs_label':        'Колесо підписників',
@@ -267,15 +264,8 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   // ── STREAMER TAB ──────────────────────────────────────────
   'streamer.hero_title':    'РЕЖИМ СТРІМЕРА',
-  'streamer.hero_desc':     'Розширені інструменти для стрімів: OBS Overlay, голосування в чаті, таймер, швидкі команди та колесо підписників.',
+  'streamer.hero_desc':     'Розширені інструменти для стрімів: аналітика чату, розіграші, голосування, таймер, цілі, нагадування та колесо глядачів.',
 
-  'streamer.obs_title':     'OBS OVERLAY',
-  'streamer.obs_desc':      'Додайте колесо в OBS як Browser Source',
-  'streamer.obs_ready':     'Overlay готовий до використання',
-  'streamer.obs_open':      '{bi:display} Відкрити Overlay',
-  'streamer.obs_chroma':    '{bi:circle-fill} Хромакей',
-  'streamer.obs_settings':  '{bi:gear-fill} Налаштування',
-  'streamer.obs_hint':      'В OBS: Джерела → Browser → вставте URL вище → 400×400 px',
 
   'streamer.vote_title':    'ГОЛОСУВАННЯ В ЧАТІ',
   'streamer.vote_desc':     'Глядачі обирають завдання через чат',
@@ -347,7 +337,6 @@ window.RCH_TRANSLATIONS['uk'] = {
   'streamer.quick_export':  'Експорт',
   'streamer.quick_roulette':'До рулетки',
   'streamer.quick_chat':    'Завдання з чату',
-  'streamer.quick_overlay': 'OBS Overlay',
   'streamer.quick_vote':    'Голосування',
   'streamer.quick_reset':   'Нова сесія',
 
@@ -415,14 +404,8 @@ window.RCH_TRANSLATIONS['uk'] = {
   'streamer.no_games_vote': 'Додайте ігри, щоб розпочати голосування',
   'streamer.connect_first_vote': 'Спочатку підключіться до Twitch-каналу',
 
-  'streamer.overlay_opened': '{bi:display} Overlay відкрито. Додайте URL у Browser Source в OBS.',
-  'streamer.overlay_blocked': '{bi:slash-circle} Спливаюче вікно заблоковано. Скопіюйте URL і відкрийте його вручну або в OBS.',
 
-  'streamer.url_copied':    '{bi:clipboard-check} URL скопійовано! Вставте його в OBS Browser Source.',
-  'streamer.url_copy_error':'Помилка копіювання',
 
-  'streamer.chroma_on':     '{bi:circle-fill} Хромакей увімкнено',
-  'streamer.chroma_off':    'Хромакей вимкнено',
 
   'streamer.stats_title':   '{bi:bar-chart-fill} Статистика стріму',
   'streamer.stats_session': '{bi:tv} Сесія:',
@@ -585,15 +568,8 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   'settings.player_on_wheel':'Імена гравців на колесі',
 
-  'settings.chroma_key':    '{bi:circle-fill} Хромакей для Overlay',
 
-  'settings.overlay_pos':   'Положення Overlay',
 
-  'settings.pos_top_left':  'Вгорі ліворуч',
-  'settings.pos_top_right': 'Вгорі праворуч',
-  'settings.pos_bot_left':  'Внизу ліворуч',
-  'settings.pos_bot_right': 'Внизу праворуч',
-  'settings.pos_center':    'По центру',
 
   // Themes
   'settings.theme_title':   '{bi:palette-fill} ТЕМИ',
@@ -626,7 +602,6 @@ window.RCH_TRANSLATIONS['uk'] = {
   'floating.settings':       '{bi:gear-fill} Налаштування',
   'floating.roulette':       '{bi:dice-5-fill} Рулетка',
   'floating.streamer':       '{bi:broadcast} Стрімер',
-  'floating.overlay':        '{bi:display} OBS Overlay',
 
   // ── WHEEL SEGMENTS (no-data states) ───────────────────────
   'wheel.no_players':        'Немає гравців',
@@ -647,42 +622,17 @@ window.RCH_TRANSLATIONS['uk'] = {
 
   'wheel.waiting':           'Очікування результату…',
 
-  // ── OVERLAY ───────────────────────────────────────────────
-  'overlay.title':           'Random Challenge Hub',
 
-  'overlay.waiting':         'Очікування результату…',
 
-  'overlay.game_label':      '{bi:controller} Гра',
-  'overlay.player_label':    '{bi:person-fill} Гравець',
-  'overlay.task_label':      '{bi:lightning-charge-fill} Завдання',
 
-  'overlay.vote_title':      '{bi:check2-square} Голосування в чаті',
-  'overlay.winner_label':    'Переможець',
 
-  'overlay.chat_title':      'Чат',
-  'overlay.timer_title':     'Таймер',
 
-  'overlay.timer_waiting':   'очікування',
 
-  'overlay.chat_empty':      'Чат не підключено',
 
-  'overlay.preview':         'Попередній перегляд OBS:',
 
-  'overlay.btn_result':      '{bi:bullseye} Результат',
-  'overlay.btn_vote':        '{bi:check2-square} Голосування',
-  'overlay.btn_winner':      '{bi:trophy-fill} Переможець',
-  'overlay.btn_idle':        '{bi:pause-fill} Очікування',
-  'overlay.btn_chat':        '{bi:chat-dots-fill} Чат',
-  'overlay.btn_timer':       '{bi:stopwatch-fill} Таймер',
-  'overlay.btn_theme':       '{bi:palette-fill} Тема',
-  'overlay.btn_chroma':      '{bi:circle-fill} Хромакей',
 
-  'overlay.btn_reset_pos':   '{bi:arrow-repeat} Скинути позиції',
 
-  'overlay.btn_hide_preview':'{bi:eye-fill} Приховати перегляд',
-  'overlay.btn_show_preview':'{bi:eye-fill} Показати перегляд',
 
-  'overlay.vote_sec':        '{n} с',
 
     // ── LEGAL PAGES ───────────────────────────────────────────
   'legal.nav_privacy':      'Політика конфіденційності',
@@ -838,11 +788,11 @@ window.RCH_TRANSLATIONS['uk'] = {
   // ── MOBILE BLOCK ──────────────────────────────────────────
   'mobile.title':      'RANDOM CHALLENGE HUB',
   'mobile.subtitle':   'Потрібен комп’ютер',
-  'mobile.desc':       '<strong>Random Challenge Hub</strong> — професійний інструмент, створений для роботи на настільних ПК: велике колесо Canvas, багатовіконний режим OBS та повне керування з клавіатури.',
+  'mobile.desc':       '<strong>Random Challenge Hub</strong> — професійний інструмент, створений для роботи на настільних ПК: велике колесо Canvas, багатопанельний режим стрімера та повне керування з клавіатури.',
 
   'mobile.why_title':  'ЧОМУ ПК?',
   'mobile.why_1':      'Колесу Canvas потрібен екран шириною не менше 900 px',
-  'mobile.why_2':      'OBS Overlay працює з кількома вікнами',
+  'mobile.why_2':      'Панелі стрімера потрібен великий екран',
   'mobile.why_3':      'Панель налаштувань розрахована на клавіатуру',
   'mobile.why_4':      'Twitch IRC найкраще працює на десктопі',
 

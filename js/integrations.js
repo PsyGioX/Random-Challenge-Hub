@@ -69,6 +69,7 @@
                     text: text.trim(), color: /^#[0-9a-f]{6}$/i.test(t.color || '') ? t.color : '',
                     badges, isBroad, isMod, isSub, isVip: 'vip' in badges, action,
                     bits: parseInt(t.bits, 10) || 0, rewardId: t['custom-reward-id'] || '',
+                    emotes: t.emotes || '', firstMsg: t['first-msg'] === '1',
                 };
             }
             case 'USERNOTICE': {
